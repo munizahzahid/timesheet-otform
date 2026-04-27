@@ -228,12 +228,12 @@ class OtFormController extends Controller
     {
         $s = Carbon::parse($start);
         $e = Carbon::parse($end);
-        $diff = $e->diffInMinutes($s);
         // Handle overnight
-        if ($e->lt($s)) {
-            $diff = 1440 - $diff;
+        if ($e->lte($s)) {
+            $e->addDay();
         }
-        return round($diff / 60, 2);
+        $diff = $e->diffInMinutes($s, true);
+        return round(abs($diff) / 60, 2);
     }
 
     /**

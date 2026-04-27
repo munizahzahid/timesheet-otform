@@ -121,7 +121,7 @@ class OtFormExcelExport
         $sheet->mergeCells("AF{$r}:AF" . ($r + 1));
         $sheet->setCellValue("AF{$r}", '/');
         $sheet->getStyle("AF{$r}")->getFont()->setSize(20)->setBold(true);
-        $sheet->getStyle("AF{$ns}{$r}")->getAlignment()->setWrapText(true);
+        $sheet->getStyle("AF{$r}")->getAlignment()->setWrapText(true);
         $this->borders($sheet, "AF{$r}:AF" . ($r + 1), 'all');
         $sheet->getRowDimension($r)->setRowHeight(13.8);
         $sheet->getRowDimension($r + 1)->setRowHeight(13.8);
@@ -241,6 +241,39 @@ class OtFormExcelExport
         $hodSignerName = ($hodLog && $hodLog->approver) ? $this->shortName($hodLog->approver->name) : '';
         $gmLog = $logs->where('level', 1)->first();
         $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver->name) : '';
+
+        // Fallback: use designated approvers if no approval logs exist
+        $formUser = $otForm->user;
+        if (!$hodSignerName && in_array($otForm->status, ['pending_gm', 'approved'])) {
+            if ($otForm->form_type === 'executive' && $formUser->ot_exec_approver_id) {
+                $hodApprover = \App\Models\User::find($formUser->ot_exec_approver_id);
+            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_approver_id) {
+                $hodApprover = \App\Models\User::find($formUser->ot_non_exec_approver_id);
+            }
+            // Final fallback: use reports_to supervisor
+            if (!isset($hodApprover) && $formUser->reports_to) {
+                $hodApprover = \App\Models\User::find($formUser->reports_to);
+            }
+            if (isset($hodApprover)) {
+                $hodSignerName = $this->shortName($hodApprover->name);
+                $hodApproverFullName = $hodApprover->name;
+            }
+        }
+        if (!$gmSignerName && $otForm->status === 'approved') {
+            if ($otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
+                $gmApprover = \App\Models\User::find($formUser->ot_exec_final_approver_id);
+            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
+                $gmApprover = \App\Models\User::find($formUser->ot_non_exec_final_approver_id);
+            }
+            // Final fallback: follow reports_to chain (HOD's supervisor = GM/CEO)
+            if (!isset($gmApprover) && isset($hodApprover) && $hodApprover->reports_to) {
+                $gmApprover = \App\Models\User::find($hodApprover->reports_to);
+            }
+            if (isset($gmApprover)) {
+                $gmSignerName = $this->shortName($gmApprover->name);
+                $gmApproverFullName = $gmApprover->name;
+            }
+        }
         $blueFont = ['font' => ['size' => 8, 'bold' => true, 'color' => ['argb' => 'FF002060']]];
 
         // Tracking totals
@@ -257,6 +290,7 @@ class OtFormExcelExport
             $sheet->getStyle("B{$r}")->getFont()->setBold(true)->setSize(12);
             $sheet->mergeCells("C{$r}:H{$r}");
             $sheet->setCellValue("C{$r}", $tugas);
+            $sheet->getStyle("C{$r}")->getAlignment()->setWrapText(true);
 
             // Planned times & hours (calc from times if stored value is 0)
             $pStart = $e ? $e->planned_start_time : null;
@@ -459,19 +493,31 @@ class OtFormExcelExport
             $this->c($sheet, "Q{$ss1}");
         }
 
-        // HOD stamp (DISOKONG) — level 2
+        // HOD stamp (DISOKONG) — level 2, with fallback
+        $hodStampName = null; $hodStampDate = '';
         if ($hodLog && $hodLog->approver) {
-            $hodDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("S{$ss1}", strtoupper($hodLog->approver->name) . "\n" . $hodDate);
+            $hodStampName = strtoupper($hodLog->approver->name);
+            $hodStampDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
+        } elseif (in_array($otForm->status, ['pending_gm', 'approved']) && isset($hodApproverFullName)) {
+            $hodStampName = strtoupper($hodApproverFullName);
+        }
+        if ($hodStampName) {
+            $sheet->setCellValue("S{$ss1}", $hodStampName . ($hodStampDate ? "\n" . $hodStampDate : ''));
             $sheet->getStyle("S{$ss1}")->applyFromArray($redFont);
             $sheet->getStyle("S{$ss1}")->getAlignment()->setWrapText(true);
             $this->c($sheet, "S{$ss1}");
         }
 
-        // GM stamp (DILULUSKAN) — level 1
+        // GM stamp (DILULUSKAN) — level 1, with fallback
+        $gmStampName = null; $gmStampDate = '';
         if ($gmLog && $gmLog->approver) {
-            $gmDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("U{$ss1}", strtoupper($gmLog->approver->name) . "\n" . $gmDate);
+            $gmStampName = strtoupper($gmLog->approver->name);
+            $gmStampDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
+        } elseif ($otForm->status === 'approved' && isset($gmApproverFullName)) {
+            $gmStampName = strtoupper($gmApproverFullName);
+        }
+        if ($gmStampName) {
+            $sheet->setCellValue("U{$ss1}", $gmStampName . ($gmStampDate ? "\n" . $gmStampDate : ''));
             $sheet->getStyle("U{$ss1}")->applyFromArray($redFont);
             $sheet->getStyle("U{$ss1}")->getAlignment()->setWrapText(true);
             $this->c($sheet, "U{$ss1}");
@@ -513,7 +559,7 @@ class OtFormExcelExport
 
         // Column widths matching reference layout
         foreach ([
-            'A' => 1, 'B' => 1, 'C' => 12, 'D' => 10, 'E' => 11, 'F' => 9.5, 'G' => 9.5,
+            'A' => 1, 'B' => 1, 'C' => 12, 'D' => 14, 'E' => 14, 'F' => 12, 'G' => 12,
             'H' => 8.5, 'I' => 8.5, 'J' => 8.5, 'K' => 10, 'L' => 10, 'M' => 10,
             'N' => 9, 'O' => 9, 'P' => 9, 'Q' => 2, 'R' => 11, 'S' => 11, 'T' => 10,
             'U' => 8, 'V' => 1,
@@ -613,7 +659,7 @@ class OtFormExcelExport
         $sheet->mergeCells("R{$r}:R" . ($r + 1));
         $sheet->setCellValue("R{$r}", 'X');
         $sheet->getStyle("R{$r}")->getFont()->setSize(20)->setBold(true);
-        $sheet->getStyle("R{$ns}{$r}")->getAlignment()->setWrapText(true);
+        $sheet->getStyle("R{$r}")->getAlignment()->setWrapText(true);
         $this->borders($sheet, "R{$r}:R" . ($r + 1), 'all');
         $sheet->getRowDimension($r)->setRowHeight(13.8);
         $sheet->getRowDimension($r + 1)->setRowHeight(13.8);
@@ -734,34 +780,43 @@ class OtFormExcelExport
             ->orderBy('level')
             ->get();
         $staffSignerName = $this->shortName($user->name ?? '');
-        // Try to find HOD log - could be level 2 or check if user has HOD role
         $hodLog = $logs->where('level', 2)->first();
-        if (!$hodLog) {
-            // Try to find by checking if approver has HOD role
-            foreach ($logs as $log) {
-                if ($log->approver && str_contains(strtolower($log->approver->designation ?? ''), 'hod') ||
-                    str_contains(strtolower($log->approver->designation ?? ''), 'head of department')) {
-                    $hodLog = $log;
-                    break;
-                }
-            }
-        }
         $hodSignerName = ($hodLog && $hodLog->approver) ? $this->shortName($hodLog->approver->name) : '';
-        // Try to find GM log - could be level 1 or check if user has GM/CEO role
         $gmLog = $logs->where('level', 1)->first();
-        if (!$gmLog) {
-            // Try to find by checking if approver has GM/CEO role
-            foreach ($logs as $log) {
-                if ($log->approver && (str_contains(strtolower($log->approver->designation ?? ''), 'gm') ||
-                    str_contains(strtolower($log->approver->designation ?? ''), 'general manager') ||
-                    str_contains(strtolower($log->approver->designation ?? ''), 'ceo') ||
-                    str_contains(strtolower($log->approver->designation ?? ''), 'chief executive'))) {
-                    $gmLog = $log;
-                    break;
-                }
+        $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver->name) : '';
+
+        // Fallback: use designated approvers if no approval logs exist
+        $formUser = $otForm->user;
+        if (!$hodSignerName && in_array($otForm->status, ['pending_gm', 'approved'])) {
+            if ($otForm->form_type === 'executive' && $formUser->ot_exec_approver_id) {
+                $hodApprover = \App\Models\User::find($formUser->ot_exec_approver_id);
+            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_approver_id) {
+                $hodApprover = \App\Models\User::find($formUser->ot_non_exec_approver_id);
+            }
+            // Final fallback: use reports_to supervisor
+            if (!isset($hodApprover) && $formUser->reports_to) {
+                $hodApprover = \App\Models\User::find($formUser->reports_to);
+            }
+            if (isset($hodApprover)) {
+                $hodSignerName = $this->shortName($hodApprover->name);
+                $hodApproverFullName = $hodApprover->name;
             }
         }
-        $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver->name) : '';
+        if (!$gmSignerName && $otForm->status === 'approved') {
+            if ($otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
+                $gmApprover = \App\Models\User::find($formUser->ot_exec_final_approver_id);
+            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
+                $gmApprover = \App\Models\User::find($formUser->ot_non_exec_final_approver_id);
+            }
+            // Final fallback: follow reports_to chain (HOD's supervisor = GM/CEO)
+            if (!isset($gmApprover) && isset($hodApprover) && $hodApprover->reports_to) {
+                $gmApprover = \App\Models\User::find($hodApprover->reports_to);
+            }
+            if (isset($gmApprover)) {
+                $gmSignerName = $this->shortName($gmApprover->name);
+                $gmApproverFullName = $gmApprover->name;
+            }
+        }
         $blueFont = ['font' => ['size' => 8, 'bold' => true, 'color' => ['argb' => 'FF002060']]];
 
         // ── Data rows (18 rows, rows 19-36) ─────────────────────────────────────
@@ -776,9 +831,15 @@ class OtFormExcelExport
             $sheet->setCellValue("C{$r}", $e ? $e->entry_date->format('d/m/Y') : '');
             $sheet->mergeCells("D{$r}:G{$r}");
             $sheet->setCellValue("D{$r}", $particulars);
+            $sheet->getStyle("D{$r}")->getAlignment()->setWrapText(true);
             $sheet->setCellValue("H{$r}", $e && $e->planned_start_time ? substr($e->planned_start_time, 0, 5) : '');
             $sheet->setCellValue("I{$r}", $e && $e->planned_end_time   ? substr($e->planned_end_time, 0, 5)   : '');
-            $sheet->setCellValue("J{$r}", $e && $e->planned_total_hours > 0 ? number_format($e->planned_total_hours, 2) : '');
+            // Compute planned total hours from times if stored value is invalid
+            $plannedHours = $e ? (float)$e->planned_total_hours : 0;
+            if ($plannedHours <= 0 && $e && $e->planned_start_time && $e->planned_end_time) {
+                $plannedHours = $this->calcHoursFromTimes($e->planned_start_time, $e->planned_end_time);
+            }
+            $sheet->setCellValue("J{$r}", $plannedHours > 0 ? number_format($plannedHours, 2) : '');
             // K, L, M = approval signature columns (EXEC, HOD, DGM/CEO)
             $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
             if ($isFilled && !in_array($otForm->status, ['draft'])) {
@@ -795,10 +856,28 @@ class OtFormExcelExport
             }
             $sheet->setCellValue("N{$r}", $e && $e->actual_start_time ? substr($e->actual_start_time, 0, 5) : '');
             $sheet->setCellValue("O{$r}", $e && $e->actual_end_time   ? substr($e->actual_end_time, 0, 5)   : '');
-            $sheet->setCellValue("P{$r}", $e && $e->actual_total_hours > 0 ? number_format($e->actual_total_hours, 2) : '');
-            $sheet->setCellValue("R{$r}", $e && $e->ot_normal_day_hours > 0 ? number_format($e->ot_normal_day_hours, 2) : '');
-            $sheet->setCellValue("S{$r}", $e && $e->ot_rest_day_hours  > 0 ? number_format($e->ot_rest_day_hours,  2) : '');
-            $sheet->setCellValue("T{$r}", $e && $e->ot_ph_hours        > 0 ? number_format($e->ot_ph_hours,        2) : '');
+            // Compute actual total hours from times if stored value is invalid
+            $actualHours = $e ? (float)$e->actual_total_hours : 0;
+            if ($actualHours <= 0 && $e && $e->actual_start_time && $e->actual_end_time) {
+                $actualHours = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
+            }
+            $sheet->setCellValue("P{$r}", $actualHours > 0 ? number_format($actualHours, 2) : '');
+            // Distribute OT hours: use stored values, or fallback to actual hours by day type
+            $otNormal = $e ? (float)$e->ot_normal_day_hours : 0;
+            $otRest = $e ? (float)$e->ot_rest_day_hours : 0;
+            $otPH = $e ? (float)$e->ot_ph_hours : 0;
+            if ($actualHours > 0 && ($otNormal + $otRest + $otPH) <= 0 && $e) {
+                if ($e->is_public_holiday) {
+                    $otPH = $actualHours;
+                } elseif ($e->entry_date && $e->entry_date->isWeekend()) {
+                    $otRest = $actualHours;
+                } else {
+                    $otNormal = $actualHours;
+                }
+            }
+            $sheet->setCellValue("R{$r}", $otNormal > 0 ? number_format($otNormal, 2) : '');
+            $sheet->setCellValue("S{$r}", $otRest > 0 ? number_format($otRest, 2) : '');
+            $sheet->setCellValue("T{$r}", $otPH > 0 ? number_format($otPH, 2) : '');
             // Borders: C-G bottom+left, H-P all thin, R-T all thin
             $this->borders($sheet, "H{$r}:P{$r}");
             $this->borders($sheet, "R{$r}:T{$r}");
@@ -811,7 +890,14 @@ class OtFormExcelExport
             $sheet->getStyle("G{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
             $this->c($sheet, "C{$r}:T{$r}");
             $sheet->getStyle("D{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-            $sheet->getRowDimension($r)->setRowHeight(15.75);
+            // Auto-calculate row height based on text length for wrapped PARTICULARS
+            $textLen = strlen($particulars);
+            if ($textLen > 45) {
+                $lines = ceil($textLen / 45);
+                $sheet->getRowDimension($r)->setRowHeight($lines * 13);
+            } else {
+                $sheet->getRowDimension($r)->setRowHeight(15.75);
+            }
             $r++;
         }
 
@@ -820,11 +906,32 @@ class OtFormExcelExport
         $r++;
 
         // ── Row 38: Totals ──────────────────────────────────────────────────────
-        $totalPlan   = $filled->sum(fn($e) => (float)$e->planned_total_hours);
-        $totalActual = $filled->sum(fn($e) => (float)$e->actual_total_hours);
-        $totalNorm   = $filled->sum(fn($e) => (float)$e->ot_normal_day_hours);
-        $totalRest   = $filled->sum(fn($e) => (float)$e->ot_rest_day_hours);
-        $totalPH     = $filled->sum(fn($e) => (float)$e->ot_ph_hours);
+        $totalPlan = 0; $totalActual = 0; $totalNorm = 0; $totalRest = 0; $totalPH = 0;
+        foreach ($filled as $e) {
+            $ph = (float)$e->planned_total_hours;
+            if ($ph <= 0 && $e->planned_start_time && $e->planned_end_time) {
+                $ph = $this->calcHoursFromTimes($e->planned_start_time, $e->planned_end_time);
+            }
+            $totalPlan += $ph;
+
+            $ah = (float)$e->actual_total_hours;
+            if ($ah <= 0 && $e->actual_start_time && $e->actual_end_time) {
+                $ah = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
+            }
+            $totalActual += $ah;
+
+            $on = (float)$e->ot_normal_day_hours;
+            $or = (float)$e->ot_rest_day_hours;
+            $op = (float)$e->ot_ph_hours;
+            if ($ah > 0 && ($on + $or + $op) <= 0) {
+                if ($e->is_public_holiday) { $op = $ah; }
+                elseif ($e->entry_date && $e->entry_date->isWeekend()) { $or = $ah; }
+                else { $on = $ah; }
+            }
+            $totalNorm += $on;
+            $totalRest += $or;
+            $totalPH += $op;
+        }
 
         $sheet->mergeCells("C{$r}:F{$r}");
         $sheet->setCellValue("C{$r}", 'APPROVAL AFTER OVERTIME');
@@ -848,90 +955,6 @@ class OtFormExcelExport
         $this->c($sheet, "R{$r}:T{$r}");
         $this->doubleBorders($sheet, "R{$r}"); $this->doubleBorders($sheet, "S{$r}"); $this->doubleBorders($sheet, "T{$r}");
         $sheet->getRowDimension($r)->setRowHeight(21);
-        $r++;
-
-        // ── Row 38: Approval signatures for approval before overtime table ─────
-        $sheet->mergeCells("K{$r}:K" . ($r + 1)); $sheet->setCellValue("K{$r}", 'EXEC.'); $this->c($sheet, "K{$r}");
-        $sheet->mergeCells("L{$r}:L" . ($r + 1)); $sheet->setCellValue("L{$r}", 'HOD'); $this->c($sheet, "L{$r}");
-        $sheet->mergeCells("M{$r}:M" . ($r + 1)); $sheet->setCellValue("M{$r}", 'DGM/CEO'); $this->c($sheet, "M{$r}");
-        $this->borders($sheet, "K{$r}:M" . ($r + 1));
-        $sheet->getStyle("K{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("L{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("M{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("K{$r}")->getFont()->setBold(true)->setSize(8);
-        $sheet->getStyle("L{$r}")->getFont()->setBold(true)->setSize(8);
-        $sheet->getStyle("M{$r}")->getFont()->setBold(true)->setSize(8);
-
-        // Add approval stamps in the merged cells
-        if (!in_array($otForm->status, ['draft'])) {
-            $sheet->setCellValue("K{$r}", "CLAIMED\n\n" . strtoupper($staffSignerName));
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle("K{$r}")->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle("K{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle("K{$r}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFFE0');
-        }
-        if ($hodLog && $hodLog->approver) {
-            $hodDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("L{$r}", "APPROVED\n\n" . strtoupper($hodSignerName) . "\n" . $hodDate);
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle("L{$r}")->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle("L{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle("L{$r}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFFE0');
-        }
-        if ($gmLog && $gmLog->approver) {
-            $gmDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("M{$r}", "APPROVED\n\n" . strtoupper($gmSignerName) . "\n" . $gmDate);
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle("M{$r}")->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle("M{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle("M{$r}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFFE0');
-        }
-        $sheet->getRowDimension($r)->setRowHeight(35);
-        $r++;
-
-        // ── Row 39: Approval after overtime signatures ────────────────────────
-        $sheet->mergeCells("K{$r}:K" . ($r + 1)); $sheet->setCellValue("K{$r}", 'EXEC.'); $this->c($sheet, "K{$r}");
-        $sheet->mergeCells("L{$r}:L" . ($r + 1)); $sheet->setCellValue("L{$r}", 'HOD'); $this->c($sheet, "L{$r}");
-        $sheet->mergeCells("M{$r}:M" . ($r + 1)); $sheet->setCellValue("M{$r}", 'DGM/CEO'); $this->c($sheet, "M{$r}");
-        $this->borders($sheet, "K{$r}:M" . ($r + 1));
-        $sheet->getStyle("K{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("L{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("M{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("K{$r}")->getFont()->setBold(true)->setSize(8);
-        $sheet->getStyle("L{$r}")->getFont()->setBold(true)->setSize(8);
-        $sheet->getStyle("M{$r}")->getFont()->setBold(true)->setSize(8);
-
-        // Add approval stamps for approval after overtime
-        if (!in_array($otForm->status, ['draft'])) {
-            $sheet->setCellValue("K{$r}", "CLAIMED\n\n" . strtoupper($staffSignerName));
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle("K{$r}")->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle("K{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle("K{$r}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFFE0');
-        }
-        if ($hodLog && $hodLog->approver) {
-            $hodDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("L{$r}", "APPROVED\n\n" . strtoupper($hodSignerName) . "\n" . $hodDate);
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle("L{$r}")->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle("L{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle("L{$r}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFFE0');
-        }
-        if ($gmLog && $gmLog->approver) {
-            $gmDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("M{$r}", "APPROVED\n\n" . strtoupper($gmSignerName) . "\n" . $gmDate);
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle("M{$r}")->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle("M{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle("M{$r}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFFFE0');
-        }
-        $sheet->getRowDimension($r)->setRowHeight(35);
         $r++;
 
         // ── Row 39: NOTE ────────────────────────────────────────────────────────
@@ -977,10 +1000,15 @@ class OtFormExcelExport
             $addStamp("C{$ss1}", "CLAIMED", $user->name ?? '', $staffDate);
         }
 
-        // HOD stamp (Approved by) — level 2
+        // HOD stamp (Approved by) — use log or fallback to designated/reports_to approver
         if ($hodLog && $hodLog->approver) {
             $hodDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
             $addStamp("E{$ss1}", "APPROVED", $hodLog->approver->name, $hodDate);
+        } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
+            $hodFullName = $hodApproverFullName ?? $hodSignerName ?? '';
+            if ($hodFullName) {
+                $addStamp("E{$ss1}", "APPROVED", $hodFullName, '');
+            }
         }
 
         $sheet->getRowDimension($ss1)->setRowHeight(16.5);
@@ -1122,7 +1150,7 @@ class OtFormExcelExport
     private function shortName(string $fullName): string
     {
         $name = strtoupper(trim($fullName));
-        if (preg_match('/^(.+?)\s+(?:BIN|BINTI)\b/i', $name, $m)) {
+        if (preg_match('/^(.+?)\s+(?:BIN|BINTI|B|BT)\b/i', $name, $m)) {
             $parts = explode(' ', trim($m[1]));
             return end($parts);
         }
@@ -1137,5 +1165,10 @@ class OtFormExcelExport
         $e = strtotime("2000-01-01 $end");
         if ($e <= $s) $e += 86400;
         return round(($e - $s) / 3600, 2);
+    }
+
+    private function calcHoursFromTimes(?string $start, ?string $end): float
+    {
+        return $this->calcHours($start, $end);
     }
 }
