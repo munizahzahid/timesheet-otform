@@ -61,6 +61,16 @@
             OT Forms
         </a>
 
+        {{-- History --}}
+        <a href="{{ route('history.index') }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                  {{ request()->routeIs('history.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 01-7.745 8.933A9 9 0 1121 12zm-9 0V7m0 5h4"/>
+            </svg>
+            History
+        </a>
+
         {{-- Approvals (for managers/admin) --}}
         @if(Auth::user()->role === 'admin' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1() || Auth::user()->canApproveTimesheetHOD() || Auth::user()->canApproveTimesheetL1())
             <p class="px-3 pt-5 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approvals</p>

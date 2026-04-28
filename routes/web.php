@@ -13,6 +13,7 @@ use App\Http\Controllers\AttendanceUploadController;
 use App\Http\Controllers\TimesheetApprovalController;
 use App\Http\Controllers\OtFormController;
 use App\Http\Controllers\OtApprovalController;
+use App\Http\Controllers\HistoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -65,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/ot-forms/{otForm}/auto-fill', [OtFormController::class, 'autoFillFromAttendance'])->name('ot-forms.auto-fill');
     Route::get('/ot-forms/{otForm}/preview-excel', [OtFormController::class, 'previewExcel'])->name('ot-forms.preview-excel');
     Route::get('/ot-forms/{otForm}/export-excel', [OtFormController::class, 'exportExcel'])->name('ot-forms.export-excel');
+
+    // History
+    Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
 
     // OT Form Approvals
     Route::get('/approvals/ot-forms', [OtApprovalController::class, 'index'])->name('approvals.ot-forms.index');
