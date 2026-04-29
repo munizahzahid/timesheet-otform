@@ -285,10 +285,6 @@
                            class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
                             Download Excel
                         </a>
-                        <a href="{{ route('timesheets.export-pdf', $timesheet) }}"
-                           class="bg-purple-600 text-white px-4 py-2 rounded-md text-sm hover:bg-purple-700">
-                            Download PDF
-                        </a>
                     </div>
                 </div>
             </div

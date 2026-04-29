@@ -139,7 +139,11 @@ class OtFormController extends Controller
         $spreadsheet = $exporter->generate($otForm);
         $writer = new Xlsx($spreadsheet);
 
-        $tempPath = storage_path('app/temp/excel_preview_ot_' . $otForm->id . '_' . time() . '.xlsx');
+        $tempDir = storage_path('app/temp');
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $tempPath = $tempDir . '/excel_preview_ot_' . $otForm->id . '_' . time() . '.xlsx';
         $writer->save($tempPath);
 
         return view('excel-preview', [
