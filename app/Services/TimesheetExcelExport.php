@@ -204,21 +204,14 @@ class TimesheetExcelExport
         $sheet->mergeCells("AE{$r}:AG" . ($r + 2));
         $sheet->mergeCells("AH{$r}:AJ" . ($r + 2));
         $sheet->mergeCells("AK{$r}:AL" . ($r + 2));
+        $sheet->getRowDimension($r)->setRowHeight(90); // Increased for stamp image
         $r++; // row 8
         $sheet->setCellValue("C{$r}", 'MONTH :');
         $this->b($sheet, "C{$r}");
         $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
         $sheet->getStyle("C{$r}")->getBorders()->getLeft()->setBorderStyle(self::THIN);
         $sheet->setCellValue("D{$r}", $monthYear);
-        $sheet->getStyle("D{$r}")->getFont()->setBold(true);
-        $sheet->getStyle("D{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
-        $r++; // row 9
-        $sheet->setCellValue("C{$r}", 'NAME  :');
-        $this->b($sheet, "C{$r}");
-        $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("C{$r}")->getBorders()->getLeft()->setBorderStyle(self::THIN);
-        $sheet->setCellValue("D{$r}", strtoupper($user->name ?? '-'));
-        $sheet->getStyle("D{$r}")->getFont()->setBold(true);
+        $this->c($sheet, "D{$r}");
         $sheet->getStyle("D{$r}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
         $sheet->setCellValue("Q{$r}", 'STAFF NO :');
@@ -252,7 +245,7 @@ class TimesheetExcelExport
         $this->borders($sheet, "AK{$r}:AL{$r}");
         // Call buildApprovalStampBoxes with stampStartRow (rows 7-9)
         $this->buildApprovalStampBoxes($sheet, $timesheet, $stampStartRow, $stampEndRow - 1);
-        $sheet->getRowDimension($r)->setRowHeight(-1);
+        $sheet->getRowDimension($r)->setRowHeight(16.5);
         $r++;
 
         // ══════════════════════════════════════════════════════════════════════
@@ -489,7 +482,9 @@ class TimesheetExcelExport
             // Merge D column for project code (4 rows)
             $sheet->mergeCells("D{$r}:D" . ($r + 3));
             $code = $proj['project_code'];
-            $sheet->setCellValue("D{$r}", $code);
+            $name = $proj['project_name'];
+            $displayText = $code . ($name ? ' - ' . $name : '');
+            $sheet->setCellValue("D{$r}", $displayText);
             $this->c($sheet, "D{$r}");
 
             // Row 1: NORMAL NC
@@ -855,24 +850,11 @@ class TimesheetExcelExport
         // Stamps go in the merged cells (startRow to endRow)
         $innerRow = $startRow;
 
-        // Helper function to add approved stamp
-        $addStamp = function($cell, $label, $name, $date, $signature) use ($sheet) {
-            $sheet->setCellValue($cell, "{$label}\n" . strtoupper($name) . "\n" . $date);
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle($cell)->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle($cell)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                  ->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID)
-                  ->getStartColor()->setRGB('FFFFE0'); // Light yellow background
-            $this->c($sheet, $cell);
-        };
-
         // Prepared By (staff)
         if (!in_array($timesheet->status, ['draft'])) {
             $staffName = $timesheet->staff_signature ?? ($timesheet->user->name ?? '');
             $staffDate = $timesheet->staff_signed_at ? $timesheet->staff_signed_at->format('d/m/Y') : '';
-            $addStamp("AE{$innerRow}", "PREPARED", $staffName, $staffDate, $timesheet->staff_signature);
+            $this->addStamp($sheet, "AE{$innerRow}", $staffName, $staffDate, 'STAFF');
         }
 
         // Checked By (HOD/Exec/SPV)
@@ -880,7 +862,7 @@ class TimesheetExcelExport
         if ($hodLog && $hodLog->user) {
             $hodName = $hodLog->user->name;
             $hodDate = $timesheet->hod_signed_at ? $timesheet->hod_signed_at->format('d/m/Y') : '';
-            $addStamp("AH{$innerRow}", "CHECKED", $hodName, $hodDate, $timesheet->hod_signature);
+            $this->addStamp($sheet, "AH{$innerRow}", $hodName, $hodDate, 'HOD/EXEC');
         }
 
         // Verified By (Asst Mgr/Mngr)
@@ -888,8 +870,49 @@ class TimesheetExcelExport
         if ($l1Log && $l1Log->user) {
             $l1Name = $l1Log->user->name;
             $l1Date = $timesheet->l1_signed_at ? $timesheet->l1_signed_at->format('d/m/Y') : '';
-            $addStamp("AK{$innerRow}", "APPROVED", $l1Name, $l1Date, $timesheet->l1_signature);
+            $this->addStamp($sheet, "AK{$innerRow}", $l1Name, $l1Date, 'MNGR');
         }
+    }
+
+    private function addStamp(Worksheet $sheet, string $cell, string $name, string $date, string $role): void
+    {
+        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+        $drawing->setName('Stamp');
+        $drawing->setDescription('Approval Stamp');
+
+        // Create PNG stamp using GD
+        $image = imagecreatetruecolor(80, 80);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        $transparent = imagecolorallocatealpha($image, 255, 255, 255, 127);
+        imagefill($image, 0, 0, $transparent);
+
+        $red = imagecolorallocate($image, 220, 38, 38);
+        imageellipse($image, 40, 40, 76, 76, $red);
+        imageline($image, 40, 2, 40, 78, $red);
+        imageline($image, 2, 40, 78, 40, $red);
+
+        // Add TSSB text
+        imagestring($image, 3, 28, 22, 'TSSB', $red);
+        // Add name
+        imagestring($image, 1, 5, 42, strtoupper(substr($name, 0, 18)), $red);
+        // Add date
+        imagestring($image, 1, 5, 54, $date, $red);
+
+        ob_start();
+        imagepng($image);
+        $imageData = ob_get_clean();
+        imagedestroy($image);
+
+        $tempPath = sys_get_temp_dir() . '/stamp_' . uniqid() . '.png';
+        file_put_contents($tempPath, $imageData);
+
+        $drawing->setPath($tempPath);
+        $drawing->setCoordinates($cell);
+        $drawing->setOffsetX(5);
+        $drawing->setOffsetY(2);
+        $drawing->setHeight(80);
+        $drawing->setWorksheet($sheet);
     }
 
     // ─── Style helpers ───────────────────────────────────────────────────────

@@ -482,48 +482,37 @@ class OtFormExcelExport
         $sheet->mergeCells("S{$ss1}:T{$ss3}"); $this->borders($sheet, "S{$ss1}:T{$ss3}");
         $sheet->mergeCells("U{$ss1}:V{$ss3}"); $this->borders($sheet, "U{$ss1}:V{$ss3}");
 
-        $redFont = ['font' => ['size' => 8, 'bold' => true, 'color' => ['argb' => 'FFFF0000']]];
-
         // Staff stamp (DISEDIAKAN)
         if (!in_array($otForm->status, ['draft'])) {
             $staffDate = $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('d/m/Y') : '';
-            $sheet->setCellValue("Q{$ss1}", strtoupper($user->name ?? '') . "\n" . $staffDate);
-            $sheet->getStyle("Q{$ss1}")->applyFromArray($redFont);
-            $sheet->getStyle("Q{$ss1}")->getAlignment()->setWrapText(true);
-            $this->c($sheet, "Q{$ss1}");
+            $this->addStamp($sheet, "Q{$ss1}", $user->name ?? '', $staffDate, 'STAFF');
         }
 
         // HOD stamp (DISOKONG) — level 2, with fallback
         $hodStampName = null; $hodStampDate = '';
         if ($hodLog && $hodLog->approver) {
-            $hodStampName = strtoupper($hodLog->approver->name);
+            $hodStampName = $hodLog->approver->name;
             $hodStampDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
         } elseif (in_array($otForm->status, ['pending_gm', 'approved']) && isset($hodApproverFullName)) {
-            $hodStampName = strtoupper($hodApproverFullName);
+            $hodStampName = $hodApproverFullName;
         }
         if ($hodStampName) {
-            $sheet->setCellValue("S{$ss1}", $hodStampName . ($hodStampDate ? "\n" . $hodStampDate : ''));
-            $sheet->getStyle("S{$ss1}")->applyFromArray($redFont);
-            $sheet->getStyle("S{$ss1}")->getAlignment()->setWrapText(true);
-            $this->c($sheet, "S{$ss1}");
+            $this->addStamp($sheet, "S{$ss1}", $hodStampName, $hodStampDate ?: '', 'MGR/HOD');
         }
 
         // GM stamp (DILULUSKAN) — level 1, with fallback
         $gmStampName = null; $gmStampDate = '';
         if ($gmLog && $gmLog->approver) {
-            $gmStampName = strtoupper($gmLog->approver->name);
+            $gmStampName = $gmLog->approver->name;
             $gmStampDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
         } elseif ($otForm->status === 'approved' && isset($gmApproverFullName)) {
-            $gmStampName = strtoupper($gmApproverFullName);
+            $gmStampName = $gmApproverFullName;
         }
         if ($gmStampName) {
-            $sheet->setCellValue("U{$ss1}", $gmStampName . ($gmStampDate ? "\n" . $gmStampDate : ''));
-            $sheet->getStyle("U{$ss1}")->applyFromArray($redFont);
-            $sheet->getStyle("U{$ss1}")->getAlignment()->setWrapText(true);
-            $this->c($sheet, "U{$ss1}");
+            $this->addStamp($sheet, "U{$ss1}", $gmStampName, $gmStampDate ?: '', 'DGM/CEO');
         }
 
-        $sheet->getRowDimension($ss1)->setRowHeight(16.5);
+        $sheet->getRowDimension($ss1)->setRowHeight(90);
         $sheet->getRowDimension($ss1 + 1)->setRowHeight(16.5);
         $sheet->getRowDimension($ss3)->setRowHeight(16.5);
         $r = $ss3 + 1;
@@ -979,39 +968,24 @@ class OtFormExcelExport
         $sheet->mergeCells("C{$ss1}:D{$ss3}"); $this->borders($sheet, "C{$ss1}:D{$ss3}");
         $sheet->mergeCells("E{$ss1}:F{$ss3}"); $this->borders($sheet, "E{$ss1}:F{$ss3}");
 
-        $redFont = ['font' => ['size' => 7, 'bold' => true, 'color' => ['argb' => 'FFFF0000']]];
-
-        // Helper function to add approved stamp
-        $addStamp = function($cell, $label, $name, $date) use ($sheet, $redFont) {
-            $sheet->setCellValue($cell, "{$label}\n\n" . strtoupper($name) . "\n" . $date);
-            $color = new \PhpOffice\PhpSpreadsheet\Style\Color();
-            $color->setARGB('FF0000');
-            $sheet->getStyle($cell)->getFont()->setSize(7)->setBold(true)->setColor($color);
-            $sheet->getStyle($cell)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                  ->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-            $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID)
-                  ->getStartColor()->setRGB('FFFFE0'); // Light yellow background
-            $this->c($sheet, $cell);
-        };
-
         // Staff stamp (Executive/Claimed by)
         if (!in_array($otForm->status, ['draft'])) {
             $staffDate = $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('d/m/Y') : '';
-            $addStamp("C{$ss1}", "CLAIMED", $user->name ?? '', $staffDate);
+            $this->addStamp($sheet, "C{$ss1}", $user->name ?? '', $staffDate, 'STAFF');
         }
 
         // HOD stamp (Approved by) — use log or fallback to designated/reports_to approver
         if ($hodLog && $hodLog->approver) {
             $hodDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
-            $addStamp("E{$ss1}", "APPROVED", $hodLog->approver->name, $hodDate);
+            $this->addStamp($sheet, "E{$ss1}", $hodLog->approver->name, $hodDate, 'MGR/HOD');
         } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
             $hodFullName = $hodApproverFullName ?? $hodSignerName ?? '';
             if ($hodFullName) {
-                $addStamp("E{$ss1}", "APPROVED", $hodFullName, '');
+                $this->addStamp($sheet, "E{$ss1}", $hodFullName, '', 'MGR/HOD');
             }
         }
 
-        $sheet->getRowDimension($ss1)->setRowHeight(16.5);
+        $sheet->getRowDimension($ss1)->setRowHeight(90);
         $sheet->getRowDimension($ss2)->setRowHeight(16.5);
         $sheet->getRowDimension($ss3)->setRowHeight(16.5);
 
@@ -1145,6 +1119,57 @@ class OtFormExcelExport
     private function doubleBorders(Worksheet $sheet, string $range): void
     {
         $sheet->getStyle($range)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_DOUBLE);
+    }
+
+    private function addStamp(Worksheet $sheet, string $cell, string $name, string $date, string $role): void
+    {
+        $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+        $drawing->setName('Stamp');
+        $drawing->setDescription('Approval Stamp');
+
+        // Create SVG stamp as base64 encoded image
+        $svg = '<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="40" r="38" fill="none" stroke="#DC2626" stroke-width="2"/>
+            <text x="40" y="32" text-anchor="middle" fill="#DC2626" font-size="10" font-weight="bold" font-family="Arial">TSSB</text>
+            <text x="40" y="48" text-anchor="middle" fill="#DC2626" font-size="7" font-family="Arial">' . strtoupper(substr($name, 0, 15)) . '</text>
+            <text x="40" y="60" text-anchor="middle" fill="#DC2626" font-size="6" font-family="Arial">' . $date . '</text>
+        </svg>';
+
+        // Convert SVG to PNG using GD
+        $image = imagecreatetruecolor(80, 80);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        $transparent = imagecolorallocatealpha($image, 255, 255, 255, 127);
+        imagefill($image, 0, 0, $transparent);
+
+        $red = imagecolorallocate($image, 220, 38, 38);
+        imageellipse($image, 40, 40, 76, 76, $red);
+        imageline($image, 40, 2, 40, 78, $red);
+        imageline($image, 2, 40, 78, 40, $red);
+
+        // Add TSSB text
+        imagestring($image, 3, 28, 22, 'TSSB', $red);
+        // Add name
+        imagestring($image, 1, 5, 42, strtoupper(substr($name, 0, 18)), $red);
+        // Add date
+        imagestring($image, 1, 5, 54, $date, $red);
+
+        ob_start();
+        imagepng($image);
+        $imageData = ob_get_clean();
+        imagedestroy($image);
+
+        $tempPath = sys_get_temp_dir() . '/stamp_' . uniqid() . '.png';
+        file_put_contents($tempPath, $imageData);
+
+        $drawing->setPath($tempPath);
+        $drawing->setCoordinates($cell);
+        $drawing->setOffsetX(5);
+        $drawing->setOffsetY(2);
+        $drawing->setHeight(80);
+        $drawing->setWorksheet($sheet);
+
+        // Store temp path for cleanup (optional - temp files will be cleaned by OS)
     }
 
     private function shortName(string $fullName): string
