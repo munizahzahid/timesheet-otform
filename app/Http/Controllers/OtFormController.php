@@ -336,97 +336,29 @@ class OtFormController extends Controller
             'role'   => 'Staff',
         ];
 
-        // For executive forms, show 3 approval levels: Manager → GM
-        // For non-executive, show 2 levels: Manager → GM
-        if ($otForm->isExecutive()) {
-            // Executive: Level 2 = Manager/HOD, Level 1 = GM/CEO
-            $managerLog = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
-            $gmLog = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
+        // Show 2 approval levels: Claimed by → Approved by (Manager)
+        // For both executive and non-executive forms
+        $managerLog = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
 
-            // Manager/HOD stamp
-            $managerStatus = 'empty';
-            if ($managerLog) {
-                $managerStatus = 'approved';
-            } elseif (in_array($otForm->status, ['pending_manager'])) {
-                $managerStatus = 'pending';
-            } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
-                $managerStatus = 'approved'; // Manager approved if status is past pending_manager
-            }
-
-            $managerUser = $managerLog ? $managerLog->approver : null;
-            $stamps[] = [
-                'label'  => 'Approved by',
-                'code'   => 'APRV',
-                'status' => $managerStatus,
-                'date'   => $managerLog && $managerLog->acted_at ? $managerLog->acted_at->format('m/d') : '',
-                'name'   => $managerUser ? $managerUser->name : '',
-                'role'   => $managerUser ? ($managerUser->designation ?? 'Manager') : 'Manager',
-            ];
-
-            // GM/CEO stamp
-            $gmStatus = 'empty';
-            if ($gmLog) {
-                $gmStatus = 'approved';
-            } elseif (in_array($otForm->status, ['pending_gm'])) {
-                $gmStatus = 'pending';
-            } elseif ($otForm->status === 'approved') {
-                $gmStatus = 'approved';
-            }
-
-            $gmUser = $gmLog ? $gmLog->approver : null;
-            $stamps[] = [
-                'label'  => 'Endorsed by',
-                'code'   => 'ENDS',
-                'status' => $gmStatus,
-                'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
-                'name'   => $gmUser ? $gmUser->name : '',
-                'role'   => $gmUser ? ($gmUser->designation ?? 'GM/CEO') : 'GM/CEO',
-            ];
-        } else {
-            // Non-executive: Level 2 = Manager, Level 1 = GM
-            $managerLog = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
-            $gmLog = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-
-            // Manager stamp
-            $managerStatus = 'empty';
-            if ($managerLog) {
-                $managerStatus = 'approved';
-            } elseif (in_array($otForm->status, ['pending_manager'])) {
-                $managerStatus = 'pending';
-            } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
-                $managerStatus = 'approved';
-            }
-
-            $managerUser = $managerLog ? $managerLog->approver : null;
-            $stamps[] = [
-                'label'  => 'Approved by',
-                'code'   => 'APRV',
-                'status' => $managerStatus,
-                'date'   => $managerLog && $managerLog->acted_at ? $managerLog->acted_at->format('m/d') : '',
-                'name'   => $managerUser ? $managerUser->name : '',
-                'role'   => $managerUser ? ($managerUser->designation ?? 'Manager') : 'Manager',
-            ];
-
-            // GM stamp
-            $gmStatus = 'empty';
-            if ($gmLog) {
-                $gmStatus = 'approved';
-            } elseif (in_array($otForm->status, ['pending_gm'])) {
-                $gmStatus = 'pending';
-            } elseif ($otForm->status === 'approved') {
-                $gmStatus = 'approved';
-            }
-
-            $gmUser = $gmLog ? $gmLog->approver : null;
-            $stamps[] = [
-                'label'  => 'Endorsed by',
-                'code'   => 'ENDS',
-                'status' => $gmStatus,
-                'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
-                'name'   => $gmUser ? $gmUser->name : '',
-                'role'   => $gmUser ? ($gmUser->designation ?? 'GM/CEO') : 'GM/CEO',
-            ];
+        // Manager stamp
+        $managerStatus = 'empty';
+        if ($managerLog) {
+            $managerStatus = 'approved';
+        } elseif (in_array($otForm->status, ['pending_manager'])) {
+            $managerStatus = 'pending';
+        } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
+            $managerStatus = 'approved'; // Manager approved if status is past pending_manager
         }
+
+        $managerUser = $managerLog ? $managerLog->approver : null;
+        $stamps[] = [
+            'label'  => 'Approved by',
+            'code'   => 'APRV',
+            'status' => $managerStatus,
+            'date'   => $managerLog && $managerLog->acted_at ? $managerLog->acted_at->format('m/d') : '',
+            'name'   => $managerUser ? $managerUser->name : '',
+            'role'   => $managerUser ? ($managerUser->designation ?? 'Manager') : 'Manager',
+        ];
 
         return $stamps;
     }
