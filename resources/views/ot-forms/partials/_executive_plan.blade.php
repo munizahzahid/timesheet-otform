@@ -94,7 +94,7 @@
                         @if($entry)
                             <input type="text" id="planned-total-{{ $entry->id }}"
                                    name="entries[{{ $entry->id }}][planned_total_hours]"
-                                   value="{{ number_format($entry->planned_total_hours ?? 0, 2) }}"
+                                   value="{{ number_format(abs($entry->planned_total_hours ?? 0), 2) }}"
                                    class="plan-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                         @endif
                     </td>
@@ -156,7 +156,7 @@
                         @if($entry)
                             <input type="text" id="actual-total-{{ $entry->id }}"
                                    name="entries[{{ $entry->id }}][actual_total_hours]"
-                                   value="{{ number_format($entry->actual_total_hours ?? 0, 2) }}"
+                                   value="{{ number_format(abs($entry->actual_total_hours ?? 0), 2) }}"
                                    class="actual-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                         @endif
                     </td>
