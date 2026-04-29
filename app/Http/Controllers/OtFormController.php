@@ -78,11 +78,31 @@ class OtFormController extends Controller
         $approvalStamps = $this->buildOtApprovalStamps($otForm, $approvalLogs);
 
         // Approver names for mini stamps in table columns
+        // Level 2 = Manager/HOD, Level 1 = GM/CEO (as set in OtApprovalController)
         $staffApproverName = $otForm->user->name ?? '';
         $managerLog = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
         $gmLog = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-        $managerApproverName = $managerLog && $managerLog->approver ? $managerLog->approver->name : '';
-        $gmApproverName = $gmLog && $gmLog->approver ? $gmLog->approver->name : '';
+
+        // Fallback to designated approvers if no approval logs exist
+        if ($managerLog && $managerLog->approver) {
+            $managerApproverName = $managerLog->approver->name;
+        } elseif ($otForm->isExecutive() && $otForm->user->ot_exec_approver_id) {
+            $managerApproverName = User::find($otForm->user->ot_exec_approver_id)->name ?? '';
+        } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_approver_id) {
+            $managerApproverName = User::find($otForm->user->ot_non_exec_approver_id)->name ?? '';
+        } else {
+            $managerApproverName = '';
+        }
+
+        if ($gmLog && $gmLog->approver) {
+            $gmApproverName = $gmLog->approver->name;
+        } elseif ($otForm->isExecutive() && $otForm->user->ot_exec_final_approver_id) {
+            $gmApproverName = User::find($otForm->user->ot_exec_final_approver_id)->name ?? '';
+        } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_final_approver_id) {
+            $gmApproverName = User::find($otForm->user->ot_non_exec_final_approver_id)->name ?? '';
+        } else {
+            $gmApproverName = '';
+        }
 
         return view('ot-forms.edit', compact(
             'otForm', 'projectCodes', 'approvalStamps',
