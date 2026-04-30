@@ -1,61 +1,70 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ $otForm->isExecutive() ? 'OVERTIME CLAIM FORM (EXECUTIVE) ~ OCF' : 'BORANG KERJA LEBIH MASA (BUKAN EKSEKUTIF)' }}
-            </h2>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h2 class="font-bold text-xl text-gray-800 leading-tight">
+                    {{ $otForm->isExecutive() ? 'OVERTIME CLAIM FORM (EXECUTIVE)' : 'BORANG KERJA LEBIH MASA (BUKAN EKSEKUTIF)' }}
+                </h2>
+            </div>
             @php
                 $badgeClass = match($otForm->status) {
-                    'draft' => 'bg-gray-100 text-gray-800',
-                    'pending_manager' => 'bg-yellow-100 text-yellow-800',
-                    'pending_gm' => 'bg-blue-100 text-blue-800',
-                    'approved' => 'bg-green-100 text-green-800',
-                    'rejected' => 'bg-red-100 text-red-800',
-                    default => 'bg-gray-100 text-gray-800',
+                    'draft' => 'bg-gray-100 text-gray-700 border-gray-300',
+                    'pending_manager' => 'bg-amber-50 text-amber-700 border-amber-300',
+                    'pending_gm' => 'bg-blue-50 text-blue-700 border-blue-300',
+                    'approved' => 'bg-emerald-50 text-emerald-700 border-emerald-300',
+                    'rejected' => 'bg-red-50 text-red-700 border-red-300',
+                    default => 'bg-gray-100 text-gray-700 border-gray-300',
                 };
             @endphp
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $badgeClass }}">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border {{ $badgeClass }} shadow-sm">
                 {{ $otForm->status_label }}
             </span>
         </div>
     </x-slot>
 
-    @push('styles')
-    <style>
-        @media print {
-            @page {
-                size: landscape;
-                margin: 0.3cm;
-            }
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                font-family: 'Times New Roman', Times, serif;
-            }
-            .no-print { display: none !important; }
-        }
-    </style>
-    @endpush
-
-    <div class="max-w-7xl mx-auto">
+    <div class="max-w-7xl mx-auto pb-8">
 
             @if(session('success'))
-                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded no-print">{{ session('success') }}</div>
+                <div class="mb-4 bg-gradient-to-r from-emerald-50 to-green-50 border-l-4 border-emerald-500 text-emerald-800 px-4 py-3 rounded-r-lg shadow-sm flex items-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {{ session('success') }}
+                </div>
             @endif
             @if(session('error'))
-                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded no-print">{{ session('error') }}</div>
+                <div class="mb-4 bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 text-red-800 px-4 py-3 rounded-r-lg shadow-sm flex items-center gap-2">
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            {{-- Auto-Fill button at top (only if editable) --}}
+            @if($otForm->isEditable())
+                <div class="mb-4">
+                    <button type="button" onclick="autoFillFromAttendance()" id="autoFillBtn"
+                            class="inline-flex items-center px-5 py-2.5 text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                            style="background-color: #f59e0b !important; color: white !important;">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11 v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Auto-Fill from Attendance
+                    </button>
+                </div>
             @endif
 
             <form method="POST" action="{{ route('ot-forms.save', $otForm) }}" id="otForm">
                 @csrf
                 @method('PUT')
 
-                <div id="printArea" class="bg-white shadow-sm sm:rounded-lg p-6">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                     @if($otForm->isExecutive())
                         {{-- Executive Form --}}
 
@@ -92,29 +101,29 @@
                         </div>
 
                         {{-- Staff Info --}}
-                        <div class="grid grid-cols-3 gap-x-6 gap-y-3 mb-5 text-sm border border-gray-300 rounded p-4 bg-gray-50">
+                        <div class="grid grid-cols-3 gap-x-6 gap-y-3 mb-5 text-sm bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold text-gray-700 w-28 shrink-0">Name :</span>
-                                <span class="border-b border-gray-400 flex-1 py-0.5 px-1">{{ $otForm->user->name }}</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-1 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->name }}</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold text-gray-700 w-28 shrink-0">Department :</span>
-                                <span class="border-b border-gray-400 flex-1 py-0.5 px-1">{{ $otForm->user->department->name ?? '-' }}</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-1 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->department->name ?? '-' }}</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold text-gray-700 w-28 shrink-0">Month :</span>
-                                <span class="border-b border-gray-400 flex-1 py-0.5 px-1">{{ strtoupper(DateTime::createFromFormat('!m', $otForm->month)->format('F')) }} {{ $otForm->year }}</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-1 rounded flex-1 font-medium text-gray-800">{{ strtoupper(DateTime::createFromFormat('!m', $otForm->month)->format('F')) }} {{ $otForm->year }}</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="font-semibold text-gray-700 w-28 shrink-0">Staff No :</span>
-                                <span class="border-b border-gray-400 flex-1 py-0.5 px-1">{{ $otForm->user->staff_no ?? '-' }}</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-1 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->staff_no ?? '-' }}</span>
                             </div>
                             <div class="flex items-center gap-2 col-span-2">
                                 <span class="font-semibold text-gray-700 w-28 shrink-0">Section/Line :</span>
                                 @if($otForm->isEditable())
-                                    <input type="text" name="section_line" value="{{ $otForm->section_line }}" class="border border-gray-300 rounded px-2 py-1 flex-1 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    <input type="text" name="section_line" value="{{ $otForm->section_line }}" class="border-2 border-indigo-200 rounded-lg px-3 py-1.5 flex-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all">
                                 @else
-                                    <span class="border-b border-gray-400 flex-1 py-0.5 px-1">{{ $otForm->section_line ?? '-' }}</span>
+                                    <span class="border-b-2 border-indigo-200 bg-white px-2 py-1 rounded flex-1 font-medium text-gray-800">{{ $otForm->section_line ?? '-' }}</span>
                                 @endif
                             </div>
                         </div>
@@ -125,18 +134,38 @@
                         {{-- Total Hours + Notes --}}
                         <div class="mt-4 text-sm">
                             <div class="grid grid-cols-2 gap-4 mb-4">
-                                <div class="border-2 border-gray-800 rounded p-3">
-                                    <div class="font-bold text-gray-700 mb-1">TOTAL HOURS (PLAN)</div>
-                                    <div class="text-lg font-semibold"><span id="planTotalDisplay">0.00</span></div>
+                                <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-4 shadow-sm">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                        </svg>
+                                        <div class="font-bold text-indigo-800">TOTAL HOURS (PLAN)</div>
+                                    </div>
+                                    <div class="text-2xl font-bold text-indigo-900"><span id="planTotalDisplay">0.00</span></div>
                                 </div>
-                                <div class="border-2 border-gray-800 rounded p-3">
-                                    <div class="font-bold text-gray-700 mb-1">TOTAL HOURS (ACTUAL)</div>
-                                    <div class="text-lg font-semibold"><span id="actualTotalDisplay">0.00</span></div>
+                                <div class="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl p-4 shadow-sm">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <div class="font-bold text-emerald-800">TOTAL HOURS (ACTUAL)</div>
+                                    </div>
+                                    <div class="text-2xl font-bold text-emerald-900"><span id="actualTotalDisplay">0.00</span></div>
                                 </div>
                             </div>
-                            <div class="text-xs text-gray-600 space-y-1">
-                                <p><b>Note:</b> Overtime submission should be presented to <b>HOD/DGM/MD</b> before 4.30 pm for approval.</p>
-                                <p>OT claim shall be submitted to Payroll Section every <b>05th of the month</b> and the maximum claim shall not exceed <b>RM 500.00</b> per month.</p>
+                            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 text-xs text-gray-700 space-y-1.5">
+                                <div class="flex items-start gap-2">
+                                    <svg class="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <p>Overtime submission should be presented to <b>HOD/DGM/MD</b> before 4.30 pm for approval.</p>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <svg class="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <p>OT claim shall be submitted to Payroll Section every <b>05th of the month</b> and the maximum claim shall not exceed <b>RM 500.00</b> per month.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -183,34 +212,33 @@
                         </div>
 
                         {{-- Form Header Info --}}
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-3 border p-2">
-                            <div class="flex">
-                                <span class="font-semibold w-24">NAMA:</span>
-                                <span class="border-b border-gray-400 flex-1 px-1">{{ $otForm->user->name }}</span>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-3 bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-3 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold w-24 shrink-0 text-gray-700">NAMA:</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-0.5 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->name }}</span>
                             </div>
-                            <div class="flex">
-                                <span class="font-semibold w-24">JABATAN:</span>
-                                <span class="border-b border-gray-400 flex-1 px-1">{{ $otForm->user->department->name ?? '-' }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold w-24 shrink-0 text-gray-700">JABATAN:</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-0.5 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->department->name ?? '-' }}</span>
                             </div>
-                            <div class="flex">
-                                <span class="font-semibold w-24">NO. KT:</span>
-                                <span class="border-b border-gray-400 flex-1 px-1">{{ $otForm->user->staff_no ?? '-' }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold w-24 shrink-0 text-gray-700">NO. KT:</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-0.5 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->staff_no ?? '-' }}</span>
                             </div>
-                            <div class="flex">
-                                <span class="font-semibold w-24">BULAN:</span>
-                                <span class="border-b border-gray-400 flex-1 px-1">{{ strtoupper(DateTime::createFromFormat('!m', $otForm->month)->format('F')) }} {{ $otForm->year }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold w-24 shrink-0 text-gray-700">BULAN:</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-0.5 rounded flex-1 font-medium text-gray-800">{{ strtoupper(DateTime::createFromFormat('!m', $otForm->month)->format('F')) }} {{ $otForm->year }}</span>
                             </div>
-                            <div class="flex">
-                                <span class="font-semibold w-24">JAWATAN:</span>
-                                <span class="border-b border-gray-400 flex-1 px-1">{{ $otForm->user->designation ?? '-' }}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold w-24 shrink-0 text-gray-700">JAWATAN:</span>
+                                <span class="border-b-2 border-indigo-200 bg-white px-2 py-0.5 rounded flex-1 font-medium text-gray-800">{{ $otForm->user->designation ?? '-' }}</span>
                             </div>
-                            <div class="flex">
-                                <span class="font-semibold w-24">SEKSYEN/BAH.:</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold w-24 shrink-0 text-gray-700">SEKSYEN/BAH.:</span>
                                 @if($otForm->isEditable())
-                                    <input type="text" name="section_line" value="{{ $otForm->section_line }}"
-                                           class="border-b border-gray-400 flex-1 px-1 text-xs py-0 h-5 focus:outline-none">
+                                    <input type="text" name="section_line" value="{{ $otForm->section_line }}" class="border-2 border-indigo-200 rounded-lg px-3 py-1 flex-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white transition-all">
                                 @else
-                                    <span class="border-b border-gray-400 flex-1 px-1">{{ $otForm->section_line ?? '-' }}</span>
+                                    <span class="border-b-2 border-indigo-200 bg-white px-2 py-0.5 rounded flex-1 font-medium text-gray-800">{{ $otForm->section_line ?? '-' }}</span>
                                 @endif
                             </div>
                         </div>
@@ -219,100 +247,74 @@
                         @include('ot-forms.partials._non_executive_plan')
 
                         {{-- Totals Row --}}
-                        <div class="flex items-center gap-8 text-xs font-bold mt-2 border p-2">
-                            <span>JUMLAH:</span>
-                            <span>Plan: <span id="planTotalDisplay">0.00</span></span>
-                            <span>Actual: <span id="actualTotalDisplay">0.00</span></span>
+                        <div class="flex items-center gap-6 text-xs font-bold mt-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-3 shadow-sm">
+                            <span class="text-indigo-800">JUMLAH:</span>
+                            <span class="text-indigo-900">Plan: <span id="planTotalDisplay" class="font-bold">0.00</span></span>
+                            <span class="text-emerald-900">Actual: <span id="actualTotalDisplay" class="font-bold">0.00</span></span>
                         </div>
 
-                        {{-- Approval Stamps Section: 3 boxes --}}
-                        <div class="mt-4 grid grid-cols-3 gap-4">
-                            {{-- DISEDIAKAN OLEH --}}
-                            <div class="border rounded-lg p-3 text-center">
-                                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Disediakan Oleh :</p>
-                                <div class="min-h-[60px] flex flex-col items-center justify-center">
-                                    @if(!in_array($otForm->status, ['draft']))
-                                        <p class="text-sm font-bold text-red-600">{{ strtoupper($otForm->user->name ?? '') }}</p>
-                                        @if($otForm->plan_submitted_at)
-                                            <p class="text-xs text-gray-500">{{ $otForm->plan_submitted_at->format('d/m/Y') }}</p>
-                                        @endif
-                                    @else
-                                        <p class="text-xs text-gray-400 italic">—</p>
-                                    @endif
-                                </div>
-                                <p class="text-xs font-semibold text-gray-600 border-t pt-1 mt-1">STAFF</p>
-                            </div>
-                            {{-- DISOKONG OLEH --}}
-                            <div class="border rounded-lg p-3 text-center">
-                                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Disokong Oleh :</p>
-                                <div class="min-h-[60px] flex flex-col items-center justify-center">
-                                    @if($managerApproverName)
-                                        <p class="text-sm font-bold text-red-600">{{ strtoupper($managerApproverName) }}</p>
-                                    @elseif(in_array($otForm->status, ['pending_manager']))
-                                        <p class="text-xs text-amber-500 font-semibold">PENDING</p>
-                                    @else
-                                        <p class="text-xs text-gray-400 italic">—</p>
-                                    @endif
-                                </div>
-                                <p class="text-xs font-semibold text-gray-600 border-t pt-1 mt-1">MGR / HOD</p>
-                            </div>
-                            {{-- DILULUSKAN OLEH --}}
-                            <div class="border rounded-lg p-3 text-center">
-                                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Diluluskan Oleh :</p>
-                                <div class="min-h-[60px] flex flex-col items-center justify-center">
-                                    @if($gmApproverName)
-                                        <p class="text-sm font-bold text-red-600">{{ strtoupper($gmApproverName) }}</p>
-                                    @elseif(in_array($otForm->status, ['pending_gm']))
-                                        <p class="text-xs text-amber-500 font-semibold">PENDING</p>
-                                    @else
-                                        <p class="text-xs text-gray-400 italic">—</p>
-                                    @endif
-                                </div>
-                                <p class="text-xs font-semibold text-gray-600 border-t pt-1 mt-1">DGM / CEO</p>
-                            </div>
+                        {{-- Approval Stamps --}}
+                        <div class="mt-4">
+                            <x-approval-stamps :stamps="$approvalStamps" />
                         </div>
 
                         {{-- Notes --}}
-                        <div class="mt-2 text-[10px] text-gray-600">
-                            <p>1) Borang OT mesti sampai ke Jabatan Sumber Manusia (Unit Payroll) selewat-lewatnya pada atau sebelum <b>5hb. setiap bulan</b> (bulan berikutnya).</p>
+                        <div class="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 text-[10px] text-gray-700">
+                            <div class="flex items-start gap-2">
+                                <svg class="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p>1) Borang OT mesti sampai ke Jabatan Sumber Manusia (Unit Payroll) selewat-lewatnya pada atau sebelum <b>5hb. setiap bulan</b> (bulan berikutnya).</p>
+                            </div>
                         </div>
                     @endif
                 </div>
             </form>
 
             {{-- Action Buttons --}}
-            <div class="mt-4 flex items-center gap-4 no-print">
-                @if($otForm->isEditable())
-                    <button type="button" onclick="autoFillFromAttendance()" id="autoFillBtn"
-                            class="inline-flex items-center px-6 py-2 bg-amber-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-amber-700">
-                        Auto-Fill from Attendance
-                    </button>
-                    <button type="submit" form="otForm"
-                            class="inline-flex items-center px-6 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-indigo-700">
-                        Save Draft
-                    </button>
-                    <button type="button" onclick="submitForApproval()"
-                            class="inline-flex items-center px-6 py-2 bg-green-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-700">
-                        Submit for Approval
-                    </button>
-                @endif
+            <div class="mt-6 flex items-center justify-between gap-4">
+                {{-- Left: Back button with Submit stacked on top --}}
+                <div class="flex flex-col gap-3">
+                    @if($otForm->isEditable())
+                        <button type="button" onclick="submitForApproval()"
+                                class="inline-flex items-center px-6 py-2.5 text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                                style="background-color: #10b981 !important; color: white !important;">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Submit for Approval
+                        </button>
+                    @endif
+                    <a href="{{ route('ot-forms.index') }}"
+                       class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back
+                    </a>
+                </div>
 
-                {{-- Print button - always visible --}}
-                <button type="button" onclick="window.print()"
-                        class="inline-flex items-center px-6 py-2 bg-gray-700 text-white text-sm font-medium rounded-md shadow-sm hover:bg-gray-800">
-                    Print Form
-                </button>
-
-                {{-- Export Excel - always visible --}}
-                <a href="{{ route('ot-forms.preview-excel', $otForm) }}"
-                   class="inline-flex items-center px-6 py-2 bg-green-700 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-800">
-                    Export Excel
-                </a>
-
-                <a href="{{ route('ot-forms.index') }}"
-                   class="inline-flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
-                    Back
-                </a>
+                {{-- Right: Export Excel and Save Draft --}}
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('ot-forms.export-excel', $otForm) }}"
+                       class="inline-flex items-center px-6 py-2.5 text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                       style="background-color: #16a34a !important; color: white !important;">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Export Excel
+                    </a>
+                    @if($otForm->isEditable())
+                        <button type="submit" form="otForm"
+                                class="inline-flex items-center px-6 py-2.5 text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                                style="background-color: #4f46e5 !important; color: white !important;">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Save Draft
+                        </button>
+                    @endif
+                </div>
             </div>
     </div>
 
@@ -463,13 +465,22 @@
 
         // Approve
         async function approveForm() {
-            const signature = prompt('Type your full name to approve:');
+            // Get user's full name
+            const fullName = '{{ Auth::user()->name }}';
+            // Extract suffix (everything after BIN/BINTI/B/BT)
+            const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
+            const suffix = suffixMatch ? ' ' + suffixMatch[0].trim() : '';
+            const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
+
+            const signature = prompt(`Type your name to approve:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
             if (!signature) return;
+            // Auto-complete if user only typed the prefix
+            const finalSignature = signature.trim() === prefix ? fullName : signature.trim();
             try {
                 const res = await fetch('{{ route("approvals.ot-forms.approve", $otForm) }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                    body: JSON.stringify({ signature }),
+                    body: JSON.stringify({ signature: finalSignature }),
                 });
                 const data = await res.json();
                 if (data.success) { alert('OT form approved!'); location.reload(); }
@@ -495,20 +506,20 @@
     </script>
     @endpush
 
-    <x-help-button title="OT Form Edit Help">
+    <x-help-button title="Bantuan Edit Borang OT">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Editing OT Form</h3>
-            <p class="mb-3">Fill in your planned and actual overtime hours for each day of the month.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Steps</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Mengedit Borang OT</h3>
+            <p class="mb-3">Isi jam lebih masa yang dirancang dan sebenar untuk setiap hari dalam bulan.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Langkah</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Plan</strong> — Enter planned start/end times for anticipated OT</li>
-                <li><strong>Auto-Fill Actual</strong> — Click the "Auto-Fill from Attendance" button to populate actual times from your uploaded attendance PDF</li>
-                <li><strong>Save</strong> — Click "Save" to save your progress</li>
-                <li><strong>Submit</strong> — Click "Submit for Approval" when ready</li>
-                <li><strong>Print</strong> — Use the "Print" button to print the form</li>
+                <li><strong>Rancang</strong> — Masukkan masa mula/tamat yang dirancang untuk OT yang dijangkakan</li>
+                <li><strong>Auto-Fill Sebenar</strong> — Klik butang "Auto-Fill dari Kehadiran" untuk mengisi masa sebenar dari PDF kehadiran yang anda muat naik</li>
+                <li><strong>Simpan</strong> — Klik "Simpan" untuk menyimpan kemajuan anda</li>
+                <li><strong>Hantar</strong> — Klik "Hantar untuk Kelulusan" apabila bersedia</li>
+                <li><strong>Cetak</strong> — Gunakan butang "Cetak" untuk mencetak borang</li>
             </ul>
-            <h4 class="font-semibold text-gray-900 mb-1">Important</h4>
-            <p>Make sure you have uploaded the attendance PDF in your timesheet before using Auto-Fill. Project codes will also be auto-filled from your timesheet data.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Penting</h4>
+            <p>Pastikan anda telah memuat naik PDF kehadiran dalam timesheet anda sebelum menggunakan Auto-Fill. Kod projek juga akan diisi secara automatik dari data timesheet anda.</p>
         </x-slot>
     </x-help-button>
 </x-app-layout>

@@ -278,16 +278,16 @@
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Export Options</h3>
                     <div class="flex items-center gap-4">
                         <a href="{{ route('timesheets.preview-excel', $timesheet) }}" target="_blank"
-                           class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #2563eb !important; color: white !important;">
                             Preview Excel
                         </a>
                         <a href="{{ route('timesheets.export-excel', $timesheet) }}"
-                           class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Download Excel
                         </a>
                     </div>
                 </div>
-            </div
+            </div>
 
             {{-- Approval Stamps --}}
             <div class="bg-white shadow-sm sm:rounded-lg mb-6">
@@ -312,20 +312,20 @@
                         <div class="flex items-center gap-4">
                             @if($timesheet->status === 'pending_hod')
                                 <button type="button" onclick="approveHOD()"
-                                        class="bg-green-600 text-white px-6 py-2 rounded-md text-sm hover:bg-green-700">
+                                        class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                                     Approve (HOD)
                                 </button>
                                 <button type="button" onclick="rejectHOD()"
-                                        class="bg-red-600 text-white px-6 py-2 rounded-md text-sm hover:bg-red-700">
+                                        class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
                                     Reject (HOD)
                                 </button>
                             @elseif($timesheet->status === 'pending_l1')
                                 <button type="button" onclick="approveL1()"
-                                        class="bg-green-600 text-white px-6 py-2 rounded-md text-sm hover:bg-green-700">
+                                        class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                                     Approve (Asst Mgr/Mngr)
                                 </button>
                                 <button type="button" onclick="rejectL1()"
-                                        class="bg-red-600 text-white px-6 py-2 rounded-md text-sm hover:bg-red-700">
+                                        class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
                                     Reject (Asst Mgr/Mngr)
                                 </button>
                             @endif
@@ -342,8 +342,21 @@
 
     @push('scripts')
     <script>
+        // Helper function to get signature with auto-completion
+        function getSignature() {
+            const fullName = '{{ Auth::user()->name }}';
+            // Extract suffix (everything after BIN/BINTI/B/BT)
+            const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
+            const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
+
+            const signature = prompt(`Type your name to approve:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
+            if (!signature) return null;
+            // Auto-complete if user only typed the prefix
+            return signature.trim() === prefix ? fullName : signature.trim();
+        }
+
         async function approveHOD() {
-            const signature = prompt('Type your full name to approve:');
+            const signature = getSignature();
             if (!signature) return;
             try {
                 const res = await fetch('{{ route("timesheets.approve-hod", $timesheet) }}', {
@@ -383,7 +396,7 @@
             }
         }
         async function approveL1() {
-            const signature = prompt('Type your full name to approve:');
+            const signature = getSignature();
             if (!signature) return;
             try {
                 const res = await fetch('{{ route("timesheets.approve-l1", $timesheet) }}', {
@@ -423,7 +436,7 @@
             }
         }
         async function approveL2() {
-            const signature = prompt('Type your full name to approve:');
+            const signature = getSignature();
             if (!signature) return;
             try {
                 const res = await fetch('{{ route("timesheets.approve-l2", $timesheet) }}', {
@@ -463,7 +476,7 @@
             }
         }
         async function approveL3() {
-            const signature = prompt('Type your full name to approve:');
+            const signature = getSignature();
             if (!signature) return;
             try {
                 const res = await fetch('{{ route("timesheets.approve-l3", $timesheet) }}', {

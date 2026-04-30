@@ -214,7 +214,7 @@
                 {{-- Submit Button (Staff) - Only staff can submit their own timesheet --}}
                 @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
                     <div class="flex items-center gap-3">
-                        <button @click="submitWithSignature('submit')" class="bg-indigo-600 text-white px-6 py-2 rounded-md text-sm hover:bg-indigo-700">
+                        <button @click="submitWithSignature('submit')" class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #4f46e5 !important; color: white !important;">
                             Submit for Approval
                         </button>
                         <span class="text-xs text-gray-500">Sign to submit</span>
@@ -241,14 +241,10 @@
                     <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
                     <div class="flex items-center gap-3">
                         <a href="{{ route('timesheets.preview-excel', $timesheet) }}"
-                           class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Export Excel
                         </a>
-                        <a href="{{ route('timesheets.print', $timesheet) }}" target="_blank"
-                           class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
-                            Print
-                        </a>
-                        <button @click="manualSave()" class="bg-indigo-600 text-white px-6 py-2 rounded-md text-sm hover:bg-indigo-700">
+                        <button @click="manualSave()" class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #4f46e5 !important; color: white !important;">
                             Save Timesheet
                         </button>
                     </div>
@@ -258,12 +254,8 @@
                     <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
                     <div class="flex items-center gap-3">
                         <a href="{{ route('timesheets.preview-excel', $timesheet) }}"
-                           class="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Export Excel
-                        </a>
-                        <a href="{{ route('timesheets.print', $timesheet) }}" target="_blank"
-                           class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
-                            Print
                         </a>
                     </div>
                 </div>
@@ -279,8 +271,8 @@
                     <div class="flex justify-between mt-4">
                         <div></div>
                         <div class="flex gap-2">
-                            <button @click="closeSignatureModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancel</button>
-                            <button @click="confirmSignature()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">Confirm</button>
+                            <button @click="closeSignatureModal()" class="px-4 py-2 rounded text-sm hover:shadow-md transition-all" style="background-color: #e5e7eb !important; color: #1f2937 !important;">Cancel</button>
+                            <button @click="confirmSignature()" class="px-4 py-2 rounded text-sm hover:shadow-md transition-all" style="background-color: #4f46e5 !important; color: white !important;">Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -292,8 +284,8 @@
                     <h3 class="text-lg font-semibold mb-4">Reject Timesheet</h3>
                     <textarea x-model="rejectionRemarks" class="w-full border border-gray-300 rounded p-2 text-sm" rows="3" placeholder="Enter rejection remarks..."></textarea>
                     <div class="flex justify-end gap-2 mt-4">
-                        <button @click="closeRejectionModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancel</button>
-                        <button @click="confirmRejection()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">Reject</button>
+                        <button @click="closeRejectionModal()" class="px-4 py-2 rounded text-sm hover:shadow-md transition-all" style="background-color: #e5e7eb !important; color: #1f2937 !important;">Cancel</button>
+                        <button @click="confirmRejection()" class="px-4 py-2 rounded text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">Reject</button>
                     </div>
                 </div>
             </div>
@@ -564,18 +556,27 @@
             },
 
             async submitWithSignature(action) {
-                const signature = prompt(`Please enter your name to ${action === 'submit' ? 'submit' : 'approve'} this timesheet:`);
+                // Get user's full name
+                const fullName = '{{ Auth::user()->name }}';
+                // Extract suffix (everything after BIN/BINTI/B/BT)
+                const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
+                const suffix = suffixMatch ? ' ' + suffixMatch[0].trim() : '';
+                const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
+
+                const signature = prompt(`Please enter your name to ${action === 'submit' ? 'submit' : 'approve'} this timesheet:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
                 if (!signature || !signature.trim()) {
                     alert('Please enter your signature');
                     return;
                 }
+                // Auto-complete if user only typed the prefix
+                const finalSignature = signature.trim() === prefix ? fullName : signature.trim();
                 // Validate signature matches staff name
-                if (signature.toLowerCase() !== this.staffName.toLowerCase()) {
+                if (finalSignature.toLowerCase() !== this.staffName.toLowerCase()) {
                     alert('Signature must match your name: ' + this.staffName);
                     return;
                 }
                 // Execute the action
-                await this.executeSignatureAction(action, signature);
+                await this.executeSignatureAction(action, finalSignature);
             },
 
             async confirmSignature() {
@@ -704,23 +705,23 @@
     </script>
     @endpush
 
-    <x-help-button title="Timesheet Edit Help">
+    <x-help-button title="Bantuan Edit Timesheet">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Editing Your Timesheet</h3>
-            <p class="mb-3">Fill in your daily working hours for the month.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Steps</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Mengedit Timesheet Anda</h3>
+            <p class="mb-3">Isi jam kerja harian anda untuk bulan ini.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Langkah</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Upload Attendance</strong> — Upload your Infotech attendance PDF to auto-populate clock in/out times</li>
-                <li><strong>Admin Hours</strong> — Hours populated automatically from attendance data</li>
-                <li><strong>Project Rows</strong> — Add project codes and enter hours for each day (Normal/OT, NC/COBQ)</li>
-                <li><strong>Auto-Save</strong> — Changes are saved automatically as you type</li>
-                <li><strong>Submit</strong> — Use the submit button to send for approval</li>
+                <li><strong>Muat Naik Kehadiran</strong> — Muat naik PDF kehadiran Infotech anda untuk mengisi masa masuk/keluar secara automatik</li>
+                <li><strong>Jam Admin</strong> — Jam diisi secara automatik dari data kehadiran</li>
+                <li><strong>Baris Projek</strong> — Tambah kod projek dan masukkan jam untuk setiap hari (Normal/OT, NC/COBQ)</li>
+                <li><strong>Auto-Simpan</strong> — Perubahan disimpan secara automatik semasa anda menaip</li>
+                <li><strong>Hantar</strong> — Gunakan butang hantar untuk menghantar untuk kelulusan</li>
             </ul>
             <h4 class="font-semibold text-gray-900 mb-1">Tips</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li>Scroll horizontally to see all days of the month</li>
-                <li>The summary row shows totals per day</li>
-                <li>Make sure project hours match available hours for each day</li>
+                <li>Tatal secara mendatar untuk melihat semua hari dalam bulan</li>
+                <li>Baris ringkasan menunjukkan jumlah setiap hari</li>
+                <li>Pastikan jam projek sepadan dengan jam yang tersedia untuk setiap hari</li>
             </ul>
         </x-slot>
     </x-help-button>

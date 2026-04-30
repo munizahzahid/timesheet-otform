@@ -38,7 +38,7 @@
                                 @endfor
                             </select>
                         </div>
-                        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm hover:bg-indigo-700">
+                        <button type="submit" class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #4f46e5 !important; color: white !important;">
                             + New Timesheet
                         </button>
                     </form>
@@ -115,23 +115,23 @@
             </div>
     </div>
 
-    <x-help-button title="Timesheets Help">
+    <x-help-button title="Bantuan Timesheet">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">My Timesheets</h3>
-            <p class="mb-3">This page shows all your timesheets. You can create new ones and manage existing ones.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">How to use</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Timesheet Saya</h3>
+            <p class="mb-3">Halaman ini menunjukkan semua timesheet anda. Anda boleh membuat yang baru dan mengurus yang sedia ada.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Cara guna</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Create New</strong> — Select the month and year, then click "+ New Timesheet"</li>
-                <li><strong>Edit</strong> — Click "Edit" to fill in your daily hours and upload attendance PDF</li>
-                <li><strong>Submit</strong> — Once complete, submit for approval from within the edit page</li>
-                <li><strong>Delete</strong> — Only draft timesheets can be deleted</li>
+                <li><strong>Buat Baru</strong> — Pilih bulan dan tahun, kemudian klik "+ Timesheet Baru"</li>
+                <li><strong>Edit</strong> — Klik "Edit" untuk mengisi jam harian anda dan muat naik PDF kehadiran</li>
+                <li><strong>Hantar</strong> — Setelah selesai, hantar untuk kelulusan dari halaman edit</li>
+                <li><strong>Padam</strong> — Hanya timesheet draf boleh dipadamkan</li>
             </ul>
-            <h4 class="font-semibold text-gray-900 mb-1">Statuses</h4>
+            <h4 class="font-semibold text-gray-900 mb-1">Status</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Draft</strong> — Not yet submitted, still editable</li>
-                <li><strong>Pending</strong> — Waiting for approval</li>
-                <li><strong>Approved</strong> — Approved by supervisor</li>
-                <li><strong>Rejected</strong> — Returned for corrections</li>
+                <li><strong>Draf</strong> — Belum dihantar, masih boleh diedit</li>
+                <li><strong>Menantu</strong> — Menunggu kelulusan</li>
+                <li><strong>Diluluskan</strong> — Diluluskan oleh penyelia</li>
+                <li><strong>Ditolak</strong> — Dikembalikan untuk pembetulan</li>
             </ul>
         </x-slot>
     </x-help-button>

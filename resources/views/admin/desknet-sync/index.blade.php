@@ -141,16 +141,16 @@
             </div>
     </div>
 
-    <x-help-button title="Desknet Sync Help">
+    <x-help-button title="Bantuan Sinkronisasi Desknet">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Desknet Sync Dashboard</h3>
-            <p class="mb-3">Sync staff data and project codes from Desknet into the system.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Actions</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Dashboard Sinkronisasi Desknet</h3>
+            <p class="mb-3">Sinkronkan data staf dan kod projek dari Desknet ke dalam sistem.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Tindakan</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Sync Staff</strong> — Import/update staff info (name, department, designation)</li>
-                <li><strong>Sync Project Codes</strong> — Import/update project codes from Desknet</li>
-                <li><strong>Sync All</strong> — Run both syncs at once</li>
-                <li><strong>Test Connection</strong> — Verify the Desknet API connection is working</li>
+                <li><strong>Sinkron Staf</strong> — Import/kemaskini maklumat staf (nama, jabatan, jawatan)</li>
+                <li><strong>Sinkron Kod Projek</strong> — Import/kemaskini kod projek dari Desknet</li>
+                <li><strong>Sinkron Semua</strong> — Jalankan kedua-dua sinkronisasi sekaligus</li>
+                <li><strong>Uji Sambungan</strong> — Sahkan sambungan API Desknet berfungsi</li>
             </ul>
         </x-slot>
     </x-help-button>

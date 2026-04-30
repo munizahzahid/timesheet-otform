@@ -55,15 +55,15 @@
             </div>
     </div>
 
-    <x-help-button title="Timesheet Approvals Help">
+    <x-help-button title="Bantuan Kelulusan Timesheet">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Timesheet Approvals</h3>
-            <p class="mb-3">Review and approve or reject timesheets submitted by your team members.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">How to use</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Kelulusan Timesheet</h3>
+            <p class="mb-3">Semak dan luluskan atau tolak timesheet yang dihantar oleh ahli pasukan anda.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Cara guna</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Review</strong> — Click "Review" to see the full timesheet details</li>
-                <li><strong>Approve</strong> — Sign and approve the timesheet</li>
-                <li><strong>Reject</strong> — Reject with remarks for the staff to correct</li>
+                <li><strong>Semak</strong> — Klik "Semak" untuk melihat butiran lengkap timesheet</li>
+                <li><strong>Luluskan</strong> — Tandatang dan luluskan timesheet</li>
+                <li><strong>Tolak</strong> — Tolak dengan catatan untuk staf membetulkan</li>
             </ul>
         </x-slot>
     </x-help-button>

@@ -118,11 +118,11 @@
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Approval Decision</h3>
                         <div class="flex items-center gap-4">
                             <button type="button" onclick="approveForm()"
-                                    class="bg-green-600 text-white px-6 py-2 rounded-md text-sm hover:bg-green-700">
+                                    class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                                 Approve
                             </button>
                             <button type="button" onclick="rejectForm()"
-                                    class="bg-red-600 text-white px-6 py-2 rounded-md text-sm hover:bg-red-700">
+                                    class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
                                 Reject
                             </button>
                         </div>

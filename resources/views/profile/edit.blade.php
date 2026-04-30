@@ -25,15 +25,15 @@
             </div>
     </div>
 
-    <x-help-button title="Profile Help">
+    <x-help-button title="Bantuan Profil">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Your Profile</h3>
-            <p class="mb-3">Manage your account information, password, and preferences.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Sections</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Profil Anda</h3>
+            <p class="mb-3">Urus maklumat akaun, kata laluan, dan keutamaan anda.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Bahagian</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Profile Information</strong> — Update your name and email</li>
-                <li><strong>Password</strong> — Change your login password</li>
-                <li><strong>Delete Account</strong> — Permanently remove your account</li>
+                <li><strong>Maklumat Profil</strong> — Kemaskini nama dan emel anda</li>
+                <li><strong>Kata Laluan</strong> — Tukar kata laluan log masuk anda</li>
+                <li><strong>Padam Akaun</strong> — Buang akaun anda secara kekal</li>
             </ul>
         </x-slot>
     </x-help-button>

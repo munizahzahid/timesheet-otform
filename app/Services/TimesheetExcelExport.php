@@ -177,7 +177,7 @@ class TimesheetExcelExport
         // ══════════════════════════════════════════════════════════════════════
         // Row 6: Approval headers (right side)
         // ══════════════════════════════════════════════════════════════════════
-        $sheet->getRowDimension($r)->setRowHeight(-1);
+        $sheet->getRowDimension($r)->setRowHeight(18);
         // Prepared By: 3 columns (AE:AG)
         $sheet->mergeCells("AE{$r}:AG{$r}");
         $sheet->setCellValue("AE{$r}", 'Prepared By');
@@ -204,8 +204,10 @@ class TimesheetExcelExport
         $sheet->mergeCells("AE{$r}:AG" . ($r + 2));
         $sheet->mergeCells("AH{$r}:AJ" . ($r + 2));
         $sheet->mergeCells("AK{$r}:AL" . ($r + 2));
-        $sheet->getRowDimension($r)->setRowHeight(90); // Increased for stamp image
-        $r++; // row 8
+        $sheet->getRowDimension($r)->setRowHeight(70); // Increased for larger stamp image
+        $r++; 
+        
+        // row 8
         $sheet->setCellValue("C{$r}", 'MONTH :');
         $this->b($sheet, "C{$r}");
         $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
@@ -215,10 +217,24 @@ class TimesheetExcelExport
         $sheet->getStyle("D{$r}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
         $sheet->setCellValue("Q{$r}", 'STAFF NO :');
+        $sheet->getStyle("Q{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
         $this->b($sheet, "Q{$r}");
         $sheet->setCellValue("S{$r}", $user->staff_no ?? '-');
         $this->b($sheet, "S{$r}"); $this->c($sheet, "S{$r}");
-        $sheet->getRowDimension($r)->setRowHeight(18);
+        $sheet->getRowDimension($r)->setRowHeight(20);
+
+        $r++;
+
+        //row 9
+        $sheet->setCellValue("C{$r}", 'NAME :');
+        $this->b($sheet, "C{$r}");
+        $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle("C{$r}")->getBorders()->getLeft()->setBorderStyle(self::THIN);
+        $sheet->mergeCells("D{$r}:I{$r}");
+        $sheet->setCellValue("D{$r}", $user->name ?? '-');
+        $this->c($sheet, "D{$r}");
+        $sheet->getStyle("D{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getRowDimension($r)->setRowHeight(20);
 
         $r++;
 
@@ -245,14 +261,14 @@ class TimesheetExcelExport
         $this->borders($sheet, "AK{$r}:AL{$r}");
         // Call buildApprovalStampBoxes with stampStartRow (rows 7-9)
         $this->buildApprovalStampBoxes($sheet, $timesheet, $stampStartRow, $stampEndRow - 1);
-        $sheet->getRowDimension($r)->setRowHeight(16.5);
+        $sheet->getRowDimension($r)->setRowHeight(18);
         $r++;
 
         // ══════════════════════════════════════════════════════════════════════
         // Row 11: Header row — NO. | (blank) | HOURS (merged G:AK) | TOTAL
         // ══════════════════════════════════════════════════════════════════════
         $hdrStart = $r; // row 11
-        $sheet->getRowDimension($r)->setRowHeight(11.25);
+        $sheet->getRowDimension($r)->setRowHeight(18);
         $sheet->mergeCells("C{$r}:C" . ($r + 2));
         $sheet->setCellValue("C{$r}", 'NO.');
         $this->b($sheet, "C{$r}"); $this->c($sheet, "C{$r}");
@@ -485,7 +501,7 @@ class TimesheetExcelExport
             $name = $proj['project_name'];
             $displayText = $code . ($name ? ' - ' . $name : '');
             $sheet->setCellValue("D{$r}", $displayText);
-            $this->c($sheet, "D{$r}");
+            $sheet->getStyle("D{$r}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER)->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             // Row 1: NORMAL NC
             $sheet->mergeCells("E{$r}:E" . ($r + 1));
@@ -880,24 +896,55 @@ class TimesheetExcelExport
         $drawing->setName('Stamp');
         $drawing->setDescription('Approval Stamp');
 
-        // Create PNG stamp using GD
-        $image = imagecreatetruecolor(80, 80);
+        // Determine stamp code based on role
+        $code = strtoupper(substr($role, 0, 4));
+        if (stripos($role, 'STAFF') !== false || stripos($role, 'EXEC') !== false) {
+            $code = 'CLMD';
+        } elseif (stripos($role, 'MGR') !== false || stripos($role, 'HOD') !== false) {
+            $code = 'APRV';
+        }
+
+        // Create larger PNG stamp (120x120 to accommodate name/role below)
+        $image = imagecreatetruecolor(120, 150);
         imagealphablending($image, false);
         imagesavealpha($image, true);
         $transparent = imagecolorallocatealpha($image, 255, 255, 255, 127);
         imagefill($image, 0, 0, $transparent);
 
         $red = imagecolorallocate($image, 220, 38, 38);
-        imageellipse($image, 40, 40, 76, 76, $red);
-        imageline($image, 40, 2, 40, 78, $red);
-        imageline($image, 2, 40, 78, 40, $red);
+        $darkRed = imagecolorallocate($image, 180, 30, 30);
 
-        // Add TSSB text
-        imagestring($image, 3, 28, 22, 'TSSB', $red);
-        // Add name
-        imagestring($image, 1, 5, 42, strtoupper(substr($name, 0, 18)), $red);
-        // Add date
-        imagestring($image, 1, 5, 54, $date, $red);
+        // Circle center at (60, 60) with radius 50
+        $cx = 60;
+        $cy = 60;
+        $radius = 50;
+
+        // Outer border (thick)
+        imageellipse($image, $cx, $cy, $radius * 2, $radius * 2, $darkRed);
+        imageellipse($image, $cx, $cy, $radius * 2 - 4, $radius * 2 - 4, $darkRed);
+        imageellipse($image, $cx, $cy, $radius * 2 - 8, $radius * 2 - 8, $darkRed);
+
+        // Inner border (thin)
+        imageellipse($image, $cx, $cy, $radius * 2 - 12, $radius * 2 - 12, $red);
+
+        // Top: TSSB
+        imagestring($image, 5, $cx - 15, $cy - 35, 'TSSB', $red);
+
+        // Center: Code (CLMD/APRV)
+        imagestring($image, 5, $cx - 15, $cy - 8, $code, $darkRed);
+
+        // Center: Date
+        imagestring($image, 3, $cx - 35, $cy + 5, $date, $red);
+
+        // Bottom: 3 stars (using asterisk)
+        imagestring($image, 3, $cx - 10, $cy + 25, '***', $red);
+
+        // Below circle: Name
+        $name = strtoupper(substr($name, 0, 25));
+        imagestring($image, 2, $cx - 55, $cy + 55, $name, $red);
+
+        // Below name: Role
+        imagestring($image, 2, $cx - 20, $cy + 70, strtoupper($role), $darkRed);
 
         ob_start();
         imagepng($image);
@@ -911,7 +958,7 @@ class TimesheetExcelExport
         $drawing->setCoordinates($cell);
         $drawing->setOffsetX(5);
         $drawing->setOffsetY(2);
-        $drawing->setHeight(80);
+        $drawing->setHeight(150);
         $drawing->setWorksheet($sheet);
     }
 

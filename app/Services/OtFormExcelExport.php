@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 class OtFormExcelExport
 {
     private const THIN = Border::BORDER_THIN;
+    private const MEDIUM = Border::BORDER_MEDIUM;
 
     public function generate(OtForm $otForm): Spreadsheet
     {
@@ -43,6 +44,7 @@ class OtFormExcelExport
 
         // Column widths — A is narrow spacer; rest default (~8.43) scaled by fit-to-page
         $sheet->getColumnDimension('A')->setWidth(1);
+        $sheet->getColumnDimension('AG')->setWidth(1);
 
         $user     = $otForm->user;
         $dept     = $user->department->name ?? '-';
@@ -51,12 +53,15 @@ class OtFormExcelExport
 
         $r = 1;
 
-        // ── Row 1: spacer ────────────────────────────────────────────────────────
-        $this->borders($sheet, "A{$r}:{$lastCol}{$r}", 'bottom');
+        // ── Row 1-2: spacer ────────────────────────────────────────────────────────
+        
+        $r++;
+        $sheet->getStyle("A{$r}:AG{$r}")->getBorders()->getTop()->setBorderStyle(self::MEDIUM);
+        $this->borders($sheet, "B{$r}:{$lastCol}{$r}", 'bottom');
         $sheet->getRowDimension($r)->setRowHeight(3.75);
         $r++;
 
-        // ── Rows 2-5: KUMPULAN SYARIKAT INGRESS + right info panel ───────────────
+        // ── Rows 3-6: KUMPULAN SYARIKAT INGRESS + right info panel ───────────────
         $sheet->mergeCells("G{$r}:Q" . ($r + 3));
         $sheet->setCellValue("G{$r}", "KUMPULAN                   SYARIKAT\nINGRESS");
         $sheet->getStyle("G{$r}")->getFont()->setBold(true)->setSize(26);
@@ -95,7 +100,7 @@ class OtFormExcelExport
         $sheet->getRowDimension($r)->setRowHeight(4.5);
         $r++;
 
-        // ── Row 6: TAJUK ─────────────────────────────────────────────────────────
+        // ── Row 7: TAJUK ─────────────────────────────────────────────────────────
         $sheet->setCellValue("B{$r}", 'TAJUK : ');
         $sheet->getStyle("B{$r}")->getFont()->setBold(true)->setSize(14);
         $sheet->setCellValue("E{$r}", 'BORANG KERJA LEBIH MASA (BUKAN EKSEKUTIF)');
@@ -106,7 +111,7 @@ class OtFormExcelExport
         $sheet->getRowDimension($r)->setRowHeight(23.25);
         $r++;
 
-        // ── Rows 7-8: Company names ──────────────────────────────────────────────
+        // ── Rows 8-9: Company names ──────────────────────────────────────────────
         $companies  = ['INGRESS CORPORATION', 'INGRESS INDUSTRIAL', 'INGRESS ENGINEERING', 'INGRESS PRECISION', 'INGRESS KATAYAMA', 'TALENT SYNERGY'];
         $nameStarts = ['C', 'H', 'N', 'R', 'V', 'AA'];
         $nameEnds   = ['F', 'L', 'P', 'T', 'Y', 'AE'];
@@ -127,11 +132,11 @@ class OtFormExcelExport
         $sheet->getRowDimension($r + 1)->setRowHeight(13.8);
         $r += 2;
 
-        // ── Rows 9-10: spacers ───────────────────────────────────────────────────
+        // ── Rows 10-11: spacers ───────────────────────────────────────────────────
         $sheet->getRowDimension($r)->setRowHeight(4.5); $r++;
         $sheet->getRowDimension($r)->setRowHeight(12); $r++;
 
-        // ── Row 11: NAMA, JABATAN, BULAN ─────────────────────────────────────────
+        // ── Row 12: NAMA, JABATAN, BULAN ─────────────────────────────────────────
         $sheet->setCellValue("C{$r}", 'NAMA'); $this->b($sheet, "C{$r}");
         $sheet->setCellValue("D{$r}", ':'); $this->b($sheet, "D{$r}");
         $sheet->mergeCells("E{$r}:M{$r}"); $sheet->setCellValue("E{$r}", strtoupper($user->name ?? '-'));
@@ -147,11 +152,11 @@ class OtFormExcelExport
         $sheet->getRowDimension($r)->setRowHeight(16);
         $r++;
 
-        // ── Row 12: spacer ───────────────────────────────────────────────────────
+        // ── Row 13: spacer ───────────────────────────────────────────────────────
         $sheet->getRowDimension($r)->setRowHeight(6);
         $r++;
 
-        // ── Row 13: NO.KT, JAWATAN, SEKSYEN/BAHG. ───────────────────────────────
+        // ── Row 14: NO.KT, JAWATAN, SEKSYEN/BAHG. ───────────────────────────────
         $sheet->setCellValue("C{$r}", 'NO. KT'); $this->b($sheet, "C{$r}");
         $sheet->setCellValue("D{$r}", ':'); $this->b($sheet, "D{$r}");
         $sheet->mergeCells("E{$r}:G{$r}"); $sheet->setCellValue("E{$r}", $user->staff_no ?? '-');
@@ -168,14 +173,14 @@ class OtFormExcelExport
         $sheet->getRowDimension($r)->setRowHeight(16);
         $r++;
 
-        // ── Row 14: spacer ───────────────────────────────────────────────────────
+        // ── Row 15: spacer ───────────────────────────────────────────────────────
         $sheet->getRowDimension($r)->setRowHeight(4.5);
         $r++;
 
-        // ── Rows 15-16: Column headers (2 rows) ─────────────────────────────────
+        // ── Rows 16-17: Column headers (2 rows) ─────────────────────────────────
         $hr = $r;
 
-        // Row 15: Group headers
+        // Row 16: Group headers
         $sheet->mergeCells("B{$hr}:B" . ($hr + 1)); $sheet->setCellValue("B{$hr}", 'TARIKH');
         $this->vt($sheet, "B{$hr}");
         $sheet->mergeCells("C{$hr}:H" . ($hr + 1)); $sheet->setCellValue("C{$hr}", 'TUGAS ATAU AKTIVITI');
@@ -196,7 +201,7 @@ class OtFormExcelExport
         $sheet->getRowDimension($hr)->setRowHeight(20.25);
         $r++;
 
-        // Row 16: Sub-headers
+        // Row 17: Sub-headers
         $sheet->setCellValue("I{$r}", 'MULA');   $this->vt($sheet, "I{$r}");
         $sheet->setCellValue("J{$r}", 'TAMAT');  $this->vt($sheet, "J{$r}");
         $sheet->setCellValue("K{$r}", 'JUMLAH'); $this->vt($sheet, "K{$r}");
@@ -512,9 +517,9 @@ class OtFormExcelExport
             $this->addStamp($sheet, "U{$ss1}", $gmStampName, $gmStampDate ?: '', 'DGM/CEO');
         }
 
-        $sheet->getRowDimension($ss1)->setRowHeight(90);
-        $sheet->getRowDimension($ss1 + 1)->setRowHeight(16.5);
-        $sheet->getRowDimension($ss3)->setRowHeight(16.5);
+        $sheet->getRowDimension($ss1)->setRowHeight(70);
+        $sheet->getRowDimension($ss1 + 1)->setRowHeight(20);
+        $sheet->getRowDimension($ss3)->setRowHeight(20);
         $r = $ss3 + 1;
 
         // ── Role labels under stamp boxes ────────────────────────────────────────
@@ -526,7 +531,23 @@ class OtFormExcelExport
         $sheet->setCellValue("U{$r}", 'DGM / CEO'); $this->b($sheet, "U{$r}"); $this->c($sheet, "U{$r}"); $this->borders($sheet, "U{$r}:V{$r}");
         $sheet->getRowDimension($r)->setRowHeight(16.5);
 
+        $r = $r + 2;
+
+        $sheet->getStyle("B{$r}:{$lastCol}{$r}")->getBorders()->getTop()->setBorderStyle(self::THIN);
+        $sheet->getStyle("A{$r}:AG{$r}")->getBorders()->getBottom()->setBorderStyle(self::MEDIUM);
+        $sheet->getRowDimension($r)->setRowHeight(5);
+
+        // ── Add outer medium borders (left of A, right of AG) from row 1 to last row ───
+        $lastRow = $r;
+        $sheet->getStyle("A2:A{$lastRow}")->getBorders()->getLeft()->setBorderStyle(self::MEDIUM);
+        $sheet->getStyle("AG2:AG{$lastRow}")->getBorders()->getRight()->setBorderStyle(self::MEDIUM);
+
+        // ── Add inner thin borders (left of B, left of AG) from row 2 to lastrow-1 ───
+        $sheet->getStyle("B3:B" . ($lastRow - 1))->getBorders()->getLeft()->setBorderStyle(self::THIN);
+        $sheet->getStyle("AG3:AG" . ($lastRow - 1))->getBorders()->getLeft()->setBorderStyle(self::THIN);
+
         return $ss;
+
     }
 
     // ─── EXECUTIVE (OCF) ─────────────────────────────────────────────────────
@@ -648,7 +669,7 @@ class OtFormExcelExport
         $sheet->mergeCells("R{$r}:R" . ($r + 1));
         $sheet->setCellValue("R{$r}", 'X');
         $sheet->getStyle("R{$r}")->getFont()->setSize(20)->setBold(true);
-        $sheet->getStyle("R{$r}")->getAlignment()->setWrapText(true);
+        $sheet->getStyle("R{$r}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $this->borders($sheet, "R{$r}:R" . ($r + 1), 'all');
         $sheet->getRowDimension($r)->setRowHeight(13.8);
         $sheet->getRowDimension($r + 1)->setRowHeight(13.8);
@@ -991,8 +1012,11 @@ class OtFormExcelExport
 
         // Notes on the same rows as signature boxes (columns J-T)
         // Note 1 on first row
-        $sheet->setCellValue("J{$ss1}", '1)');
-        $this->c($sheet, "J{$ss1}");
+        $note = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
+        $r1 = $note->createTextRun("1) \n2) ");
+        $r1->getFont()->setSize(11);
+        $sheet->setCellValue("J{$ss1}", $note);
+        $sheet->getStyle("J{$ss1}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_TOP);
         $note1 = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
         $sheet->mergeCells("K{$ss1}:T{$ss1}");
         $r1a = $note1->createTextRun('Overtime submission should be presented to ');
@@ -1001,30 +1025,18 @@ class OtFormExcelExport
         $r1b->getFont()->setSize(11)->setBold(true);
         $r1c = $note1->createTextRun(' before 4.30 pm for approval.');
         $r1c->getFont()->setSize(11);
+        $r1d = $note1->createTextRun("\nOT claim shall submitted to Payroll section");
+        $r1d->getFont()->setSize(11);
+        $r1e = $note1->createTextRun(' every 05th of the month');
+        $r1e->getFont()->setSize(11)->setBold(true);
+        $r1f = $note1->createTextRun(' and the maximum claim shall not exceed');
+        $r1f->getFont()->setSize(11);
+        $r1g = $note1->createTextRun(' RM500.00');
+        $r1g->getFont()->setSize(11)->setBold(true);
+        $r1h = $note1->createTextRun(' per month.');
+        $r1h->getFont()->setSize(11);
         $sheet->setCellValue("K{$ss1}", $note1);
-        $sheet->getStyle("K{$ss1}")->getAlignment()->setWrapText(true);
-
-        // Note 2 on second row
-        $sheet->setCellValue("J{$ss2}", '2)');
-        $this->c($sheet, "J{$ss2}");
-        $note2 = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
-        $sheet->mergeCells("K{$ss2}:T".($r+2));
-        $r2a = $note2->createTextRun('OT claim shall be submitted to Payroll Section ');
-        $r2a->getFont()->setSize(11);
-        $r2b = $note2->createTextRun('every');
-        $r2b->getFont()->setSize(11)->setBold(true);
-        $r2c = $note2->createTextRun(' ');
-        $r2c->getFont()->setSize(11);
-        $r2d = $note2->createTextRun('05th of the month');
-        $r2d->getFont()->setSize(11)->setBold(true);
-        $r2e = $note2->createTextRun(' and the maximum claim shall not exceed');
-        $r2e->getFont()->setSize(11);
-        $r2e = $note2->createTextRun(' RM 500.00');
-        $r2e->getFont()->setSize(11)->setBold(true);
-        $r2e = $note2->createTextRun(' per month.');
-        $r2e->getFont()->setSize(11);
-        $sheet->setCellValue("K{$ss2}", $note2);
-        $sheet->getStyle("K{$ss2}")->getAlignment()->setWrapText(true);
+        $sheet->getStyle("K{$ss1}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_TOP);
 
         $r = $ss3 + 1;
 
@@ -1127,32 +1139,55 @@ class OtFormExcelExport
         $drawing->setName('Stamp');
         $drawing->setDescription('Approval Stamp');
 
-        // Create SVG stamp as base64 encoded image
-        $svg = '<svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="40" cy="40" r="38" fill="none" stroke="#DC2626" stroke-width="2"/>
-            <text x="40" y="32" text-anchor="middle" fill="#DC2626" font-size="10" font-weight="bold" font-family="Arial">TSSB</text>
-            <text x="40" y="48" text-anchor="middle" fill="#DC2626" font-size="7" font-family="Arial">' . strtoupper(substr($name, 0, 15)) . '</text>
-            <text x="40" y="60" text-anchor="middle" fill="#DC2626" font-size="6" font-family="Arial">' . $date . '</text>
-        </svg>';
+        // Determine stamp code based on role
+        $code = strtoupper(substr($role, 0, 4));
+        if (stripos($role, 'STAFF') !== false || stripos($role, 'EXEC') !== false) {
+            $code = 'CLMD';
+        } elseif (stripos($role, 'MGR') !== false || stripos($role, 'HOD') !== false) {
+            $code = 'APRV';
+        }
 
-        // Convert SVG to PNG using GD
-        $image = imagecreatetruecolor(80, 80);
+        // Create larger PNG stamp (120x120 to accommodate name/role below)
+        $image = imagecreatetruecolor(120, 150);
         imagealphablending($image, false);
         imagesavealpha($image, true);
         $transparent = imagecolorallocatealpha($image, 255, 255, 255, 127);
         imagefill($image, 0, 0, $transparent);
 
         $red = imagecolorallocate($image, 220, 38, 38);
-        imageellipse($image, 40, 40, 76, 76, $red);
-        imageline($image, 40, 2, 40, 78, $red);
-        imageline($image, 2, 40, 78, 40, $red);
+        $darkRed = imagecolorallocate($image, 180, 30, 30);
 
-        // Add TSSB text
-        imagestring($image, 3, 28, 22, 'TSSB', $red);
-        // Add name
-        imagestring($image, 1, 5, 42, strtoupper(substr($name, 0, 18)), $red);
-        // Add date
-        imagestring($image, 1, 5, 54, $date, $red);
+        // Circle center at (60, 60) with radius 50
+        $cx = 60;
+        $cy = 60;
+        $radius = 50;
+
+        // Outer border (thick)
+        imageellipse($image, $cx, $cy, $radius * 2, $radius * 2, $darkRed);
+        imageellipse($image, $cx, $cy, $radius * 2 - 4, $radius * 2 - 4, $darkRed);
+        imageellipse($image, $cx, $cy, $radius * 2 - 8, $radius * 2 - 8, $darkRed);
+
+        // Inner border (thin)
+        imageellipse($image, $cx, $cy, $radius * 2 - 12, $radius * 2 - 12, $red);
+
+        // Top: TSSB
+        imagestring($image, 5, $cx - 15, $cy - 35, 'TSSB', $red);
+
+        // Center: Code (CLMD/APRV)
+        imagestring($image, 5, $cx - 15, $cy - 8, $code, $darkRed);
+
+        // Center: Date
+        imagestring($image, 3, $cx - 35, $cy + 5, $date, $red);
+
+        // Bottom: 3 stars (using asterisk)
+        imagestring($image, 3, $cx - 10, $cy + 25, '***', $red);
+
+        // Below circle: Name
+        $name = strtoupper(substr($name, 0, 25));
+        imagestring($image, 2, $cx - 55, $cy + 55, $name, $red);
+
+        // Below name: Role
+        imagestring($image, 2, $cx - 20, $cy + 70, strtoupper($role), $darkRed);
 
         ob_start();
         imagepng($image);
@@ -1166,10 +1201,8 @@ class OtFormExcelExport
         $drawing->setCoordinates($cell);
         $drawing->setOffsetX(5);
         $drawing->setOffsetY(2);
-        $drawing->setHeight(80);
+        $drawing->setHeight(150);
         $drawing->setWorksheet($sheet);
-
-        // Store temp path for cleanup (optional - temp files will be cleaned by OS)
     }
 
     private function shortName(string $fullName): string

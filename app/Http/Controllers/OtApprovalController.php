@@ -69,7 +69,7 @@ class OtApprovalController extends Controller
                 'approvable_type' => 'ot_form',
                 'approvable_id' => $otForm->id,
                 'approver_id' => $user->id,
-                'phase' => 'approval',
+                'phase' => 'ot_pre',
                 'level' => $level,
                 'action' => 'approved',
                 'acted_at' => now(),
@@ -112,7 +112,7 @@ class OtApprovalController extends Controller
             'approvable_type' => 'ot_form',
             'approvable_id' => $otForm->id,
             'approver_id' => $user->id,
-            'phase' => 'approval',
+            'phase' => 'ot_pre',
             'level' => $level,
             'action' => 'rejected',
             'remarks' => $request->remarks,
@@ -284,44 +284,76 @@ class OtApprovalController extends Controller
      */
     private function buildApprovalStamps(OtForm $otForm, $approvalLogs): array
     {
-        $latestApproval = $approvalLogs->where('action', 'approved')->sortByDesc('level')->first();
-        $latestReject = $approvalLogs->where('action', 'rejected')->sortByDesc('level')->first();
-        $hodLog = $latestApproval ?? $latestReject;
-
         $stamps = [];
-
-        // Stamp 1: Claimed by (Staff who submitted)
         $submitted = $otForm->plan_submitted_at || !in_array($otForm->status, ['draft']);
+
+        // Stamp 1: Staff who submitted
         $stamps[] = [
-            'label'  => 'Claimed by',
+            'label'  => $otForm->isNonExecutive() ? 'Disediakan Oleh' : 'Claimed by',
             'code'   => 'CLMD',
             'status' => $submitted && $otForm->status !== 'draft' ? 'approved' : 'empty',
             'date'   => $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('m/d') : '',
             'name'   => $otForm->user->name ?? '',
-            'role'   => 'Staff',
+            'role'   => $otForm->user->designation ?? 'Staff',
         ];
 
-        // Stamp 2: Approved by (HOD / Manager who approved)
-        $hodStatus = 'empty';
-        if ($hodLog && $hodLog->action === 'approved') {
-            $hodStatus = 'approved';
-        } elseif ($hodLog && $hodLog->action === 'rejected') {
-            $hodStatus = 'rejected';
-        } elseif (in_array($otForm->status, ['pending_manager', 'pending_gm'])) {
-            $hodStatus = 'pending';
-        } elseif ($otForm->status === 'approved') {
-            $hodStatus = 'approved';
+        // Find approval logs
+        $managerLog = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
+        $gmLog = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
+
+        // Manager/HOD stamp
+        $managerStatus = 'empty';
+        if ($managerLog) {
+            $managerStatus = 'approved';
+        } elseif (in_array($otForm->status, ['pending_manager'])) {
+            $managerStatus = 'pending';
+        } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
+            $managerStatus = 'approved';
         }
 
-        $hodUser = $hodLog ? $hodLog->approver : null;
+        $managerUser = $managerLog ? $managerLog->approver : null;
+        if (!$managerUser && $managerStatus === 'approved') {
+            if ($otForm->isExecutive() && $otForm->user->ot_exec_approver_id) {
+                $managerUser = User::find($otForm->user->ot_exec_approver_id);
+            } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_approver_id) {
+                $managerUser = User::find($otForm->user->ot_non_exec_approver_id);
+            }
+        }
         $stamps[] = [
-            'label'  => 'Approved by',
+            'label'  => $otForm->isNonExecutive() ? 'Disokong Oleh' : 'Approved by',
             'code'   => 'APRV',
-            'status' => $hodStatus,
-            'date'   => $hodLog && $hodLog->acted_at ? $hodLog->acted_at->format('m/d') : '',
-            'name'   => $hodUser ? $hodUser->name : '',
-            'role'   => $hodUser ? ($hodUser->designation ?? 'HOD') : 'HOD',
+            'status' => $managerStatus,
+            'date'   => $managerLog && $managerLog->acted_at ? $managerLog->acted_at->format('m/d') : '',
+            'name'   => $managerUser ? $managerUser->name : '',
+            'role'   => $managerUser ? ($managerUser->designation ?? 'MGR / HOD') : 'MGR / HOD',
         ];
+
+        // Non-executive: add 3rd stamp for DGM/CEO
+        if ($otForm->isNonExecutive()) {
+            $gmStatus = 'empty';
+            if ($gmLog) {
+                $gmStatus = 'approved';
+            } elseif (in_array($otForm->status, ['pending_gm'])) {
+                $gmStatus = 'pending';
+            } elseif ($otForm->status === 'approved') {
+                $gmStatus = 'approved';
+            }
+
+            $gmUser = $gmLog ? $gmLog->approver : null;
+            if (!$gmUser && $gmStatus === 'approved') {
+                if ($otForm->user->ot_non_exec_final_approver_id) {
+                    $gmUser = User::find($otForm->user->ot_non_exec_final_approver_id);
+                }
+            }
+            $stamps[] = [
+                'label'  => 'Diluluskan Oleh',
+                'code'   => 'APRV',
+                'status' => $gmStatus,
+                'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
+                'name'   => $gmUser ? $gmUser->name : '',
+                'role'   => $gmUser ? ($gmUser->designation ?? 'DGM / CEO') : 'DGM / CEO',
+            ];
+        }
 
         return $stamps;
     }

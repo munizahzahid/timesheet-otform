@@ -13,57 +13,96 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
-        <style>[x-cloak] { display: none !important; }</style>
+        <style>
+            [x-cloak] { display: none !important; }
+            @media (min-width: 1024px) {
+                #main-content { margin-left: 16rem !important; }
+            }
+        </style>
         @stack('styles')
     </head>
-    <body class="font-sans antialiased" x-data="{ sidebarOpen: false }">
-        <div class="min-h-screen bg-gray-100 lg:flex">
-            {{-- Sidebar --}}
-            @include('layouts.sidebar')
+    <body class="font-sans antialiased bg-gray-50" x-data="{ sidebarOpen: false }">
+        {{-- Sidebar (fixed position) --}}
+        @include('layouts.sidebar')
 
-            {{-- Mobile overlay --}}
-            <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
-                 x-transition:enter="transition-opacity ease-linear duration-200"
-                 x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                 x-transition:leave="transition-opacity ease-linear duration-200"
-                 x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                 class="fixed inset-0 bg-black/50 z-20 lg:hidden"></div>
+        {{-- Mobile overlay --}}
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+             x-transition:enter="transition-opacity ease-linear duration-200"
+             x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-200"
+             x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50 z-20 lg:hidden"></div>
 
-            {{-- Main Content Area --}}
-            <div class="flex-1 lg:ml-60 flex flex-col min-h-screen">
-                {{-- Top Bar (mobile hamburger + page heading) --}}
-                <header class="bg-white shadow-sm sticky top-0 z-10">
+        {{-- Main Content Area (pushed right on desktop) --}}
+        <div id="main-content" class="min-h-screen flex flex-col">
+                {{-- Top Navbar --}}
+                <header class="bg-white border-b border-gray-200 relative z-20 shadow-sm">
                     <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
-                        {{-- Mobile menu button --}}
-                        <button @click="sidebarOpen = !sidebarOpen"
-                                class="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none transition">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                            </svg>
-                        </button>
+                        <div class="flex items-center gap-4">
+                            {{-- Mobile menu button --}}
+                            <button @click="sidebarOpen = !sidebarOpen"
+                                    class="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none transition">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                                </svg>
+                            </button>
 
-                        {{-- Page Heading --}}
-                        <div class="flex-1">
-                            @isset($header)
-                                {{ $header }}
-                            @endisset
+                            {{-- Back button --}}
+                            @if(request()->header('Referer') && !request()->routeIs('dashboard'))
+                                <a href="{{ request()->header('Referer') }}" 
+                                   class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                    </svg>
+                                    Back
+                                </a>
+                            @endif
+
+                            {{-- Home button --}}
+                            <a href="{{ route('dashboard') }}" 
+                               class="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                </svg>
+                                Home
+                            </a>
                         </div>
 
-                        {{-- Top right: user name (desktop) --}}
-                        <div class="hidden lg:flex items-center gap-3 text-sm text-gray-500">
-                            <span>{{ Auth::user()->name }}</span>
-                            <div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-medium text-sm">
+                        {{-- Page Title --}}
+                        <div class="flex-1 text-center lg:text-left">
+                            @isset($pageTitle)
+                                <h1 class="text-xl font-semibold text-gray-900">{{ $pageTitle }}</h1>
+                            @elseif(isset($header))
+                                <h1 class="text-xl font-semibold text-gray-900">{{ $header }}</h1>
+                            @else
+                                <h1 class="text-xl font-semibold text-gray-900">{{ ucfirst(str_replace('.', ' ', request()->route()->getName() ?? '')) }}</h1>
+                            @endif
+                        </div>
+
+                        {{-- Optional Action Buttons --}}
+                        @isset($actionButtons)
+                            <div class="flex items-center gap-2">
+                                {{ $actionButtons }}
+                            </div>
+                        @endisset
+
+                        {{-- User info (desktop) --}}
+                        <div class="hidden lg:flex items-center gap-3">
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</p>
+                                <p class="text-xs text-gray-500">{{ Auth::user()->designation ?? Auth::user()->email }}</p>
+                            </div>
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         </div>
                     </div>
                 </header>
 
-                {{-- Page Content --}}
-                <main class="flex-1 p-4 sm:p-6 lg:p-8">
-                    {{ $slot }}
-                </main>
-            </div>
+            {{-- Page Content --}}
+            <main class="flex-1 p-4 sm:p-6 lg:p-8">
+                {{ $slot }}
+            </main>
         </div>
         @stack('scripts')
     </body>

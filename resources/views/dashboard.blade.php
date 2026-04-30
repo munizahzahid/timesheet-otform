@@ -38,18 +38,18 @@
         @endif
     </div>
 
-    <x-help-button title="Dashboard Help">
+    <x-help-button title="Bantuan Dashboard">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Dashboard Overview</h3>
-            <p class="mb-3">This is your home page showing a quick summary of your account.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Quick Links</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Gambaran Ringkas Dashboard</h3>
+            <p class="mb-3">Ini adalah halaman utama anda yang menunjukkan ringkasan pantas akaun anda.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Pautan Pantas</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Timesheets</strong> — View and manage your monthly timesheets</li>
-                <li><strong>OT Forms</strong> — Submit and track overtime requests</li>
+                <li><strong>Timesheet</strong> — Lihat dan urus timesheet bulanan anda</li>
+                <li><strong>Borang OT</strong> — Hantar dan jejak permintaan lebih masa</li>
             </ul>
             @if(Auth::user()->isAdmin())
-                <h4 class="font-semibold text-gray-900 mb-1">Admin Cards</h4>
-                <p>The cards below show active users, project codes, and last Desknet sync status. Click any card to manage that section.</p>
+                <h4 class="font-semibold text-gray-900 mb-1">Kad Admin</h4>
+                <p>Kad di bawah menunjukkan pengguna aktif, kod projek, dan status sync Desknet terakhir. Klik mana-mana kad untuk mengurus bahagian tersebut.</p>
             @endif
         </x-slot>
     </x-help-button>

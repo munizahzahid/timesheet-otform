@@ -65,7 +65,7 @@
                             <input type="text" name="section_line" placeholder="Optional"
                                    class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm w-32">
                         </div>
-                        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm hover:bg-indigo-700">
+                        <button type="submit" class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #4f46e5 !important; color: white !important;">
                             + New OT Form
                         </button>
                     </form>
@@ -150,21 +150,21 @@
             </div>
     </div>
 
-    <x-help-button title="OT Forms Help">
+    <x-help-button title="Bantuan Borang OT">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">My OT Forms</h3>
-            <p class="mb-3">Manage your monthly overtime (OT) forms here.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">How to use</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Borang OT Saya</h3>
+            <p class="mb-3">Urus borang lebih masa (OT) bulanan anda di sini.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Cara guna</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Create New</strong> — Select month, year, form type (Executive/Non-Executive), and company</li>
-                <li><strong>Edit</strong> — Fill in planned and actual OT times for each day</li>
-                <li><strong>Auto-Fill</strong> — Upload attendance PDF in your timesheet first, then use the Auto-Fill button in the OT form to populate actual times automatically</li>
-                <li><strong>Submit</strong> — Submit the completed form for manager approval</li>
+                <li><strong>Buat Baru</strong> — Pilih bulan, tahun, jenis borang (Eksekutif/Bukan Eksekutif), dan syarikat</li>
+                <li><strong>Edit</strong> — Isi masa OT yang dirancang dan sebenar untuk setiap hari</li>
+                <li><strong>Auto-Fill</strong> — Muat naik PDF kehadiran dalam timesheet anda terlebih dahulu, kemudian gunakan butang Auto-Fill dalam borang OT untuk mengisi masa sebenar secara automatik</li>
+                <li><strong>Hantar</strong> — Hantar borang yang lengkap untuk kelulusan pengurus</li>
             </ul>
-            <h4 class="font-semibold text-gray-900 mb-1">Form Types</h4>
+            <h4 class="font-semibold text-gray-900 mb-1">Jenis Borang</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Executive</strong> — For executive-level staff</li>
-                <li><strong>Non-Executive</strong> — For non-executive staff with additional fields</li>
+                <li><strong>Eksekutif</strong> — Untuk staf peringkat eksekutif</li>
+                <li><strong>Bukan Eksekutif</strong> — Untuk staf bukan eksekutif dengan medan tambahan</li>
             </ul>
         </x-slot>
     </x-help-button>

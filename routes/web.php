@@ -63,7 +63,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/ot-forms/{otForm}', [OtFormController::class, 'destroy'])->name('ot-forms.destroy');
     Route::post('/ot-forms/{otForm}/submit-plan', [OtFormController::class, 'submitPlan'])->name('ot-forms.submit-plan');
     Route::post('/ot-forms/{otForm}/auto-fill', [OtFormController::class, 'autoFillFromAttendance'])->name('ot-forms.auto-fill');
-    Route::get('/ot-forms/{otForm}/preview-excel', [OtFormController::class, 'previewExcel'])->name('ot-forms.preview-excel');
     Route::get('/ot-forms/{otForm}/export-excel', [OtFormController::class, 'exportExcel'])->name('ot-forms.export-excel');
 
     // History
