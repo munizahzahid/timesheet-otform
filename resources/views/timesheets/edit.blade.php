@@ -81,7 +81,7 @@
                                             {{ $day['day_type'] === 'off_day' ? 'bg-yellow-50' : '' }}
                                             {{ $day['day_type'] === 'public_holiday' ? 'bg-red-50' : '' }}
                                             {{ in_array($day['day_type'], ['mc', 'leave']) ? 'bg-orange-50' : '' }}">
-                                            @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                                            @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                                                 <input type="number"
                                                        step="0.5" min="0" max="24"
                                                        class="w-full h-full text-center text-xs border-0 p-0.5 focus:ring-1 focus:ring-indigo-400 bg-transparent"
@@ -123,11 +123,11 @@
                                             <div>
                                                 <div class="flex items-center gap-1 mb-1">
                                                     <span class="font-bold text-[11px]" x-text="'#' + (fRow.pIdx + 1)"></span>
-                                                    @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                                                    @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                                                         <button @click="removeProject(fRow.pIdx)" class="text-red-400 hover:text-red-600 text-[10px] ml-auto" title="Remove">&times;</button>
                                                     @endif
                                                 </div>
-                                                @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                                                @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                                                     <select class="w-full text-[10px] border-gray-300 rounded px-1 py-0.5"
                                                             :value="projectRows[fRow.pIdx].project_code_id"
                                                             @change="updateProjectCode(fRow.pIdx, $event.target.value)">
@@ -153,7 +153,7 @@
                                             {{ $day['day_type'] === 'off_day' ? 'bg-yellow-50' : '' }}
                                             {{ $day['day_type'] === 'public_holiday' ? 'bg-red-50' : '' }}
                                             {{ in_array($day['day_type'], ['mc', 'leave']) ? 'bg-orange-50' : '' }}">
-                                            @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                                            @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                                                 <input type="number"
                                                        step="0.5" min="0" max="24"
                                                        class="w-full h-full text-center text-xs border-0 p-0.5 focus:ring-1 focus:ring-indigo-400 bg-transparent"
@@ -172,7 +172,7 @@
                             </template>
 
                             {{-- Add Project Button Row --}}
-                            @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                            @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                                 <tr>
                                     <td colspan="2" class="sticky left-0 z-10 bg-white border border-gray-300 px-2 py-2">
                                         <button @click="addProject()" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">
@@ -212,7 +212,7 @@
                 <h3 class="text-sm font-semibold text-gray-800 mb-4">Approval Actions</h3>
 
                 {{-- Submit Button (Staff) - Only staff can submit their own timesheet --}}
-                @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                     <div class="flex items-center gap-3">
                         <button @click="submitWithSignature('submit')" class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #4f46e5 !important; color: white !important;">
                             Submit for Approval
@@ -222,7 +222,7 @@
                 @endif
 
                 {{-- Status message for non-draft timesheets --}}
-                @if(!in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+                @if(!in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                     <div class="text-sm text-gray-600">
                         @if($timesheet->status === 'pending_hod')
                             <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending HOD Approval</span>
@@ -236,7 +236,7 @@
             </div>
 
             {{-- Save Button --}}
-            @if(in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2', 'rejected_l3']))
+            @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
                 <div class="mt-4 flex justify-between items-center">
                     <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
                     <div class="flex items-center gap-3">

@@ -177,7 +177,7 @@ class TimesheetController extends Controller
             abort(403);
         }
 
-        if (!in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2'])) {
+        if (!in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1'])) {
             return response()->json(['error' => 'Timesheet cannot be edited in its current status.'], 422);
         }
 

@@ -104,9 +104,9 @@ class OtApprovalController extends Controller
 
         $request->validate(['remarks' => 'required|string']);
 
-        $otForm->update(['status' => 'rejected']);
-
         $level = $otForm->status === 'pending_gm' ? 2 : 1;
+
+        $otForm->update(['status' => 'rejected']);
 
         ApprovalLog::create([
             'approvable_type' => 'ot_form',

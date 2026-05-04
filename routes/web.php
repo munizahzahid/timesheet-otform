@@ -50,10 +50,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/timesheets/{timesheet}/skip-hod', [TimesheetApprovalController::class, 'skipHOD'])->name('timesheets.skip-hod');
     Route::post('/timesheets/{timesheet}/approve-l1', [TimesheetApprovalController::class, 'approveL1'])->name('timesheets.approve-l1');
     Route::post('/timesheets/{timesheet}/reject-l1', [TimesheetApprovalController::class, 'rejectL1'])->name('timesheets.reject-l1');
-    Route::post('/timesheets/{timesheet}/approve-l2', [TimesheetApprovalController::class, 'approveL2'])->name('timesheets.approve-l2');
-    Route::post('/timesheets/{timesheet}/reject-l2', [TimesheetApprovalController::class, 'rejectL2'])->name('timesheets.reject-l2');
-    Route::post('/timesheets/{timesheet}/approve-l3', [TimesheetApprovalController::class, 'approveL3'])->name('timesheets.approve-l3');
-    Route::post('/timesheets/{timesheet}/reject-l3', [TimesheetApprovalController::class, 'rejectL3'])->name('timesheets.reject-l3');
 
     // OT Forms
     Route::get('/ot-forms', [OtFormController::class, 'index'])->name('ot-forms.index');

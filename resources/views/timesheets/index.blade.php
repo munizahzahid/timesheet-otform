@@ -71,14 +71,14 @@
                                                     'pending_hod' => 'bg-yellow-100 text-yellow-800',
                                                     'pending_l1' => 'bg-blue-100 text-blue-800',
                                                     'approved' => 'bg-green-100 text-green-800',
-                                                    'rejected_l1', 'rejected_l2', 'rejected_l3' => 'bg-red-100 text-red-800',
+                                                    'rejected_hod', 'rejected_l1' => 'bg-red-100 text-red-800',
                                                     default => 'bg-gray-100 text-gray-800',
                                                 };
                                                 $statusLabel = match($ts->status) {
                                                     'pending_hod' => 'Pending HOD Approval',
                                                     'pending_l1' => 'Pending Asst Mgr Approval',
-                                                    'pending_l2' => 'Pending Manager Approval',
-                                                    'pending_l3' => 'Pending CEO/DGM Approval',
+                                                    'rejected_hod' => 'Rejected by HOD',
+                                                    'rejected_l1' => 'Rejected by Asst Mgr',
                                                     default => str_replace('_', ' ', ucfirst($ts->status)),
                                                 };
                                             @endphp
@@ -88,7 +88,7 @@
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $ts->created_at->format('d M Y') }}</td>
                                         <td class="px-4 py-3 text-sm flex gap-3">
-                                            @if(in_array($ts->status, ['draft', 'rejected_l1', 'rejected_l2']))
+                                            @if(in_array($ts->status, ['draft', 'rejected_hod', 'rejected_l1']))
                                                 <a href="{{ route('timesheets.edit', $ts) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                                             @else
                                                 <a href="{{ route('timesheets.edit', $ts) }}" class="text-indigo-600 hover:text-indigo-900">View</a>
