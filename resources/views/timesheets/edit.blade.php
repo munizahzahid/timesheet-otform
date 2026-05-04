@@ -609,8 +609,6 @@
                 const actionUrls = {
                     'submit': @json(route('timesheets.submit', $timesheet)),
                     'approve-l1': @json(route('timesheets.approve-l1', $timesheet)),
-                    'approve-l2': @json(route('timesheets.approve-l2', $timesheet)),
-                    'approve-l3': @json(route('timesheets.approve-l3', $timesheet)),
                 };
 
                 const url = actionUrls[action];
@@ -670,8 +668,6 @@
 
                 const actionUrls = {
                     'reject-l1': @json(route('timesheets.reject-l1', $timesheet)),
-                    'reject-l2': @json(route('timesheets.reject-l2', $timesheet)),
-                    'reject-l3': @json(route('timesheets.reject-l3', $timesheet)),
                 };
 
                 const url = actionUrls[this.rejectionAction];
