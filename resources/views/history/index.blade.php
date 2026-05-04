@@ -1,6 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('History') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            @if(isset($user) && $user->id !== auth()->id())
+                {{ strtoupper($user->name) }} HISTORY
+            @else
+                {{ __('History') }}
+            @endif
+        </h2>
     </x-slot>
 
     <div class="max-w-6xl mx-auto">

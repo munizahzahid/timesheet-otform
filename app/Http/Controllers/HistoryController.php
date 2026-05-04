@@ -21,11 +21,8 @@ class HistoryController extends Controller
         $currentUser = Auth::user();
         $targetUserId = $request->get('user_id');
 
-        // Only admins can view other users' history
+        // If viewing another user's history, load that user
         if ($targetUserId && $targetUserId != $currentUser->id) {
-            if (!$currentUser->isAdmin()) {
-                abort(403, 'Unauthorized');
-            }
             $user = \App\Models\User::findOrFail($targetUserId);
         } else {
             $user = $currentUser;
@@ -53,7 +50,11 @@ class HistoryController extends Controller
                 }
             }
 
-            $timesheets = $tsQuery->orderByDesc('updated_at')->get()->map(function ($ts) {
+            $timesheets = $tsQuery->orderByDesc('updated_at')->get()->map(function ($ts) use ($currentUser, $user) {
+                $viewUrl = $currentUser->id === $user->id
+                    ? route('timesheets.edit', $ts)
+                    : route('approvals.timesheets.show', $ts);
+
                 return [
                     'type' => 'Timesheet',
                     'type_badge' => 'bg-blue-100 text-blue-800',
@@ -63,7 +64,7 @@ class HistoryController extends Controller
                     'status_badge' => $this->statusBadgeClass($ts->status),
                     'submitted_at' => $ts->submitted_at,
                     'updated_at' => $ts->updated_at,
-                    'view_url' => route('timesheets.edit', $ts),
+                    'view_url' => $viewUrl,
                     'sort_date' => $ts->updated_at,
                 ];
             });
@@ -85,7 +86,11 @@ class HistoryController extends Controller
                 }
             }
 
-            $otForms = $otQuery->orderByDesc('updated_at')->get()->map(function ($ot) {
+            $otForms = $otQuery->orderByDesc('updated_at')->get()->map(function ($ot) use ($currentUser, $user) {
+                $viewUrl = $currentUser->id === $user->id
+                    ? route('ot-forms.edit', $ot)
+                    : route('approvals.ot-forms.show', $ot);
+
                 $formLabel = $ot->form_type === 'executive' ? 'Executive' : 'Non-Executive';
                 return [
                     'type' => 'OT Form',
@@ -96,7 +101,7 @@ class HistoryController extends Controller
                     'status_badge' => $this->statusBadgeClass($ot->status),
                     'submitted_at' => $ot->plan_submitted_at,
                     'updated_at' => $ot->updated_at,
-                    'view_url' => route('ot-forms.edit', $ot),
+                    'view_url' => $viewUrl,
                     'sort_date' => $ot->updated_at,
                 ];
             });
@@ -187,7 +192,8 @@ class HistoryController extends Controller
 
         return view('history.index', compact(
             'tab', 'submissions', 'approvalActions', 'isApprover',
-            'typeFilter', 'statusFilter', 'actionFilter', 'approvalTypeFilter'
+            'typeFilter', 'statusFilter', 'actionFilter', 'approvalTypeFilter',
+            'user'
         ));
     }
 
