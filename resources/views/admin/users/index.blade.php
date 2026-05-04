@@ -102,6 +102,8 @@
                                         </td>
                                         <td class="px-4 py-3 text-sm">
                                             <a href="{{ route('admin.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
+                                            <span class="text-gray-300 mx-1">|</span>
+                                            <a href="{{ route('history.index', ['user_id' => $user->id]) }}" class="text-indigo-600 hover:text-indigo-900">History</a>
                                         </td>
                                     </tr>
                                 @empty

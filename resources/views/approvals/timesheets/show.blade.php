@@ -338,6 +338,41 @@
                 </div>
                 @endif
             @endif
+
+            {{-- Admin Delete Action --}}
+            @if(auth()->user()->isAdmin())
+                <div class="bg-white shadow-sm sm:rounded-lg mb-6">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Admin Actions</h3>
+                        <button onclick="showDeleteModal({{ $timesheet->id }}, 'timesheet', '{{ $timesheet->status }}')"
+                                class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
+                            Delete This Timesheet (Admin)
+                        </button>
+                    </div>
+                </div>
+            @endif
+    </div>
+
+    {{-- Delete Reason Modal --}}
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Confirm Deletion</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    You are about to delete a <span id="deleteType" class="font-medium"></span> with status:
+                    <span id="deleteStatus" class="font-medium text-red-600"></span>
+                </p>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Reason for deletion (required):</label>
+                    <textarea id="deleteReason" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" placeholder="Please provide a reason..."></textarea>
+                    <p id="deleteReasonError" class="text-red-600 text-xs mt-1 hidden">Reason is required</p>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeDeleteModal()" class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
+                    <button onclick="confirmDelete()" class="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-md">Delete</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     @push('scripts')
@@ -434,6 +469,67 @@
             } catch (err) {
                 alert('Error: ' + err.message);
             }
+        }
+
+        let deleteId = null;
+        let deleteType = null;
+
+        function showDeleteModal(id, type, status) {
+            deleteId = id;
+            deleteType = type;
+            document.getElementById('deleteType').textContent = type === 'timesheet' ? 'timesheet' : 'OT form';
+            document.getElementById('deleteStatus').textContent = status;
+            document.getElementById('deleteReason').value = '';
+            document.getElementById('deleteReasonError').classList.add('hidden');
+            document.getElementById('deleteModal').classList.remove('hidden');
+            document.getElementById('deleteModal').classList.add('flex');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            document.getElementById('deleteModal').classList.remove('flex');
+            deleteId = null;
+            deleteType = null;
+        }
+
+        function confirmDelete() {
+            const reason = document.getElementById('deleteReason').value.trim();
+            if (!reason) {
+                document.getElementById('deleteReasonError').classList.remove('hidden');
+                return;
+            }
+
+            let actionUrl;
+            if (deleteType === 'timesheet') {
+                actionUrl = '{{ route('timesheets.destroy', $timesheet) }}';
+            } else {
+                actionUrl = '{{ route('ot-forms.destroy', ['otForm' => 0]) }}'.replace('/0', '/' + deleteId);
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = actionUrl;
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = document.querySelector('meta[name="csrf-token"]').content;
+
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+
+            const reasonInput = document.createElement('input');
+            reasonInput.type = 'hidden';
+            reasonInput.name = 'delete_reason';
+            reasonInput.value = reason;
+
+            form.appendChild(csrfInput);
+            form.appendChild(methodInput);
+            form.appendChild(reasonInput);
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
     @endpush

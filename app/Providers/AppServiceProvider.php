@@ -26,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \App\Models\Timesheet::observe(\App\Observers\TimesheetObserver::class);
+        \App\Models\OtForm::observe(\App\Observers\OtFormObserver::class);
+        \App\Models\User::observe(\App\Observers\UserObserver::class);
     }
 }

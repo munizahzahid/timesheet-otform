@@ -18,7 +18,19 @@ class HistoryController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        $currentUser = Auth::user();
+        $targetUserId = $request->get('user_id');
+
+        // Only admins can view other users' history
+        if ($targetUserId && $targetUserId != $currentUser->id) {
+            if (!$currentUser->isAdmin()) {
+                abort(403, 'Unauthorized');
+            }
+            $user = \App\Models\User::findOrFail($targetUserId);
+        } else {
+            $user = $currentUser;
+        }
+
         $tab = $request->get('tab', 'submissions');
 
         // ---------- Tab 1: My Submissions ----------

@@ -148,18 +148,37 @@ class OtFormController extends Controller
             ->with('success', 'OT form saved successfully.');
     }
 
-    public function destroy(OtForm $otForm)
+    public function destroy(Request $request, OtForm $otForm)
     {
-        if ($otForm->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+
+        // Owner can delete only draft OT forms
+        if ($otForm->user_id === $user->id) {
+            if ($otForm->status !== 'draft') {
+                return redirect()->route('ot-forms.index')
+                    ->with('error', 'Only draft OT forms can be deleted by owner.');
+            }
+        } else {
+            // Non-owners must be admin
+            if (!$user->isAdmin()) {
+                abort(403);
+            }
+            // Admin must provide reason for deleting non-draft
+            if ($otForm->status !== 'draft') {
+                $request->validate([
+                    'delete_reason' => 'required|string|max:500',
+                ]);
+            }
         }
 
-        if ($otForm->status !== 'draft') {
-            return redirect()->route('ot-forms.index')
-                ->with('error', 'Only draft OT forms can be deleted.');
-        }
+        DB::transaction(function () use ($otForm) {
+            $otForm->entries()->delete();
+            $otForm->approvalLogs()->delete();
+            $otForm->delete();
 
-        $otForm->delete();
+            // TODO: Add audit log entry here when audit feature is implemented
+        });
+
         return redirect()->route('ot-forms.index')
             ->with('success', 'OT form deleted.');
     }

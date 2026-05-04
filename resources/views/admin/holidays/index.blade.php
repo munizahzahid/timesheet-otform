@@ -60,13 +60,11 @@
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $holiday->is_recurring ? 'Yes' : 'No' }}</td>
                                         <td class="px-4 py-3 text-sm flex gap-2" x-data="{ editing: false }">
                                             <button @click="editing = !editing" class="text-indigo-600 hover:text-indigo-900 text-sm">Edit</button>
-                                            @if($holiday->source === 'company')
-                                                <form method="POST" action="{{ route('admin.holidays.destroy', $holiday) }}"
-                                                      onsubmit="return confirm('Delete this holiday?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Delete</button>
-                                                </form>
-                                            @endif
+                                            <form method="POST" action="{{ route('admin.holidays.destroy', $holiday) }}"
+                                                  onsubmit="return confirm('Delete this holiday?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Delete</button>
+                                            </form>
 
                                             {{-- Inline edit form --}}
                                             <div x-show="editing" x-cloak class="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">

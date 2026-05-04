@@ -6,7 +6,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SystemConfigController;
 use App\Http\Controllers\Admin\PublicHolidayController;
 use App\Http\Controllers\Admin\DesknetSyncController;
-use App\Http\Controllers\Admin\ProjectCodeController;
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\ExcelUploadController;
 use App\Http\Controllers\AttendanceUploadController;
@@ -95,6 +95,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Project codes (read-only)
     Route::get('/project-codes', [ProjectCodeController::class, 'index'])->name('project-codes.index');
+
+    // Audit logs
+    Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 });
 
 require __DIR__.'/auth.php';

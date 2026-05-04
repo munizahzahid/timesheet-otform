@@ -1,5 +1,5 @@
 {{-- Sidebar Navigation --}}
-<aside x-data="{ hrOpen: {{ request()->routeIs('timesheets.*') || request()->routeIs('ot-forms.*') ? 'true' : 'false' }}, financeOpen: false, designOpen: false, settingsOpen: {{ request()->routeIs('profile.*') ? 'true' : 'false' }} }"
+<aside x-data="{ hrOpen: {{ request()->routeIs('timesheets.*') || request()->routeIs('ot-forms.*') ? 'true' : 'false' }}, financeOpen: false, designOpen: false, settingsOpen: {{ request()->routeIs('profile.*') ? 'true' : 'false' }}, adminOpen: {{ request()->routeIs('admin.*') ? 'true' : 'false' }} }"
        style="position:fixed;top:0;left:0;width:16rem;height:100vh;height:100dvh;background-color:#1e3a8a;color:#d1d5db;"
        class="z-30 text-gray-300 flex flex-col transform transition-transform duration-200 ease-in-out lg:translate-x-0"
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
@@ -182,6 +182,76 @@
                     Timesheet Approvals
                 </a>
             @endif
+        @endif
+
+        {{-- Admin Dropdown --}}
+        @if(Auth::user()->isAdmin())
+            <div>
+                <button @click="adminOpen = !adminOpen"
+                        class="flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
+                               {{ request()->routeIs('admin.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-5 h-5 flex-shrink-0 transition-colors {{ request()->routeIs('admin.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Admin
+                    </span>
+                    <svg class="w-4 h-4 transition-transform duration-200" :class="adminOpen ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+
+                <div x-show="adminOpen"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 -translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 -translate-y-2"
+                     class="ml-4 mt-1 space-y-1 border-l-2 border-blue-800 pl-4">
+                    <a href="{{ route('admin.users.index') }}"
+                       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200
+                              {{ request()->routeIs('admin.users.*') ? 'bg-blue-700 text-white font-medium shadow-md' : 'text-gray-400 hover:bg-blue-800 hover:text-white' }}">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        Users
+                    </a>
+                    <a href="{{ route('admin.project-codes.index') }}"
+                       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200
+                              {{ request()->routeIs('admin.project-codes.*') ? 'bg-blue-700 text-white font-medium shadow-md' : 'text-gray-400 hover:bg-blue-800 hover:text-white' }}">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                        </svg>
+                        Project Codes
+                    </a>
+                    <a href="{{ route('admin.holidays.index') }}"
+                       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200
+                              {{ request()->routeIs('admin.holidays.*') ? 'bg-blue-700 text-white font-medium shadow-md' : 'text-gray-400 hover:bg-blue-800 hover:text-white' }}">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Holidays
+                    </a>
+                    <a href="{{ route('admin.desknet-sync.index') }}"
+                       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200
+                              {{ request()->routeIs('admin.desknet-sync.*') ? 'bg-blue-700 text-white font-medium shadow-md' : 'text-gray-400 hover:bg-blue-800 hover:text-white' }}">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Desknet Sync
+                    </a>
+                    <a href="{{ route('admin.audit.index') }}"
+                       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all duration-200
+                              {{ request()->routeIs('admin.audit.*') ? 'bg-blue-700 text-white font-medium shadow-md' : 'text-gray-400 hover:bg-blue-800 hover:text-white' }}">
+                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                        Audit Logs
+                    </a>
+                </div>
+            </div>
         @endif
 
         {{-- Settings / Profile Dropdown --}}

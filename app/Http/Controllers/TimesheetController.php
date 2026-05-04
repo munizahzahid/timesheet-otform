@@ -479,23 +479,42 @@ class TimesheetController extends Controller
 
     public function destroy(Request $request, Timesheet $timesheet)
     {
-        if ($timesheet->user_id !== $request->user()->id) {
-            abort(403);
+        $user = $request->user();
+
+        // Owner can delete only draft timesheets
+        if ($timesheet->user_id === $user->id) {
+            if ($timesheet->status !== 'draft') {
+                return redirect()->route('timesheets.index')
+                    ->with('error', 'Only draft timesheets can be deleted by owner.');
+            }
+        } else {
+            // Non-owners must be admin
+            if (!$user->isAdmin()) {
+                abort(403);
+            }
+            // Admin must provide reason for deleting non-draft
+            if ($timesheet->status !== 'draft') {
+                $request->validate([
+                    'delete_reason' => 'required|string|max:500',
+                ]);
+            }
         }
 
-        if ($timesheet->status !== 'draft') {
-            return redirect()->route('timesheets.index')
-                ->with('error', 'Only draft timesheets can be deleted.');
-        }
-
-        DB::transaction(function () use ($timesheet) {
+        DB::transaction(function () use ($timesheet, $request, $user) {
             foreach ($timesheet->projectRows as $row) {
                 $row->hours()->delete();
             }
             $timesheet->projectRows()->delete();
             $timesheet->adminHours()->delete();
             $timesheet->dayMetadata()->delete();
+            $timesheet->approvalLogs()->delete();
             $timesheet->delete();
+
+            // Log deletion if it's an approved/submitted form
+            if ($timesheet->status !== 'draft') {
+                // TODO: Add audit log entry here when audit feature is implemented
+                // For now, we could use the existing approval log system or create a simple log
+            }
         });
 
         return redirect()->route('timesheets.index')
