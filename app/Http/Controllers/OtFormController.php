@@ -7,6 +7,7 @@ use App\Models\OtFormEntry;
 use App\Models\ProjectCode;
 use App\Services\OtAutoFillService;
 use App\Services\OtFormExcelExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -205,6 +206,26 @@ class OtFormController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'max-age=0',
         ]);
+    }
+
+    public function exportPdf(OtForm $otForm)
+    {
+        if ($otForm->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $otForm->load('entries.projectCode', 'user.department');
+
+        $type   = $otForm->isExecutive() ? 'OCF' : 'BKLM';
+        $month  = \DateTime::createFromFormat('!m', $otForm->month)->format('F');
+        $name   = preg_replace('/\s+/', '_', $otForm->user->name ?? 'Staff');
+        $filename = "{$type}_{$name}_{$month}_{$otForm->year}.pdf";
+
+        $pdf = Pdf::loadView('ot-forms.pdf.export', compact('otForm'))
+            ->setPaper('a4', 'landscape')
+            ->setOption(['dpi' => 150, 'defaultFont' => 'Arial']);
+
+        return $pdf->download($filename);
     }
 
     private function saveEntries(Request $request, OtForm $otForm): void

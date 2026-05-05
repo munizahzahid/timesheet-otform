@@ -1205,7 +1205,7 @@ class OtFormExcelExport
         $drawing->setWorksheet($sheet);
     }
 
-    private function shortName(string $fullName): string
+    public static function shortName(string $fullName): string
     {
         $name = strtoupper(trim($fullName));
         if (preg_match('/^(.+?)\s+(?:BIN|BINTI|B|BT)\b/i', $name, $m)) {
@@ -1216,7 +1216,7 @@ class OtFormExcelExport
         return end($parts);
     }
 
-    private function calcHours(?string $start, ?string $end): float
+    public static function calcHours(?string $start, ?string $end): float
     {
         if (!$start || !$end) return 0;
         $s = strtotime("2000-01-01 $start");

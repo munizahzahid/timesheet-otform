@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/ot-forms/{otForm}/submit-plan', [OtFormController::class, 'submitPlan'])->name('ot-forms.submit-plan');
     Route::post('/ot-forms/{otForm}/auto-fill', [OtFormController::class, 'autoFillFromAttendance'])->name('ot-forms.auto-fill');
     Route::get('/ot-forms/{otForm}/export-excel', [OtFormController::class, 'exportExcel'])->name('ot-forms.export-excel');
+    Route::get('/ot-forms/{otForm}/export-pdf', [OtFormController::class, 'exportPdf'])->name('ot-forms.export-pdf');
 
     // History
     Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
