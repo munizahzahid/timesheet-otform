@@ -13,7 +13,7 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            font-size: 7pt;
+            font-size: 8.5pt;
             color: #000;
         }
         table {
@@ -22,7 +22,7 @@
             table-layout: fixed;
         }
         td, th {
-            padding: 1px 2px;
+            padding: 2px 3px;
             vertical-align: middle;
             font-weight: normal;
             overflow: hidden;

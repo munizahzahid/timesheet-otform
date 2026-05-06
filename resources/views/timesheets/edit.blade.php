@@ -568,7 +568,6 @@
                 const fullName = '{{ Auth::user()->name }}';
                 // Extract suffix (everything after BIN/BINTI/B/BT)
                 const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
-                const suffix = suffixMatch ? ' ' + suffixMatch[0].trim() : '';
                 const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
 
                 const signature = prompt(`Please enter your name to ${action === 'submit' ? 'submit' : 'approve'} this timesheet:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
@@ -640,18 +639,32 @@
                         }),
                     });
                     console.log('Response status:', resp.status);
-                    const data = await resp.json();
+                    console.log('Response headers:', resp.headers);
+                    
+                    const text = await resp.text();
+                    console.log('Response text:', text);
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        console.error('Failed to parse JSON:', e);
+                        alert('Server returned invalid response. Status: ' + resp.status + '\nResponse: ' + text.substring(0, 200));
+                        return;
+                    }
+                    
                     console.log('Response data:', data);
                     if (data.success) {
                         console.log('Success, reloading...');
+                        alert('Successfully submitted');
                         window.location.reload();
                     } else {
                         console.error('Action failed:', data.error);
-                        alert(data.error || 'Action failed');
+                        alert('Action failed: ' + (data.error || 'Unknown error'));
                     }
                 } catch (e) {
                     console.error('Error:', e);
-                    alert('Error: ' + e.message);
+                    alert('Network error: ' + e.message);
                 }
             },
 

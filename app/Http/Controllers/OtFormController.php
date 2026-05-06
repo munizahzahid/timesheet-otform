@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\OtForm;
 use App\Models\OtFormEntry;
 use App\Models\ProjectCode;
+use App\Models\ApprovalLog;
 use App\Services\OtAutoFillService;
 use App\Services\OtFormExcelExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class OtFormController extends Controller
@@ -174,14 +176,26 @@ class OtFormController extends Controller
 
         DB::transaction(function () use ($otForm) {
             $otForm->entries()->delete();
-            $otForm->approvalLogs()->delete();
+            ApprovalLog::where('approvable_type', 'ot_form')
+                ->where('approvable_id', $otForm->id)
+                ->delete();
             $otForm->delete();
 
             // TODO: Add audit log entry here when audit feature is implemented
         });
 
+        $formLabel = $otForm->form_type === 'executive' ? 'Executive' : 'Non-Executive';
+        $period = \DateTime::createFromFormat('!m', $otForm->month)->format('F') . ' ' . $otForm->year;
+        $formName = "{$formLabel} OT Form - {$period}";
+
+        // If viewing another user's form (admin context), redirect to that user's history
+        if ($otForm->user_id !== Auth::id()) {
+            return redirect()->route('history.index', ['user_id' => $otForm->user_id])
+                ->with('success', "Successfully deleted '{$formName}'");
+        }
+
         return redirect()->route('ot-forms.index')
-            ->with('success', 'OT form deleted.');
+            ->with('success', "Successfully deleted '{$formName}'");
     }
 
     public function exportExcel(OtForm $otForm, OtFormExcelExport $exporter)

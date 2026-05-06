@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('timesheet_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->enum('level', [1, 2, 3]); // 1=L1 (Asst Mgr), 2=L2 (Mgr/HOD), 3=L3 (DGM/CEO)
+            $table->enum('level', [0, 1, 2, 3]); // 0=Staff, 1=L1 (Asst Mgr), 2=L2 (Mgr/HOD), 3=L3 (DGM/CEO)
             $table->enum('action', ['submitted', 'approved', 'rejected']);
             $table->text('remarks')->nullable();
             $table->timestamps();

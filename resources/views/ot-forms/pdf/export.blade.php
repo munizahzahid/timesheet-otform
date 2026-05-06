@@ -13,7 +13,7 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            font-size: 7pt;
+            font-size: 13pt;
             color: #000;
             display: flex;
             justify-content: center;
@@ -22,12 +22,12 @@
         }
         .outer {
             border: 3pt solid #000;
-            padding: 1.5mm 2mm;
+            padding: 3mm 3.5mm;
             box-sizing: border-box;
         }
         .inner-border {
             border: 1pt solid #000;
-            padding: 1mm;
+            padding: 2.5mm;
         }
         table {
             border-collapse: collapse;
@@ -35,7 +35,7 @@
             table-layout: fixed;
         }
         td, th {
-            padding: 1px 2px;
+            padding: 4px 5px;
             vertical-align: middle;
             font-weight: normal;
             overflow: hidden;
@@ -97,19 +97,34 @@
 
         /* Circular signature stamp */
         .stamp {
-            width: 48px;
-            height: 48px;
+            width: 60px;
+            height: 60px;
             border: 1pt solid #002060;
             border-radius: 50%;
             margin: 1px auto;
-            padding: 3px 2px;
+            padding: 4px 3px;
             text-align: center;
             color: #002060;
             line-height: 1;
         }
-        .stamp .nm  { font-size: 4.5pt; font-weight: bold; }
-        .stamp .ds  { font-size: 4pt; }
-        .stamp .dt  { font-size: 4pt; margin-top: 1px; }
+        .stamp .nm  { font-size: 5pt; font-weight: bold; }
+        .stamp .ds  { font-size: 4.5pt; }
+        .stamp .dt  { font-size: 4.5pt; margin-top: 1px; }
+
+        /* Non-executive scale down to fit A4 */
+        .non-executive-scale {
+            font-size: 6.5pt;
+        }
+        .non-executive-scale td,
+        .non-executive-scale th {
+            padding: 1px 1px;
+        }
+        .non-executive-scale .outer {
+            padding: 1.5mm 2mm;
+        }
+        .non-executive-scale .inner-border {
+            padding: 1mm;
+        }
     </style>
 </head>
 <body>
@@ -203,6 +218,7 @@
 
     @if (!$isExecutive)
     {{-- BKLM (Non-Executive) Layout --}}
+    <div class="non-executive-scale">
     <div class="outer">
         <div class="inner-border">
         {{-- ───── TOP HEADER: INGRESS title + right info panel ───── --}}
@@ -309,40 +325,40 @@
         {{-- ───── MAIN DATA TABLE ───── --}}
         <table class="bd" style="margin-top: 1mm; width: 100%;">
             <colgroup>
-                <col style="width: 2%;"/>     {{-- TARIKH --}}
-                <col style="width: 30%;"/>    {{-- TUGAS (wider) --}}
-                <col style="width: 4%;"/><col style="width: 4%;"/><col style="width: 4%;"/>   {{-- plan MULA/TAMAT/JUMLAH --}}
-                <col style="width: 4%;"/><col style="width: 4%;"/><col style="width: 4%;"/>   {{-- actual MULA/TAMAT/JUMLAH --}}
+                <col style="width: 3%;"/>     {{-- TARIKH --}}
+                <col style="width: 22%;"/>    {{-- TUGAS (wider) --}}
+                <col style="width: 3.5%;"/><col style="width: 3.5%;"/><col style="width: 3.5%;"/>   {{-- plan MULA/TAMAT/JUMLAH --}}
+                <col style="width: 3.5%;"/><col style="width: 3.5%;"/><col style="width: 3.5%;"/>   {{-- actual MULA/TAMAT/JUMLAH --}}
                 <col style="width: 2.5%;"/>    {{-- MAKAN --}}
                 <col style="width: 2.5%;"/>    {{-- SHIFT --}}
-                <col style="width: 6%;"/><col style="width: 6%;"/><col style="width: 6%;"/> {{-- KELULUSAN --}}
+                <col style="width: 5%;"/><col style="width: 5%;"/><col style="width: 5%;"/> {{-- KELULUSAN --}}
                 <col style="width: 2%;"/><col style="width: 2%;"/><col style="width: 2%;"/><col style="width: 2%;"/> {{-- JENIS OT --}}
-                <col style="width: 2.7%;"/><col style="width: 2.7%;"/><col style="width: 2.7%;"/><col style="width: 2.7%;"/><col style="width: 2.7%;"/> {{-- PENGIRAAN OT --}}
+                <col style="width: 2%;"/><col style="width: 2%;"/><col style="width: 2%;"/><col style="width: 2%;"/><col style="width: 2%;"/> {{-- PENGIRAAN OT --}}
             </colgroup>
             {{-- Width-setter row (zero-height, borderless) to force dompdf column widths --}}
             <tr style="height: 0; line-height: 0; font-size: 0;">
-                <td style="width:2%; padding:0; border:0; height:0;"></td>
-                <td style="width:30%; padding:0; border:0; height:0;"></td>
-                <td style="width:4%; padding:0; border:0; height:0;"></td>
-                <td style="width:4%; padding:0; border:0; height:0;"></td>
-                <td style="width:4%; padding:0; border:0; height:0;"></td>
-                <td style="width:4%; padding:0; border:0; height:0;"></td>
-                <td style="width:4%; padding:0; border:0; height:0;"></td>
-                <td style="width:4%; padding:0; border:0; height:0;"></td>
+                <td style="width:3%; padding:0; border:0; height:0;"></td>
+                <td style="width:22%; padding:0; border:0; height:0;"></td>
+                <td style="width:3.5%; padding:0; border:0; height:0;"></td>
+                <td style="width:3.5%; padding:0; border:0; height:0;"></td>
+                <td style="width:3.5%; padding:0; border:0; height:0;"></td>
+                <td style="width:3.5%; padding:0; border:0; height:0;"></td>
+                <td style="width:3.5%; padding:0; border:0; height:0;"></td>
+                <td style="width:3.5%; padding:0; border:0; height:0;"></td>
                 <td style="width:2.5%; padding:0; border:0; height:0;"></td>
                 <td style="width:2.5%; padding:0; border:0; height:0;"></td>
-                <td style="width:6%; padding:0; border:0; height:0;"></td>
-                <td style="width:6%; padding:0; border:0; height:0;"></td>
-                <td style="width:6%; padding:0; border:0; height:0;"></td>
+                <td style="width:5%; padding:0; border:0; height:0;"></td>
+                <td style="width:5%; padding:0; border:0; height:0;"></td>
+                <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:2%; padding:0; border:0; height:0;"></td>
                 <td style="width:2%; padding:0; border:0; height:0;"></td>
                 <td style="width:2%; padding:0; border:0; height:0;"></td>
                 <td style="width:2%; padding:0; border:0; height:0;"></td>
-                <td style="width:2.7%; padding:0; border:0; height:0;"></td>
-                <td style="width:2.7%; padding:0; border:0; height:0;"></td>
-                <td style="width:2.7%; padding:0; border:0; height:0;"></td>
-                <td style="width:2.7%; padding:0; border:0; height:0;"></td>
-                <td style="width:2.7%; padding:0; border:0; height:0;"></td>
+                <td style="width:2%; padding:0; border:0; height:0;"></td>
+                <td style="width:2%; padding:0; border:0; height:0;"></td>
+                <td style="width:2%; padding:0; border:0; height:0;"></td>
+                <td style="width:2%; padding:0; border:0; height:0;"></td>
+                <td style="width:2%; padding:0; border:0; height:0;"></td>
             </tr>
             {{-- Header row 1 --}}
             <tr class="f6 b tc">
@@ -514,6 +530,7 @@
         </table>
         </div>
     </div>
+    </div>
     @else
     {{-- OCF (Executive) Layout --}}
     <div class="outer">
@@ -596,13 +613,13 @@
             {{-- Sizing row --}}
             <tr style="height: 0; line-height: 0; font-size: 0;">
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
-                <td style="width:31%; padding:0; border:0; height:0;"></td>
+                <td style="width:29%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
-                <td style="width:5%; padding:0; border:0; height:0;"></td>
+                <td style="width:7%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
                 <td style="width:5%; padding:0; border:0; height:0;"></td>
@@ -690,9 +707,9 @@
                     
                     $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
                 @endphp
-                <tr class="f6 tc">
-                    <td style="height: 20px;">{{ $e ? $e->entry_date->format('d/m/Y') : '' }}</td>
-                    <td class="tl" style="height: 20px; padding-left: 3px;">{{ $particulars ?: '' }}</td>
+                <tr class="f6 tc" style="height: 18px;">
+                    <td style="height: 18px;">{{ $e ? $e->entry_date->format('d/m/Y') : '' }}</td>
+                    <td class="tl" style="height: 18px; padding-left: 3px;">{{ $particulars ?: '' }}</td>
                     <td>{{ $pStart ? substr($pStart, 0, 5) : '' }}</td>
                     <td>{{ $pEnd ? substr($pEnd, 0, 5) : '' }}</td>
                     <td>{{ $pHours > 0 ? number_format($pHours, 2) : '' }}</td>
@@ -721,7 +738,7 @@
             @endfor
 
             {{-- Empty row with wider height --}}
-            <tr style="height: 35px;">
+            <tr style="height: 70px;">
                 <td colspan="14"></td>
             </tr>
 
@@ -754,7 +771,7 @@
                             <td class="f7 b tc" style="width: 50%; padding: 2px;">Claimed by</td>
                             <td class="f7 b tc" style="width: 50%; padding: 2px;">Approved by</td>
                         </tr>
-                        <tr style="height: 50px;">
+                        <tr style="height: 70px;">
                             <td style="vertical-align: middle; padding: 2px;">
                                 @if($staffStamp['show'])
                                     <div class="stamp">

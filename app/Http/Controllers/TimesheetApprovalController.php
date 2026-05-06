@@ -142,43 +142,48 @@ class TimesheetApprovalController extends Controller
      */
     public function submit(Request $request, Timesheet $timesheet)
     {
-        // Authorization: only staff can submit their own timesheet
-        if ($timesheet->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        try {
+            // Authorization: only staff can submit their own timesheet
+            if ($timesheet->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Validation: can only submit draft timesheets
+            if ($timesheet->status !== 'draft' && !str_starts_with($timesheet->status, 'rejected')) {
+                return response()->json(['error' => 'Timesheet can only be submitted from draft or rejected status'], 400);
+            }
+
+            // Validation: day metadata must exist (Excel/PDF must be uploaded)
+            if ($timesheet->dayMetadata()->count() === 0) {
+                return response()->json(['error' => 'Please upload attendance file before submitting'], 400);
+            }
+
+            // Save staff digital signature
+            $request->validate([
+                'signature' => 'required|string', // text signature
+            ]);
+
+            $timesheet->update([
+                'status' => 'pending_hod',
+                'submitted_at' => now(),
+                'staff_signature' => $request->signature,
+                'staff_signed_at' => now(),
+                'rejection_remarks' => null,
+            ]);
+
+            // Log submission
+            TimesheetApprovalLog::create([
+                'timesheet_id' => $timesheet->id,
+                'user_id' => Auth::id(),
+                'level' => '0', // Staff submission (string to match enum)
+                'action' => 'submitted',
+            ]);
+
+            return response()->json(['success' => true, 'status' => $timesheet->status]);
+        } catch (\Exception $e) {
+            \Log::error('Timesheet submission error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        // Validation: can only submit draft timesheets
-        if ($timesheet->status !== 'draft' && !str_starts_with($timesheet->status, 'rejected')) {
-            return response()->json(['error' => 'Timesheet can only be submitted from draft or rejected status'], 400);
-        }
-
-        // Validation: day metadata must exist (Excel/PDF must be uploaded)
-        if ($timesheet->dayMetadata()->count() === 0) {
-            return response()->json(['error' => 'Please upload attendance file before submitting'], 400);
-        }
-
-        // Save staff digital signature
-        $request->validate([
-            'signature' => 'required|string', // text signature
-        ]);
-
-        $timesheet->update([
-            'status' => 'pending_hod',
-            'submitted_at' => now(),
-            'staff_signature' => $request->signature,
-            'staff_signed_at' => now(),
-            'rejection_remarks' => null,
-        ]);
-
-        // Log submission
-        TimesheetApprovalLog::create([
-            'timesheet_id' => $timesheet->id,
-            'user_id' => Auth::id(),
-            'level' => 0, // Staff submission
-            'action' => 'submitted',
-        ]);
-
-        return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
 
     /**
@@ -189,52 +194,57 @@ class TimesheetApprovalController extends Controller
      */
     public function approveHOD(Request $request, Timesheet $timesheet)
     {
-        if ($timesheet->status !== 'pending_hod') {
-            return response()->json(['error' => 'Timesheet is not pending HOD check'], 400);
-        }
+        try {
+            if ($timesheet->status !== 'pending_hod') {
+                return response()->json(['error' => 'Timesheet is not pending HOD check'], 400);
+            }
 
-        $request->validate([
-            'signature' => 'required|string',
-        ]);
+            $request->validate([
+                'signature' => 'required|string',
+            ]);
 
-        $user = Auth::user();
+            $user = Auth::user();
 
-        // Check if this user is also the Asst Mgr/Mngr for the timesheet
-        $isAlsoAsstMgr = $user->canApproveTimesheetL1();
+            // Check if this user is also the Asst Mgr/Mngr for the timesheet
+            $isAlsoAsstMgr = $user->canApproveTimesheetL1();
 
-        $timesheet->update([
-            'hod_signature' => $request->signature,
-            'hod_signed_at' => now(),
-        ]);
-
-        TimesheetApprovalLog::create([
-            'timesheet_id' => $timesheet->id,
-            'user_id' => Auth::id(),
-            'level' => 0.5, // HOD check
-            'action' => 'approved',
-        ]);
-
-        // If the same person is also Asst Mgr/Mngr, sign both boxes and approve
-        if ($isAlsoAsstMgr) {
             $timesheet->update([
-                'status' => 'approved', // Final approval - no CEO/DGM level
-                'l1_signature' => $request->signature,
-                'l1_signed_at' => now(),
+                'hod_signature' => $request->signature,
+                'hod_signed_at' => now(),
             ]);
 
             TimesheetApprovalLog::create([
                 'timesheet_id' => $timesheet->id,
                 'user_id' => Auth::id(),
-                'level' => 1, // L1 approval
+                'level' => '2', // HOD check (level 2)
                 'action' => 'approved',
             ]);
-        } else {
-            $timesheet->update([
-                'status' => 'pending_l1',
-            ]);
-        }
 
-        return response()->json(['success' => true, 'status' => $timesheet->status]);
+            // If the same person is also Asst Mgr/Mngr, sign both boxes and approve
+            if ($isAlsoAsstMgr) {
+                $timesheet->update([
+                    'status' => 'approved', // Final approval - no CEO/DGM level
+                    'l1_signature' => $request->signature,
+                    'l1_signed_at' => now(),
+                ]);
+
+                TimesheetApprovalLog::create([
+                    'timesheet_id' => $timesheet->id,
+                    'user_id' => Auth::id(),
+                    'level' => '1', // L1 approval
+                    'action' => 'approved',
+                ]);
+            } else {
+                $timesheet->update([
+                    'status' => 'pending_l1',
+                ]);
+            }
+
+            return response()->json(['success' => true, 'status' => $timesheet->status]);
+        } catch (\Exception $e) {
+            \Log::error('HOD approval error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -259,7 +269,7 @@ class TimesheetApprovalController extends Controller
         TimesheetApprovalLog::create([
             'timesheet_id' => $timesheet->id,
             'user_id' => Auth::id(),
-            'level' => 0.5, // HOD check
+            'level' => '2', // HOD check (string to match enum)
             'action' => 'rejected',
             'remarks' => $request->remarks,
         ]);
@@ -289,7 +299,7 @@ class TimesheetApprovalController extends Controller
         TimesheetApprovalLog::create([
             'timesheet_id' => $timesheet->id,
             'user_id' => Auth::id(),
-            'level' => 1,
+            'level' => '1', // L1 approval (string to match enum)
             'action' => 'approved',
         ]);
 
@@ -301,44 +311,49 @@ class TimesheetApprovalController extends Controller
      */
     public function approveL1(Request $request, Timesheet $timesheet)
     {
-        if ($timesheet->status !== 'pending_l1') {
-            return response()->json(['error' => 'Timesheet is not pending L1 approval'], 400);
-        }
-
-        // Authorization: use designated approver if set, otherwise use role-based routing
-        $designatedApproverId = $timesheet->user->timesheet_approver_id;
-        $currentUser = Auth::user();
-
-        if ($designatedApproverId) {
-            // Use designated approver
-            if (Auth::id() !== $designatedApproverId) {
-                return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
+        try {
+            if ($timesheet->status !== 'pending_l1') {
+                return response()->json(['error' => 'Timesheet is not pending L1 approval'], 400);
             }
-        } else {
-            // Use role-based routing
-            if (!$currentUser->canApproveTimesheetL1()) {
-                return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
+
+            // Authorization: use designated approver if set, otherwise use role-based routing
+            $designatedApproverId = $timesheet->user->timesheet_approver_id;
+            $currentUser = Auth::user();
+
+            if ($designatedApproverId) {
+                // Use designated approver
+                if (Auth::id() !== $designatedApproverId) {
+                    return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
+                }
+            } else {
+                // Use role-based routing
+                if (!$currentUser->canApproveTimesheetL1()) {
+                    return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
+                }
             }
+
+            $request->validate([
+                'signature' => 'required|string',
+            ]);
+
+            $timesheet->update([
+                'status' => 'approved', // Final approval - no CEO/DGM level
+                'l1_signature' => $request->signature,
+                'l1_signed_at' => now(),
+            ]);
+
+            TimesheetApprovalLog::create([
+                'timesheet_id' => $timesheet->id,
+                'user_id' => Auth::id(),
+                'level' => '1', // L1 approval (string to match enum)
+                'action' => 'approved',
+            ]);
+
+            return response()->json(['success' => true, 'status' => $timesheet->status]);
+        } catch (\Exception $e) {
+            \Log::error('L1 approval error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        $request->validate([
-            'signature' => 'required|string',
-        ]);
-
-        $timesheet->update([
-            'status' => 'approved', // Final approval - no CEO/DGM level
-            'l1_signature' => $request->signature,
-            'l1_signed_at' => now(),
-        ]);
-
-        TimesheetApprovalLog::create([
-            'timesheet_id' => $timesheet->id,
-            'user_id' => Auth::id(),
-            'level' => 1,
-            'action' => 'approved',
-        ]);
-
-        return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
 
     /**
@@ -362,7 +377,7 @@ class TimesheetApprovalController extends Controller
         TimesheetApprovalLog::create([
             'timesheet_id' => $timesheet->id,
             'user_id' => Auth::id(),
-            'level' => 1,
+            'level' => '1', // L1 rejection (string to match enum)
             'action' => 'rejected',
             'remarks' => $request->remarks,
         ]);

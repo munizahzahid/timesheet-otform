@@ -146,10 +146,10 @@
         </div>
 
         {{-- History --}}
-        <a href="{{ route('history.index') }}"
+        <a href="{{ request()->has('user_id') ? route('history.index', ['user_id' => request('user_id')]) : route('history.index') }}"
            class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
-                  {{ request()->routeIs('history.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
-            <svg class="w-5 h-5 flex-shrink-0 transition-colors {{ request()->routeIs('history.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {{ request()->routeIs('history.*') && !request()->has('user_id') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
+            <svg class="w-5 h-5 flex-shrink-0 transition-colors {{ request()->routeIs('history.*') && !request()->has('user_id') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             History

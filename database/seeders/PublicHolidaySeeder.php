@@ -15,14 +15,22 @@ class PublicHolidaySeeder extends Seeder
         );
 
         foreach ($holidays as $holiday) {
-            DB::table('public_holidays')->updateOrInsert(
-                ['holiday_date' => $holiday['holiday_date']],
-                array_merge($holiday, [
-                    'source' => 'gazetted',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ])
-            );
+            $existing = DB::table('public_holidays')
+                ->where('holiday_date', $holiday['holiday_date'])
+                ->where('source', 'gazetted')
+                ->first();
+
+            // Only insert if the gazetted holiday doesn't exist at this date
+            // This preserves admin changes to holiday dates
+            if (!$existing) {
+                DB::table('public_holidays')->insert(
+                    array_merge($holiday, [
+                        'source' => 'gazetted',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ])
+                );
+            }
         }
     }
 

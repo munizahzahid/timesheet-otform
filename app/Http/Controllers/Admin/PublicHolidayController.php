@@ -49,17 +49,29 @@ class PublicHolidayController extends Controller
     public function update(Request $request, PublicHoliday $holiday)
     {
         $validated = $request->validate([
-            'holiday_date' => 'required|date|unique:public_holidays,holiday_date,' . $holiday->id,
+            'holiday_date' => 'required|date',
             'name' => 'required|string|max:150',
         ]);
+
+        $newYear = date('Y', strtotime($validated['holiday_date']));
+
+        // If moving to a date that already has a holiday, delete the existing one
+        // This allows "drag and replace" of holidays
+        $existingHoliday = PublicHoliday::where('holiday_date', $validated['holiday_date'])
+            ->where('id', '!=', $holiday->id)
+            ->first();
+        
+        if ($existingHoliday) {
+            $existingHoliday->delete();
+        }
 
         $holiday->update([
             'holiday_date' => $validated['holiday_date'],
             'name' => $validated['name'],
-            'year' => date('Y', strtotime($validated['holiday_date'])),
+            'year' => $newYear,
         ]);
 
-        return redirect()->route('admin.holidays.index', ['year' => $holiday->year])
+        return redirect()->route('admin.holidays.index', ['year' => $newYear])
             ->with('success', "Holiday '{$holiday->name}' updated.");
     }
 
