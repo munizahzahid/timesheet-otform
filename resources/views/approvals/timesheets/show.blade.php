@@ -285,6 +285,10 @@
                            class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Download Excel
                         </a>
+                        <a href="{{ route('timesheets.export-pdf', $timesheet) }}"
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
+                            Download PDF
+                        </a>
                     </div>
                 </div>
             </div>

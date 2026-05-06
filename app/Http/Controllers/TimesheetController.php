@@ -377,102 +377,28 @@ class TimesheetController extends Controller
      */
     public function exportPdf(Request $request, Timesheet $timesheet)
     {
-        if ($timesheet->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+        $user = $request->user();
+
+        // Allow: timesheet owner, admin, or users who can approve this timesheet
+        $canDownload = $timesheet->user_id === $user->id
+            || $user->isAdmin()
+            || $user->canApproveTimesheetHOD()
+            || $user->canApproveTimesheetL1();
+
+        if (!$canDownload) {
             abort(403);
         }
 
-        $timesheet->load([
-            'user.department',
-            'dayMetadata',
-            'adminHours',
-            'projectRows.projectCode',
-            'projectRows.hours',
-            'approvalLogs.user',
-        ]);
-
-        $days = $this->calcService->generateDayMetadata($timesheet->month, $timesheet->year);
-        $daysInMonth = count($days);
-
-        // Merge DB metadata
-        foreach ($timesheet->dayMetadata as $meta) {
-            $d = (int) $meta->entry_date->day;
-            if (isset($days[$d])) {
-                $days[$d]['day_type'] = $meta->day_type;
-                $days[$d]['available_hours'] = (float) $meta->available_hours;
-            }
-        }
-
-        // Build admin hours lookup
-        $adminData = [];
-        foreach (TimesheetCalculationService::ADMIN_TYPES as $type => $label) {
-            $adminData[$type] = [];
-            for ($d = 1; $d <= $daysInMonth; $d++) {
-                $adminData[$type][$d] = 0;
-            }
-        }
-        foreach ($timesheet->adminHours as $ah) {
-            $day = (int) $ah->entry_date->day;
-            if (isset($adminData[$ah->admin_type])) {
-                $adminData[$ah->admin_type][$day] = (float) $ah->hours;
-            }
-        }
-
-        // Build project rows data
-        $projectRowsData = [];
-        foreach ($timesheet->projectRows->sortBy('row_order') as $row) {
-            $hoursData = [];
-            for ($d = 1; $d <= $daysInMonth; $d++) {
-                $hoursData[$d] = [
-                    'normal_nc' => 0, 'normal_cobq' => 0,
-                    'ot_nc' => 0, 'ot_cobq' => 0,
-                ];
-            }
-            foreach ($row->hours as $h) {
-                $day = (int) $h->entry_date->day;
-                $hoursData[$day] = [
-                    'normal_nc'   => (float) $h->normal_nc_hours,
-                    'normal_cobq' => (float) $h->normal_cobq_hours,
-                    'ot_nc'       => (float) $h->ot_nc_hours,
-                    'ot_cobq'     => (float) $h->ot_cobq_hours,
-                ];
-            }
-            $projectRowsData[] = [
-                'id'             => $row->id,
-                'project_code_id' => $row->project_code_id,
-                'project_name'   => $row->project_name,
-                'project_code'   => $row->projectCode ? $row->projectCode->code : '',
-                'row_order'      => $row->row_order,
-                'hours'          => $hoursData,
-            ];
-        }
-
-        // Pad to minimum 5 project slots
-        while (count($projectRowsData) < 5) {
-            $hoursData = [];
-            for ($d = 1; $d <= $daysInMonth; $d++) {
-                $hoursData[$d] = ['normal_nc' => 0, 'normal_cobq' => 0, 'ot_nc' => 0, 'ot_cobq' => 0];
-            }
-            $projectRowsData[] = [
-                'id' => null, 'project_code_id' => null, 'project_name' => '',
-                'project_code' => '', 'row_order' => count($projectRowsData) + 1,
-                'hours' => $hoursData,
-            ];
-        }
-
-        $adminTypes = TimesheetCalculationService::ADMIN_TYPES;
-        $approvalStamps = $this->buildTimesheetApprovalStamps($timesheet);
-
-        $pdf = Pdf::loadView('timesheets.pdf', compact(
-            'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'adminTypes', 'approvalStamps'
-        ));
-
-        $pdf->setPaper('a4', 'landscape');
-        $pdf->setOption('dpi', 150);
-        $pdf->setOption('isRemoteEnabled', true);
-
         $month = DateTime::createFromFormat('!m', $timesheet->month)->format('F');
-        $filename = "Timesheet_{$timesheet->user->name}_{$month}_{$timesheet->year}.pdf";
+        $name = preg_replace('/\s+/', '_', $timesheet->user->name ?? 'Staff');
+        $filename = "Timesheet_{$name}_{$month}_{$timesheet->year}.pdf";
+
+        $pdf = Pdf::loadView('timesheets.pdf.export', compact('timesheet'))
+            ->setPaper('a4', 'landscape')
+            ->setOption('margin-top', 3)
+            ->setOption('margin-bottom', 3)
+            ->setOption('margin-left', 3)
+            ->setOption('margin-right', 3);
 
         return $pdf->download($filename);
     }
@@ -691,4 +617,5 @@ class TimesheetController extends Controller
             'Cache-Control' => 'max-age=0',
         ]);
     }
+
 }

@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/timesheets/{timesheet}/print', [TimesheetController::class, 'print'])->name('timesheets.print');
     Route::get('/timesheets/{timesheet}/preview-excel', [TimesheetController::class, 'previewExcel'])->name('timesheets.preview-excel');
     Route::get('/timesheets/{timesheet}/export-excel', [TimesheetController::class, 'exportExcel'])->name('timesheets.export-excel');
+    Route::get('/timesheets/{timesheet}/export-pdf', [TimesheetController::class, 'exportPdf'])->name('timesheets.export-pdf');
     Route::post('/timesheets/{timesheet}/upload-attendance', [AttendanceUploadController::class, 'upload'])->name('timesheets.upload-attendance');
     Route::post('/timesheets/{timesheet}/upload-excel', [ExcelUploadController::class, 'upload'])->name('timesheets.upload-excel');
     
