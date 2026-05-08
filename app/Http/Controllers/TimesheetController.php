@@ -443,6 +443,12 @@ class TimesheetController extends Controller
             }
         });
 
+        // If admin was viewing a user's history, redirect back to that history
+        if ($request->has('user_id') && $timesheet->user_id != $user->id) {
+            return redirect()->route('history.index', ['user_id' => $timesheet->user_id])
+                ->with('success', 'Timesheet deleted.');
+        }
+
         return redirect()->route('timesheets.index')
             ->with('success', 'Timesheet deleted.');
     }

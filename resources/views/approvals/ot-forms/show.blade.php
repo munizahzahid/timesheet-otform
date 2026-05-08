@@ -103,6 +103,23 @@
                 </div>
             </div>
 
+            {{-- Export Options --}}
+            <div class="bg-white shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Export Options</h3>
+                    <div class="flex items-center gap-4">
+                        <a href="{{ route('ot-forms.export-excel', $otForm) }}"
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
+                            Download Excel
+                        </a>
+                        <a href="{{ route('ot-forms.export-pdf', $otForm) }}"
+                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
+                            Download PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             {{-- Approval Actions --}}
             @if(in_array($otForm->status, ['pending_manager', 'pending_gm']))
                 @php
@@ -271,6 +288,16 @@
             reasonInput.type = 'hidden';
             reasonInput.name = 'delete_reason';
             reasonInput.value = reason;
+
+            // Add user_id if viewing another user's history
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('user_id')) {
+                const userIdInput = document.createElement('input');
+                userIdInput.type = 'hidden';
+                userIdInput.name = 'user_id';
+                userIdInput.value = urlParams.get('user_id');
+                form.appendChild(userIdInput);
+            }
 
             form.appendChild(csrfInput);
             form.appendChild(methodInput);

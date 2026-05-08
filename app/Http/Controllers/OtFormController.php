@@ -200,7 +200,12 @@ class OtFormController extends Controller
 
     public function exportExcel(OtForm $otForm, OtFormExcelExport $exporter)
     {
-        if ($otForm->user_id !== Auth::id()) {
+        $user = Auth::user();
+
+        // Allow: OT form owner or admin
+        $canDownload = $otForm->user_id === $user->id || $user->isAdmin();
+
+        if (!$canDownload) {
             abort(403);
         }
 
@@ -224,7 +229,12 @@ class OtFormController extends Controller
 
     public function exportPdf(OtForm $otForm)
     {
-        if ($otForm->user_id !== Auth::id()) {
+        $user = Auth::user();
+
+        // Allow: OT form owner or admin
+        $canDownload = $otForm->user_id === $user->id || $user->isAdmin();
+
+        if (!$canDownload) {
             abort(403);
         }
 

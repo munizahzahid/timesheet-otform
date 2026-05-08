@@ -34,7 +34,7 @@ TSSB Portal is a timesheet and overtime (OT) form management system for Talent S
 1. Open your web browser and go to the system URL
 2. Enter your email address
 3. Enter your password
-4. Click the "Sign In" button
+4. Click the "Log In" button
 
 ### Security Features
 

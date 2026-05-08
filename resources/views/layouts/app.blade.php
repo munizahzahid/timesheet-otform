@@ -77,11 +77,11 @@
 
                         {{-- User info --}}
                         <div class="flex items-center gap-3">
-                            <div class="hidden sm:block text-right">
-                                <p class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</p>
+                            <div class="text-right">
+                                <p class="text-sm font-semibold text-gray-900">{{ Auth::user()->name }}</p>
                                 <p class="text-xs text-gray-500">{{ Auth::user()->designation ?? Auth::user()->email }}</p>
                             </div>
-                            <div class="w-9 h-9 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center text-white font-bold shadow-lg text-sm">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center text-white font-bold shadow-lg text-sm">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                             </div>
                         </div>
@@ -89,7 +89,7 @@
                 </header>
 
             {{-- Page Content --}}
-            <main class="flex-1 p-4 sm:p-6 lg:p-8">
+            <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1920px] mx-auto w-full">
                 {{-- Page Title Section --}}
                 @isset($pageTitle)
                     <div class="mb-6">

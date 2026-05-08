@@ -124,7 +124,11 @@ class PdfParsingService
                 $hasValidClockData = true;
             }
 
-            if ($reason === 'PH' || isset($holidays[$day])) {
+            if ($reason === 'ABS') {
+                // Absent: leave blank (no hours), staff can fill manually
+                $dayType = 'absent';
+                $availableHours = 0;
+            } elseif ($reason === 'PH' || isset($holidays[$day])) {
                 $dayType = 'public_holiday';
                 $availableHours = 0;
             } elseif ($dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {

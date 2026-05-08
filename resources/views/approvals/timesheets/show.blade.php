@@ -272,15 +272,11 @@
                 </div>
             </div>
 
-            {{-- Excel Preview Buttons --}}
+            {{-- Export Options --}}
             <div class="bg-white shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">Export Options</h3>
                     <div class="flex items-center gap-4">
-                        <a href="{{ route('timesheets.preview-excel', $timesheet) }}" target="_blank"
-                           class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #2563eb !important; color: white !important;">
-                            Preview Excel
-                        </a>
                         <a href="{{ route('timesheets.export-excel', $timesheet) }}"
                            class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Download Excel
@@ -528,6 +524,16 @@
             reasonInput.type = 'hidden';
             reasonInput.name = 'delete_reason';
             reasonInput.value = reason;
+
+            // Add user_id if viewing another user's history
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('user_id')) {
+                const userIdInput = document.createElement('input');
+                userIdInput.type = 'hidden';
+                userIdInput.name = 'user_id';
+                userIdInput.value = urlParams.get('user_id');
+                form.appendChild(userIdInput);
+            }
 
             form.appendChild(csrfInput);
             form.appendChild(methodInput);

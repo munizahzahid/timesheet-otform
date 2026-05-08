@@ -26,6 +26,18 @@
                         @method('PUT')
 
                         <div class="mb-4">
+                            <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
+                            <select name="role" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="staff" {{ $user->role === 'staff' ? 'selected' : '' }}>Staff</option>
+                                <option value="assistant_manager" {{ $user->role === 'assistant_manager' ? 'selected' : '' }}>Assistant Manager</option>
+                                <option value="manager_hod" {{ $user->role === 'manager_hod' ? 'selected' : '' }}>Manager/HOD</option>
+                                <option value="ceo" {{ $user->role === 'ceo' ? 'selected' : '' }}>CEO</option>
+                                <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Admin</option>
+                            </select>
+                            @error('role') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div class="mb-4">
                             <label for="reports_to" class="block text-sm font-medium text-gray-700">Reports To</label>
                             <select name="reports_to" id="reports_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">-- None --</option>

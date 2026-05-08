@@ -240,7 +240,7 @@
                 <div class="mt-4 flex justify-between items-center">
                     <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
                     <div class="flex items-center gap-3">
-                        <a href="{{ route('timesheets.preview-excel', $timesheet) }}"
+                        <a href="{{ route('timesheets.export-excel', $timesheet) }}"
                            class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Export Excel
                         </a>
@@ -257,7 +257,7 @@
                 <div class="mt-4 flex justify-between items-center">
                     <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
                     <div class="flex items-center gap-3">
-                        <a href="{{ route('timesheets.preview-excel', $timesheet) }}"
+                        <a href="{{ route('timesheets.export-excel', $timesheet) }}"
                            class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
                             Export Excel
                         </a>

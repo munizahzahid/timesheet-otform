@@ -111,7 +111,14 @@
                                             {{ $item['updated_at']->format('d M Y, h:i A') }}
                                         </td>
                                         <td class="px-4 py-3 text-sm">
-                                            <a href="{{ $item['view_url'] }}" class="text-indigo-600 hover:text-indigo-900">View</a>
+                                            <a href="{{ $item['view_url'] }}" class="text-indigo-600 hover:text-indigo-900 mr-2">View</a>
+                                            @if($item['type'] === 'OT Form' && isset($item['ot_form_id']))
+                                                <a href="{{ route('ot-forms.export-excel', $item['ot_form_id']) }}" class="text-green-600 hover:text-green-900 mr-2">Excel</a>
+                                                <a href="{{ route('ot-forms.export-pdf', $item['ot_form_id']) }}" class="text-blue-600 hover:text-blue-900">PDF</a>
+                                            @elseif($item['type'] === 'Timesheet' && isset($item['timesheet_id']))
+                                                <a href="{{ route('timesheets.export-excel', $item['timesheet_id']) }}" class="text-green-600 hover:text-green-900 mr-2">Excel</a>
+                                                <a href="{{ route('timesheets.export-pdf', $item['timesheet_id']) }}" class="text-blue-600 hover:text-blue-900">PDF</a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
@@ -201,7 +208,14 @@
                                             {{ $item['acted_at'] ? $item['acted_at']->format('d M Y, h:i A') : '—' }}
                                         </td>
                                         <td class="px-4 py-3 text-sm">
-                                            <a href="{{ $item['view_url'] }}" class="text-indigo-600 hover:text-indigo-900">View</a>
+                                            <a href="{{ $item['view_url'] }}" class="text-indigo-600 hover:text-indigo-900 mr-2">View</a>
+                                            @if($item['type'] === 'OT Form' && isset($item['ot_form_id']))
+                                                <a href="{{ route('ot-forms.export-excel', $item['ot_form_id']) }}" class="text-green-600 hover:text-green-900 mr-2">Excel</a>
+                                                <a href="{{ route('ot-forms.export-pdf', $item['ot_form_id']) }}" class="text-blue-600 hover:text-blue-900">PDF</a>
+                                            @elseif($item['type'] === 'Timesheet' && isset($item['timesheet_id']))
+                                                <a href="{{ route('timesheets.export-excel', $item['timesheet_id']) }}" class="text-green-600 hover:text-green-900 mr-2">Excel</a>
+                                                <a href="{{ route('timesheets.export-pdf', $item['timesheet_id']) }}" class="text-blue-600 hover:text-blue-900">PDF</a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty

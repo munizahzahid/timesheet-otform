@@ -50,10 +50,10 @@ class HistoryController extends Controller
                 }
             }
 
-            $timesheets = $tsQuery->orderByDesc('updated_at')->get()->map(function ($ts) use ($currentUser, $user) {
+            $timesheets = $tsQuery->orderByDesc('updated_at')->get()->map(function ($ts) use ($currentUser, $user, $targetUserId) {
                 $viewUrl = $currentUser->id === $user->id
                     ? route('timesheets.edit', $ts)
-                    : route('approvals.timesheets.show', $ts);
+                    : route('approvals.timesheets.show', $ts) . ($targetUserId ? '?user_id=' . $targetUserId : '');
 
                 return [
                     'type' => 'Timesheet',
@@ -66,6 +66,7 @@ class HistoryController extends Controller
                     'updated_at' => $ts->updated_at,
                     'view_url' => $viewUrl,
                     'sort_date' => $ts->updated_at,
+                    'timesheet_id' => $ts->id,
                 ];
             });
         }
@@ -86,10 +87,10 @@ class HistoryController extends Controller
                 }
             }
 
-            $otForms = $otQuery->orderByDesc('updated_at')->get()->map(function ($ot) use ($currentUser, $user) {
+            $otForms = $otQuery->orderByDesc('updated_at')->get()->map(function ($ot) use ($currentUser, $user, $targetUserId) {
                 $viewUrl = $currentUser->id === $user->id
                     ? route('ot-forms.edit', $ot)
-                    : route('approvals.ot-forms.show', $ot);
+                    : route('approvals.ot-forms.show', $ot) . ($targetUserId ? '?user_id=' . $targetUserId : '');
 
                 $formLabel = $ot->form_type === 'executive' ? 'Executive' : 'Non-Executive';
                 return [
@@ -103,6 +104,7 @@ class HistoryController extends Controller
                     'updated_at' => $ot->updated_at,
                     'view_url' => $viewUrl,
                     'sort_date' => $ot->updated_at,
+                    'ot_form_id' => $ot->id,
                 ];
             });
         }
@@ -148,6 +150,7 @@ class HistoryController extends Controller
                         'acted_at' => $log->created_at,
                         'view_url' => $ts ? route('approvals.timesheets.show', $ts) : '#',
                         'sort_date' => $log->created_at,
+                        'timesheet_id' => $ts ? $ts->id : null,
                     ];
                 });
 
@@ -181,6 +184,7 @@ class HistoryController extends Controller
                         'acted_at' => $log->acted_at,
                         'view_url' => $otForm ? route('approvals.ot-forms.show', $otForm) : '#',
                         'sort_date' => $log->acted_at,
+                        'ot_form_id' => $otForm ? $otForm->id : null,
                     ];
                 });
 

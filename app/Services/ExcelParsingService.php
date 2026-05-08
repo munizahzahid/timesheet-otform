@@ -105,9 +105,14 @@ class ExcelParsingService
 
             $timeIn = $row['time_in'];   // Carbon or null
             $timeOut = $row['time_out'];  // Carbon or null
+            $reason = $row['reason'] ?? '';
 
             // Determine day_type
-            if (isset($holidays[$day])) {
+            if ($reason === 'ABS') {
+                // Absent: leave blank (no hours), staff can fill manually
+                $dayType = 'absent';
+                $availableHours = 0;
+            } elseif (isset($holidays[$day])) {
                 $dayType = 'public_holiday';
                 $availableHours = 0;
             } elseif ($dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {
@@ -363,10 +368,18 @@ class ExcelParsingService
                 $timeOut = $this->parseClockTime($rawCells['D'] ?? null, $fmtCells['D'] ?? null, $baseDate);
             }
 
+            // Extract reason code (PH, CAL, RES, ABS) from formatted row text
+            $reason = '';
+            $rowText = implode(' ', array_filter(array_map('strval', $fmtCells)));
+            if (preg_match('/(PH|CAL|RES|ABS)/i', $rowText, $m)) {
+                $reason = strtoupper($m[1]);
+            }
+
             $dataRows[] = [
                 'day'      => $day,
                 'time_in'  => $timeIn,
                 'time_out' => $timeOut,
+                'reason'   => $reason,
             ];
         }
 
