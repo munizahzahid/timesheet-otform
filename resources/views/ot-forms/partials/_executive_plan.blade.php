@@ -35,8 +35,23 @@
                 @php
                     $entry = $entries[$i] ?? null;
                     $isFilled = $entry && ($entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time);
+                    $isRestOrPH = false;
+                    if ($entry) {
+                        $dow = $entry->entry_date->dayOfWeek;
+                        $isRestOrPH = in_array($dow, [0, 6]) || $entry->is_public_holiday;
+                    }
+                    $planTimeOptions = [];
+                    $startHour = $isRestOrPH ? 7 : 16;
+                    $startMin = 30;
+                    for ($h = $startHour; $h <= 23; $h++) {
+                        for ($m = ($h === $startHour ? $startMin : 0); $m < 60; $m += 30) {
+                            $planTimeOptions[] = sprintf('%02d:%02d', $h, $m);
+                        }
+                    }
+                    $planTimeOptions[] = '00:00';
                 @endphp
-                <tr class="entry-row hover:bg-gray-50 {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30' }}">
+                <tr class="entry-row hover:bg-gray-50 {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30' }}"
+                    @if($entry) data-entry-id="{{ $entry->id }}" data-is-weekend="{{ $isRestOrPH ? '1' : '0' }}" @endif>
                     {{-- DATE --}}
                     <td class="border border-gray-200 px-2 py-1.5 text-center text-xs">
                         {{ $entry ? $entry->entry_date->format('j/n') : '' }}
@@ -68,10 +83,14 @@
                     {{-- PLAN START --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
                         @if($entry && $otForm->isEditable())
-                            <input type="time" name="entries[{{ $entry->id }}][planned_start_time]"
-                                   value="{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}"
-                                   onchange="calcTotal({{ $entry->id }}, 'planned')"
-                                   class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                            <select name="entries[{{ $entry->id }}][planned_start_time]"
+                                    onchange="calcTotal({{ $entry->id }}, 'planned')"
+                                    class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                                <option value="">--</option>
+                                @foreach($planTimeOptions as $t)
+                                    <option value="{{ $t }}" {{ $entry->planned_start_time && substr($entry->planned_start_time, 0, 5) === $t ? 'selected' : '' }}>{{ $t }}</option>
+                                @endforeach
+                            </select>
                         @elseif($entry)
                             <span class="text-xs">{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}</span>
                         @endif
@@ -80,10 +99,14 @@
                     {{-- PLAN END --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
                         @if($entry && $otForm->isEditable())
-                            <input type="time" name="entries[{{ $entry->id }}][planned_end_time]"
-                                   value="{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}"
-                                   onchange="calcTotal({{ $entry->id }}, 'planned')"
-                                   class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                            <select name="entries[{{ $entry->id }}][planned_end_time]"
+                                    onchange="calcTotal({{ $entry->id }}, 'planned')"
+                                    class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                                <option value="">--</option>
+                                @foreach($planTimeOptions as $t)
+                                    <option value="{{ $t }}" {{ $entry->planned_end_time && substr($entry->planned_end_time, 0, 5) === $t ? 'selected' : '' }}>{{ $t }}</option>
+                                @endforeach
+                            </select>
                         @elseif($entry)
                             <span class="text-xs">{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}</span>
                         @endif
