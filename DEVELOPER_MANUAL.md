@@ -35,12 +35,12 @@ TSSB Portal is a Laravel-based web application for managing employee timesheets 
 
 ## Tech Stack
 
-- **Backend Framework**: Laravel 10.x
+- **Backend Framework**: Laravel 12.x
 - **Frontend**: Blade Templates, Tailwind CSS, Alpine.js
 - **Database**: MySQL/MariaDB
-- **PHP Version**: 8.1+
+- **PHP Version**: 8.2+
 - **Excel Library**: PhpSpreadsheet
-- **PDF Processing**: Custom PDF parsing for attendance data
+- **PDF Processing**: smalot/pdfparser for attendance data
 
 ---
 
@@ -91,7 +91,7 @@ Timesheet_Website/
 ## Installation
 
 ### Prerequisites
-- PHP 8.1 or higher
+- PHP 8.2 or higher
 - Composer
 - MySQL/MariaDB
 - Node.js & NPM (for asset compilation, if needed)
@@ -200,6 +200,7 @@ MAIL_FROM_NAME="${APP_NAME}"
 - id
 - name (string)
 - email (string, unique)
+- email_verified_at (timestamp, nullable)
 - password (hashed)
 - role (enum: admin, user)
 - designation (string)
@@ -211,6 +212,10 @@ MAIL_FROM_NAME="${APP_NAME}"
 - can_approve_timesheet_l2 (boolean)
 - can_approve_timesheet_l3 (boolean)
 - reports_to_id (foreign key to users)
+- is_active (boolean, default true)
+- timesheet_approver_id (foreign key to users, nullable)
+- ot_exec_approver_id (foreign key to users, nullable)
+- ot_non_exec_approver_id (foreign key to users, nullable)
 - created_at, updated_at
 ```
 
@@ -219,7 +224,7 @@ MAIL_FROM_NAME="${APP_NAME}"
 - id
 - user_id (foreign key)
 - month (integer)
-- year (integer
+- year (integer)
 - status (enum: draft, pending_hod, pending_l1, pending_l2, pending_l3, approved, rejected)
 - admin_hours (json)
 - project_rows (json)
@@ -259,7 +264,7 @@ MAIL_FROM_NAME="${APP_NAME}"
 ```sql
 - id
 - code (string, unique)
-- name (string)
+- name (string, nullable)
 - client (string)
 - manager (string)
 - year (integer)
@@ -267,6 +272,142 @@ MAIL_FROM_NAME="${APP_NAME}"
 - desknet_id (string)
 - created_at, updated_at
 ```
+
+### Timesheet Day Metadata Table
+```sql
+- id
+- timesheet_id (foreign key)
+- entry_date (date)
+- day_of_week (enum: MON, TUE, WED, THU, FRI, SAT, SUN)
+- day_type (enum: working, off_day, public_holiday, mc, leave, absent)
+- available_hours (decimal)
+- time_in (time, nullable)
+- time_out (time, nullable)
+- late_hours (decimal)
+- ot_eligible_hours (decimal)
+- attendance_hours (decimal)
+- created_at, updated_at
+```
+
+### Audit Logs Table
+```sql
+- id
+- user_id (foreign key to users)
+- action (string: created, updated, deleted)
+- model_type (string)
+- model_id (bigint)
+- description (text, nullable)
+- ip_address (string, nullable)
+- old_values (json, nullable)
+- new_values (json, nullable)
+- created_at, updated_at
+```
+
+---
+
+## Attendance Parsing Logic
+
+### PDF Parsing (PdfParsingService)
+
+Located at `app/Services/PdfParsingService.php`
+
+**Purpose:** Parses Infotech attendance PDF files to extract clock in/out times and reason codes.
+
+**Key Logic:**
+```php
+// Reason code handling
+if ($reason === 'ABS') {
+    // Absent: leave blank (no hours), staff can fill manually
+    $dayType = 'absent';
+    $availableHours = 0;
+} elseif ($reason === 'PH' || isset($holidays[$day])) {
+    $dayType = 'public_holiday';
+    $availableHours = 0;
+} elseif ($reason === 'CAL' || (!$hasValidClockData && !in_array($dow, [Carbon::SATURDAY, Carbon::SUNDAY]))) {
+    // No clock data on weekday = MC/Leave
+    $dayType = 'mc';
+    $availableHours = $dow === Carbon::FRIDAY ? $defaultHoursFri : $defaultHoursMon;
+}
+```
+
+**Reason Codes:**
+- **ABS** - Absent without leave/MC → 0 hours, staff can fill manually
+- **PH** - Public Holiday → 0 hours
+- **CAL** - Leave (ML/EL/AL) → Standard hours (7 or 8)
+- **RES** - Rest day → 0 hours
+
+### Excel Parsing (ExcelParsingService)
+
+Located at `app/Services/ExcelParsingService.php`
+
+**Purpose:** Parses Infotech attendance Excel files to extract clock in/out times and reason codes.
+
+**Key Logic:**
+```php
+// Extract reason code from formatted row text
+$reason = '';
+$rowText = implode(' ', array_filter(array_map('strval', $fmtCells)));
+if (preg_match('/(PH|CAL|RES|ABS)/i', $rowText, $m)) {
+    $reason = strtoupper($m[1]);
+}
+
+// Apply same day_type logic as PDF parsing
+if ($reason === 'ABS') {
+    $dayType = 'absent';
+    $availableHours = 0;
+}
+```
+
+**Important:** Both PDF and Excel parsers use the same day_type logic to ensure consistent behavior.
+
+---
+
+## Audit Logging System
+
+### UserObserver
+
+Located at `app/Observers/UserObserver.php`
+
+**Purpose:** Automatically logs all User model changes (created, updated, deleted).
+
+**How it works:**
+```php
+public function updated(User $user): void
+{
+    $this->logAudit($user, 'updated', 'Updated user: ' . $user->name);
+}
+
+private function logAudit(User $user, string $action, string $description): void
+{
+    if (!Auth::check()) return;
+
+    AuditLog::create([
+        'user_id' => Auth::id(),
+        'action' => $action,
+        'model_type' => User::class,
+        'model_id' => $user->id,
+        'description' => $description,
+        'ip_address' => request()->ip(),
+    ]);
+}
+```
+
+**Tracked Actions:**
+- User creation
+- User updates (including email changes)
+- User deletion
+
+**Benefits:**
+- Security monitoring
+- Accountability tracking
+- Troubleshooting aid
+- Compliance audit trail
+
+**Adding Audit Logging to Other Models:**
+To add audit logging to other models (e.g., Timesheet, OtForm):
+1. Create an Observer for the model
+2. Register it in `app/Providers/EventServiceProvider.php`
+3. Follow the same pattern as UserObserver
 
 ---
 
@@ -499,6 +640,41 @@ All sync operations are logged in `desknet_sync_logs` table:
 - `error_message`
 - `completed_at`
 
+### Troubleshooting Desknet Sync
+
+**HTTP 403 Error:**
+- **Cause:** Invalid API key or Desknet External Connection disabled
+- **Solution:**
+  1. Verify API key in System Settings (`desknet_api_key`)
+  2. Check Desknet External Connection Settings in Desknet admin panel:
+     - Go to System Admin → AppSuite → External Connection Settings
+     - Ensure External Connection API is enabled
+     - Whitelist your server IP if IP restrictions are enabled
+  3. Test connection using the "Test Connection" button in admin panel
+
+**Connection Timeout:**
+- **Cause:** Network connectivity issues or incorrect API URL
+- **Solution:**
+  1. Check network connectivity to Desknet server
+  2. Verify `desknet_api_url` is correct in System Settings
+  3. Check firewall settings
+  4. Ensure Desknet server is accessible from your application server
+
+**Sync Partial Failure:**
+- **Cause:** Missing records in Desknet or incorrect app IDs
+- **Solution:**
+  1. Check sync logs for specific error messages
+  2. Verify app IDs are correct:
+     - Project Codes App ID (default: 308)
+     - Staff List App ID (default: 29)
+  3. Check Desknet database for missing records
+  4. Verify Desknet API credentials have proper permissions
+
+**API Error Messages:**
+- The system provides detailed error messages in sync logs
+- Check `desknet_sync_logs` table for `error_message` column
+- Review Laravel logs at `storage/logs/laravel.log` for additional details
+
 ---
 
 ## Testing
@@ -564,7 +740,7 @@ tests/
 
 ### Server Requirements
 
-- PHP 8.1+
+- PHP 8.2+
 - MySQL 5.7+ or MariaDB 10.3+
 - Apache/Nginx web server
 - Composer
@@ -651,15 +827,14 @@ tail -f storage/logs/laravel.log
 - **v1.2** - Added multi-level approval system
 - **v1.3** - Added Excel export functionality
 - **v1.4** - UI redesign with navy blue theme and Malay language support
+- **v1.5** - Updated to Laravel 12.x and PHP 8.2+, added attendance parsing logic, audit logging system, and comprehensive troubleshooting guide
 
 ---
 
 ## Support
 
 For technical issues or questions:
-- Developer: [Developer Email]
-- Documentation: [Documentation Repository]
-- Issue Tracker: [GitHub Issues]
+- Developer: munizahzahid@gmail.com
 
 ---
 

@@ -273,6 +273,55 @@ class TimesheetController extends Controller
                     $row->hours()->delete();
                     $row->delete();
                 });
+
+            // Calculate daily totals to update available_hours for absent days
+            $daysInMonth = \Carbon\Carbon::create($timesheet->year, $timesheet->month)->daysInMonth;
+            $dailyTotals = array_fill(1, $daysInMonth, 0.0);
+
+            // Sum admin hours
+            $adminHoursInput = $request->input('admin_hours', []);
+            foreach ($adminHoursInput as $type => $dayValues) {
+                foreach ($dayValues as $day => $hours) {
+                    $day = (int) $day;
+                    if ($day >= 1 && $day <= $daysInMonth) {
+                        $dailyTotals[$day] += (float) $hours;
+                    }
+                }
+            }
+
+            // Sum project hours
+            $projectRowsInput = $request->input('project_rows', []);
+            foreach ($projectRowsInput as $rowData) {
+                $hours = $rowData['hours'] ?? [];
+                foreach ($hours as $day => $vals) {
+                    $day = (int) $day;
+                    if ($day >= 1 && $day <= $daysInMonth) {
+                        $dailyTotals[$day] += (float)($vals['normal_nc'] ?? 0)
+                            + (float)($vals['normal_cobq'] ?? 0)
+                            + (float)($vals['ot_nc'] ?? 0)
+                            + (float)($vals['ot_cobq'] ?? 0);
+                    }
+                }
+            }
+
+            // Update TimesheetDayMetadata for absent days
+            foreach ($dailyTotals as $day => $totalWorking) {
+                $entryDate = sprintf('%04d-%02d-%02d', $timesheet->year, $timesheet->month, $day);
+                $meta = \App\Models\TimesheetDayMetadata::where('timesheet_id', $timesheet->id)
+                    ->where('entry_date', $entryDate)
+                    ->first();
+
+                if ($meta && $meta->day_type === 'absent') {
+                    if ($totalWorking > 0) {
+                        $dateObj = \Carbon\Carbon::parse($entryDate);
+                        $isFriday = $dateObj->isFriday();
+                        $meta->available_hours = $isFriday ? 7.0 : 8.0;
+                    } else {
+                        $meta->available_hours = 0.0;
+                    }
+                    $meta->save();
+                }
+            }
         });
 
         return response()->json(['success' => true, 'message' => 'Saved.']);

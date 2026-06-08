@@ -313,6 +313,8 @@
             projectRows: @json($projectRowsData),
             projectCodesLookup: @json($projectCodes->keyBy('id')->map(fn($pc) => ['code' => $pc->code, 'name' => $pc->name])),
             availableHours: @json(collect($days)->mapWithKeys(fn($d, $k) => [$k => $d['available_hours']])->toArray()),
+            dayTypes: @json(collect($days)->mapWithKeys(fn($d, $k) => [$k => $d['day_type']])->toArray()),
+            dayOfWeeks: @json(collect($days)->mapWithKeys(fn($d, $k) => [$k => $d['day_of_week']])->toArray()),
 
             subRowTypes: [
                 { label: 'NORM/NC', field: 'normal_nc' },
@@ -467,10 +469,22 @@
                 return total ? parseFloat(total.toFixed(1)) : '';
             },
 
+            getAvailableHoursForDay(day) {
+                if (this.dayTypes[day] === 'absent') {
+                    let working = parseFloat(this.totalWorkingForDay(day)) || 0;
+                    if (working > 0) {
+                        return this.dayOfWeeks[day] === 'FRI' ? 7 : 8;
+                    } else {
+                        return 0;
+                    }
+                }
+                return parseFloat(this.availableHours[day]) || 0;
+            },
+
             // OVERTIME = TOTAL WORKING HOURS - HOURS AVAILABLE
             overtimeForDay(day) {
                 let working = parseFloat(this.totalWorkingForDay(day)) || 0;
-                let available = parseFloat(this.availableHours[day]) || 0;
+                let available = parseFloat(this.getAvailableHoursForDay(day)) || 0;
                 let ot = working - available;
                 return ot > 0 ? parseFloat(ot.toFixed(1)) : '';
             },
@@ -483,6 +497,13 @@
             grandTotalWorking() {
                 let sum = 0;
                 for (let d = 1; d <= this.daysInMonth; d++) sum += parseFloat(this.totalWorkingForDay(d)) || 0;
+                return sum ? parseFloat(sum.toFixed(1)) : '';
+            },
+            grandTotalAvailable() {
+                let sum = 0;
+                for (let d = 1; d <= this.daysInMonth; d++) {
+                    sum += parseFloat(this.getAvailableHoursForDay(d)) || 0;
+                }
                 return sum ? parseFloat(sum.toFixed(1)) : '';
             },
             grandTotalOvertime() {
