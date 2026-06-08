@@ -155,7 +155,7 @@
                         @if($entry && $otForm->isEditable())
                             <input type="text" name="entries[{{ $entry->id }}][actual_start_time]"
                                    value="{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}"
-                                   placeholder="HH:MM"
+                                   placeholder="-"
                                    pattern="[0-9]{2}:[0-9]{2}"
                                    onchange="calcTotal({{ $entry->id }}, 'actual')"
                                    class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
@@ -169,7 +169,7 @@
                         @if($entry && $otForm->isEditable())
                             <input type="text" name="entries[{{ $entry->id }}][actual_end_time]"
                                    value="{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}"
-                                   placeholder="HH:MM"
+                                   placeholder="-"
                                    pattern="[0-9]{2}:[0-9]{2}"
                                    onchange="calcTotal({{ $entry->id }}, 'actual')"
                                    class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
