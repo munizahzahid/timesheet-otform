@@ -277,6 +277,28 @@ class OtFormController extends Controller
                 $actualTotal = $this->calcHours($actualStart, $actualEnd);
             }
 
+            // Calculate OT breakdown by day type
+            $isPublicHoliday = !empty($data['is_public_holiday']);
+            $dayOfWeek = $entry->entry_date->dayOfWeek; // 0=Sun, 6=Sat
+            $isWeekend = in_array($dayOfWeek, [0, 6]);
+
+            $otNormalDay = 0;
+            $otRestDay = 0;
+            $otRestDayExcess = 0;
+            $otRestDayCount = 0;
+            $otPhHours = 0;
+
+            if ($actualTotal > 0) {
+                if ($isPublicHoliday) {
+                    $otPhHours = $actualTotal;
+                } elseif ($isWeekend) {
+                    $otRestDay = $actualTotal;
+                    $otRestDayCount = 1;
+                } else {
+                    $otNormalDay = $actualTotal;
+                }
+            }
+
             $entry->update([
                 'project_code_id' => !empty($data['project_code_id']) ? $data['project_code_id'] : null,
                 'project_name' => $data['project_name'] ?? null,
@@ -288,12 +310,12 @@ class OtFormController extends Controller
                 'actual_total_hours' => $actualTotal,
                 'meal_break' => !empty($data['meal_break']),
                 'is_shift' => !empty($data['is_shift']),
-                'is_public_holiday' => !empty($data['is_public_holiday']),
-                'ot_normal_day_hours' => floatval($data['ot_normal_day_hours'] ?? 0),
-                'ot_rest_day_hours' => floatval($data['ot_rest_day_hours'] ?? 0),
-                'ot_rest_day_excess_hours' => floatval($data['ot_rest_day_excess_hours'] ?? 0),
-                'ot_rest_day_count' => intval($data['ot_rest_day_count'] ?? 0),
-                'ot_ph_hours' => floatval($data['ot_ph_hours'] ?? 0),
+                'is_public_holiday' => $isPublicHoliday,
+                'ot_normal_day_hours' => $otNormalDay,
+                'ot_rest_day_hours' => $otRestDay,
+                'ot_rest_day_excess_hours' => $otRestDayExcess,
+                'ot_rest_day_count' => $otRestDayCount,
+                'ot_ph_hours' => $otPhHours,
                 'jenis_ot_normal' => !empty($data['jenis_ot_normal']),
                 'jenis_ot_training' => !empty($data['jenis_ot_training']),
                 'jenis_ot_kaizen' => !empty($data['jenis_ot_kaizen']),

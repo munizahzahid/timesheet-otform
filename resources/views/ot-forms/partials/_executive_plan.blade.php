@@ -162,9 +162,27 @@
                     </td>
 
                     {{-- TOTAL HOURS: NORMAL DAY, REST DAY, PUBLIC HOLIDAY --}}
-                    <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-400 text-xs">-</td>
-                    <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-400 text-xs">-</td>
-                    <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-400 text-xs">-</td>
+                    <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
+                        @if($entry && $entry->ot_normal_day_hours > 0)
+                            {{ number_format($entry->ot_normal_day_hours, 2) }}
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
+                    <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
+                        @if($entry && $entry->ot_rest_day_hours > 0)
+                            {{ number_format($entry->ot_rest_day_hours, 2) }}
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
+                    <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
+                        @if($entry && $entry->ot_ph_hours > 0)
+                            {{ number_format($entry->ot_ph_hours, 2) }}
+                        @else
+                            <span class="text-gray-400">-</span>
+                        @endif
+                    </td>
                 </tr>
             @endfor
         </tbody>
