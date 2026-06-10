@@ -12,7 +12,6 @@
                         <h3 class="text-sm font-medium text-gray-500 mb-3">Synced from Desknet (read-only)</h3>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div><span class="text-gray-500">Staff No:</span> <span class="font-medium">{{ $user->staff_no ?? '-' }}</span></div>
-                            <div><span class="text-gray-500">Email:</span> <span class="font-medium">{{ $user->email }}</span></div>
                             <div><span class="text-gray-500">Department:</span> <span class="font-medium">{{ $user->department?->name ?? '-' }}</span></div>
                             <div><span class="text-gray-500">Designation:</span> <span class="font-medium">{{ $user->designation ?? '-' }}</span></div>
                             <div><span class="text-gray-500">Desknet ID:</span> <span class="font-medium">{{ $user->desknet_id ?? '-' }}</span></div>

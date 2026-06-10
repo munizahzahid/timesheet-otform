@@ -11,10 +11,10 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         DB::table('users')->updateOrInsert(
-            ['email' => 'admin@tssb.com'],
+            ['staff_no' => 'ADMIN'],
             [
+                'staff_no' => 'ADMIN',
                 'name' => 'System Admin',
-                'email' => 'admin@tssb.com',
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'is_active' => true,

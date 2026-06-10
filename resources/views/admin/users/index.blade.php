@@ -18,7 +18,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Search</label>
                             <input type="text" name="search" value="{{ request('search') }}"
-                                   placeholder="Name, staff no, email..."
+                                   placeholder="Name, staff no..."
                                    class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                         </div>
                         <div>
@@ -67,7 +67,6 @@
                                         <td class="px-4 py-3 text-sm text-gray-900">{{ $user->staff_no ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm">
                                             <div class="font-medium text-gray-900">{{ $user->name }}</div>
-                                            <div class="text-gray-500 text-xs">{{ $user->email }}</div>
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->department?->name ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->designation ?? '-' }}</td>

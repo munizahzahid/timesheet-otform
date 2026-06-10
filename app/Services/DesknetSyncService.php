@@ -371,9 +371,6 @@ class DesknetSyncService
 
                 $departmentModel = $department ? Department::where('name', $department)->first() : null;
 
-                // Generate email from staff_no if not available
-                $email = strtolower($staffNo) . '@tssb.com';
-
                 $existingUser = User::where('desknet_id', $desknetId)
                     ->orWhere('staff_no', $staffNo)
                     ->first();
@@ -408,7 +405,6 @@ class DesknetSyncService
                         'desknet_id' => $desknetId,
                         'staff_no' => $staffNo,
                         'name' => $name,
-                        'email' => $email,
                         'password' => Hash::make(strtolower($staffNo)),
                         'role' => $role,
                         'department_id' => $departmentModel?->id,
