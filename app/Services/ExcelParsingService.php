@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\PublicHoliday;
 use App\Models\SystemConfig;
 use App\Models\Timesheet;
 use App\Models\TimesheetAdminHour;
@@ -77,12 +76,8 @@ class ExcelParsingService
             return $result;
         }
 
-        // --- 3. Load holidays for this month ---
-        $holidays = PublicHoliday::where('year', $timesheet->year)
-            ->whereMonth('holiday_date', $timesheet->month)
-            ->pluck('name', 'holiday_date')
-            ->mapWithKeys(fn($name, $date) => [Carbon::parse($date)->day => $name])
-            ->toArray();
+        // --- 3. Holidays determined from PDF/Excel reason codes (not system calendar) ---
+        // The 'PH' reason code is the authoritative source for public holidays
 
         // --- 4. Load system config for working hours ---
         $workStart = $this->parseTimeConfig(
@@ -112,7 +107,7 @@ class ExcelParsingService
                 // Absent: leave blank (no hours), staff can fill manually
                 $dayType = 'absent';
                 $availableHours = 0;
-            } elseif (isset($holidays[$day])) {
+            } elseif ($reason === 'PH') {
                 $dayType = 'public_holiday';
                 $availableHours = 0;
             } elseif ($dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {

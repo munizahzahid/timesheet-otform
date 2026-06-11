@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\AttendanceRecord;
-use App\Models\PublicHoliday;
 use App\Models\SystemConfig;
 use App\Models\Timesheet;
 use App\Models\TimesheetAdminHour;
@@ -88,12 +87,8 @@ class PdfParsingService
             return $result;
         }
 
-        // --- 4. Load holidays ---
-        $holidays = PublicHoliday::where('year', $timesheet->year)
-            ->whereMonth('holiday_date', $timesheet->month)
-            ->pluck('name', 'holiday_date')
-            ->mapWithKeys(fn($name, $date) => [Carbon::parse($date)->day => $name])
-            ->toArray();
+        // --- 4. Holidays determined from PDF reason codes (not system calendar) ---
+        // The PDF 'PH' reason code is the authoritative source for public holidays
 
         // --- 5. Load system config ---
         $workStart = $this->parseTimeConfig(
@@ -128,7 +123,7 @@ class PdfParsingService
                 // Absent: leave blank (no hours), staff can fill manually
                 $dayType = 'absent';
                 $availableHours = 0;
-            } elseif ($reason === 'PH' || isset($holidays[$day])) {
+            } elseif ($reason === 'PH') {
                 $dayType = 'public_holiday';
                 $availableHours = 0;
             } elseif ($dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {
