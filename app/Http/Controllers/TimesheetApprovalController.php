@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Timesheet;
 use App\Models\TimesheetApprovalLog;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,10 +19,17 @@ class TimesheetApprovalController extends Controller
         $user = Auth::user();
         $pendingStatuses = $this->getPendingStatusesForUser($user);
 
-        $timesheets = Timesheet::with('user', 'user.department')
-            ->whereIn('status', $pendingStatuses)
-            ->orderByDesc('updated_at')
-            ->paginate(20);
+        $query = Timesheet::with('user', 'user.department')
+            ->whereIn('status', $pendingStatuses);
+
+        // Filter by reports_to if not admin
+        if ($user->role !== 'admin') {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('reports_to', $user->id);
+            });
+        }
+
+        $timesheets = $query->orderByDesc('updated_at')->paginate(20);
 
         return view('approvals.timesheets.index', compact('timesheets'));
     }
@@ -316,20 +324,12 @@ class TimesheetApprovalController extends Controller
                 return response()->json(['error' => 'Timesheet is not pending L1 approval'], 400);
             }
 
-            // Authorization: use designated approver if set, otherwise use role-based routing
-            $designatedApproverId = $timesheet->user->timesheet_approver_id;
+            // Authorization: user must be the staff's reports_to (supervisor)
             $currentUser = Auth::user();
+            $staffReportsTo = $timesheet->user->reports_to;
 
-            if ($designatedApproverId) {
-                // Use designated approver
-                if (Auth::id() !== $designatedApproverId) {
-                    return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
-                }
-            } else {
-                // Use role-based routing
-                if (!$currentUser->canApproveTimesheetL1()) {
-                    return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
-                }
+            if (!$staffReportsTo || Auth::id() !== $staffReportsTo) {
+                return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
             }
 
             $request->validate([
@@ -386,7 +386,7 @@ class TimesheetApprovalController extends Controller
     }
 
 /**
- * Get the statuses this user can act on based on role.
+ * Get the statuses this user can act on based on reports_to relationship.
  */
 private function getPendingStatusesForUser($user): array
 {
@@ -396,14 +396,18 @@ private function getPendingStatusesForUser($user): array
 
     $statuses = [];
 
-    // HOD can approve pending_hod
-    if ($user->canApproveTimesheetHOD()) {
-        $statuses[] = 'pending_hod';
-    }
+    // Check if user is a supervisor (reports_to) for any staff
+    $isSupervisor = User::where('reports_to', $user->id)->exists();
 
-    // Asst Mgr/Mgr can approve pending_l1 (final approval)
-    if ($user->canApproveTimesheetL1()) {
-        $statuses[] = 'pending_l1';
+    if ($isSupervisor) {
+        // Asst Mgr/Mgr can approve pending_l1 (final approval)
+        if ($user->canApproveTimesheetL1()) {
+            $statuses[] = 'pending_l1';
+        }
+        // HOD can approve pending_hod
+        if ($user->canApproveTimesheetHOD()) {
+            $statuses[] = 'pending_hod';
+        }
     }
 
     return $statuses;

@@ -18,10 +18,17 @@ class OtApprovalController extends Controller
         $user = Auth::user();
         $pendingStatuses = $this->getPendingStatusesForUser($user);
 
-        $otForms = OtForm::with('user')
-            ->whereIn('status', $pendingStatuses)
-            ->orderByDesc('updated_at')
-            ->paginate(20);
+        $query = OtForm::with('user')
+            ->whereIn('status', $pendingStatuses);
+
+        // Filter by reports_to for pending_manager (level 1)
+        if (in_array('pending_manager', $pendingStatuses) && $user->role !== 'admin') {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('reports_to', $user->id);
+            });
+        }
+
+        $otForms = $query->orderByDesc('updated_at')->paginate(20);
 
         return view('approvals.ot-forms.index', compact('otForms'));
     }
@@ -127,7 +134,7 @@ class OtApprovalController extends Controller
     }
 
     /**
-     * Determine if user can approve based on designated approvers or role-based routing.
+     * Determine if user can approve based on reports_to relationship.
      */
     private function canUserApproveByDesignation(OtForm $otForm, $user): bool
     {
@@ -136,57 +143,27 @@ class OtApprovalController extends Controller
         }
 
         $formUser = $otForm->user;
+        $staffReportsTo = $formUser->reports_to;
 
-        // For executive OT forms
-        if ($otForm->form_type === 'executive') {
-            $hodApproverId = $formUser->ot_exec_approver_id;
-            $finalApproverId = $formUser->ot_exec_final_approver_id;
-
-            // Check if user is the designated HOD approver (level 1)
-            if ($otForm->status === 'pending_manager') {
-                if ($hodApproverId) {
-                    return Auth::id() === $hodApproverId;
-                }
-                // Fallback to role-based routing
+        // Level 1 (pending_manager): user must be the staff's reports_to
+        if ($otForm->status === 'pending_manager') {
+            if ($staffReportsTo && Auth::id() === $staffReportsTo) {
                 return $user->canApproveOTFormLevel1();
             }
-
-            // Check if user is the designated final approver (level 2 - DGM/CEO)
-            if ($otForm->status === 'pending_gm') {
-                if ($finalApproverId) {
-                    return Auth::id() === $finalApproverId;
-                }
-                // Fallback to role-based routing
-                return $user->canApproveOTFormLevel2();
-            }
-
             return false;
         }
 
-        // For non-executive OT forms
-        if ($otForm->form_type === 'non_executive') {
-            $mgrApproverId = $formUser->ot_non_exec_approver_id;
-            $finalApproverId = $formUser->ot_non_exec_final_approver_id;
-
-            // Check if user is the designated Mgr/HOD approver (level 1)
-            if ($otForm->status === 'pending_manager') {
-                if ($mgrApproverId) {
-                    return Auth::id() === $mgrApproverId;
-                }
-                // Fallback to role-based routing
-                return $user->canApproveOTFormLevel1();
+        // Level 2 (pending_gm): CEO or designated final approver
+        if ($otForm->status === 'pending_gm') {
+            // Check if user is designated final approver
+            if ($otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
+                return Auth::id() === $formUser->ot_exec_final_approver_id;
             }
-
-            // Check if user is the designated final approver (level 2 - DGM/CEO)
-            if ($otForm->status === 'pending_gm') {
-                if ($finalApproverId) {
-                    return Auth::id() === $finalApproverId;
-                }
-                // Fallback to role-based routing
-                return $user->canApproveOTFormLevel2();
+            if ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
+                return Auth::id() === $formUser->ot_non_exec_final_approver_id;
             }
-
-            return false;
+            // Fallback to role-based routing for CEO
+            return $user->canApproveOTFormLevel2();
         }
 
         return false;
@@ -250,7 +227,7 @@ class OtApprovalController extends Controller
     }
 
     /**
-     * Get the statuses this user can act on based on role or designated approver assignments.
+     * Get the statuses this user can act on based on reports_to relationship.
      */
     private function getPendingStatusesForUser($user): array
     {
@@ -258,24 +235,27 @@ class OtApprovalController extends Controller
             return ['pending_manager', 'pending_gm'];
         }
 
-        // Check if user is a designated approver for any pending OT forms
-        $isDesignatedHodApprover = User::where('ot_exec_approver_id', $user->id)->exists();
-        $isDesignatedMgrApprover = User::where('ot_non_exec_approver_id', $user->id)->exists();
+        $statuses = [];
+
+        // Check if user is a supervisor (reports_to) for any staff
+        $isSupervisor = User::where('reports_to', $user->id)->exists();
+
+        if ($isSupervisor) {
+            // Manager/HOD can approve pending_manager (level 1)
+            if ($user->canApproveOTFormLevel1()) {
+                $statuses[] = 'pending_manager';
+            }
+        }
+
+        // CEO or designated final approver can approve pending_gm (level 2)
         $isDesignatedFinalApprover = User::where('ot_exec_final_approver_id', $user->id)
             ->orWhere('ot_non_exec_final_approver_id', $user->id)
             ->exists();
-
-        // CEO or designated final approver can approve pending_gm
         if ($user->canApproveOTFormLevel2() || $isDesignatedFinalApprover) {
-            return ['pending_gm'];
+            $statuses[] = 'pending_gm';
         }
 
-        // Manager/HOD or designated HOD/Mgr approver can approve pending_manager
-        if ($user->canApproveOTFormLevel1() || $isDesignatedHodApprover || $isDesignatedMgrApprover) {
-            return ['pending_manager'];
-        }
-
-        return [];
+        return $statuses;
     }
 
     /**
