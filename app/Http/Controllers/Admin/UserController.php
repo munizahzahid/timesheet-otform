@@ -31,6 +31,9 @@ class UserController extends Controller
 
         if ($request->filled('status')) {
             $query->where('is_active', $request->input('status') === 'active');
+        } else {
+            // Default: only show active users
+            $query->where('is_active', true);
         }
 
         $users = $query->orderBy('name')->paginate(20)->withQueryString();

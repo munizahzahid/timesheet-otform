@@ -379,20 +379,19 @@ class DesknetSyncService
                     // Auto-assign role based on designation (only if not admin)
                     $role = $existingUser->role === 'admin' ? 'admin' : $this->mapDesignationToRole($designation);
 
-                    // Always auto-assign reports_to based on designation hierarchy
-                    $reportsTo = $this->autoAssignReportsTo($designation, $departmentModel?->id);
-
-                    $existingUser->update([
+                    // Only update department and designation — preserve reports_to and other manually set fields
+                    $updateData = [
                         'desknet_id' => $desknetId,
                         'staff_no' => $staffNo,
                         'name' => $name,
                         'department_id' => $departmentModel?->id,
                         'designation' => $designation,
                         'role' => $role,
-                        'reports_to' => $reportsTo,
                         'is_active' => $isActive,
                         'last_synced_at' => now(),
-                    ]);
+                    ];
+
+                    $existingUser->update($updateData);
                     $updated++;
                 } else {
                     // Auto-assign role based on designation
