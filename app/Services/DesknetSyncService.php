@@ -211,13 +211,12 @@ class DesknetSyncService
             return 'ceo';
         }
 
-        // Manager/HOD/SPV/Exec roles
+        // Manager/HOD/SPV roles
         if (str_contains($designationLower, 'manager') ||
             str_contains($designationLower, 'hod') ||
             str_contains($designationLower, 'head of') ||
             str_contains($designationLower, 'supervisor') ||
-            str_contains($designationLower, 'spv') ||
-            str_contains($designationLower, 'executive') && !str_contains($designationLower, 'senior')) {
+            str_contains($designationLower, 'spv')) {
             return 'manager_hod';
         }
 
