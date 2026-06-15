@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\SystemConfigController;
 use App\Http\Controllers\Admin\PublicHolidayController;
 use App\Http\Controllers\Admin\DesknetSyncController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\ProjectCodeController;
 use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\ExcelUploadController;
 use App\Http\Controllers\AttendanceUploadController;
