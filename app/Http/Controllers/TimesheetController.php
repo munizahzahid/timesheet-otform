@@ -147,6 +147,8 @@ class TimesheetController extends Controller
             $projectRowsData[] = [
                 'id'             => $row->id,
                 'project_code_id' => $row->project_code_id,
+                'project_category' => $row->project_category,
+                'manual_project_code_name' => $row->manual_project_code_name,
                 'project_name'   => $row->project_name,
                 'row_order'      => $row->row_order,
                 'hours'          => $hoursData,
@@ -221,6 +223,8 @@ class TimesheetController extends Controller
                     if ($row) {
                         $row->update([
                             'project_code_id' => $rowData['project_code_id'] ?: null,
+                            'project_category' => $rowData['project_category'] ?? null,
+                            'manual_project_code_name' => $rowData['manual_project_code_name'] ?? null,
                             'project_name'    => $rowData['project_name'] ?? '',
                             'row_order'       => $idx + 1,
                         ]);
@@ -229,6 +233,8 @@ class TimesheetController extends Controller
                     $row = TimesheetProjectRow::create([
                         'timesheet_id'    => $timesheet->id,
                         'project_code_id' => $rowData['project_code_id'] ?: null,
+                        'project_category' => $rowData['project_category'] ?? null,
+                        'manual_project_code_name' => $rowData['manual_project_code_name'] ?? null,
                         'project_name'    => $rowData['project_name'] ?? '',
                         'row_order'       => $idx + 1,
                     ]);
@@ -393,6 +399,8 @@ class TimesheetController extends Controller
             $projectRowsData[] = [
                 'id'             => $row->id,
                 'project_code_id' => $row->project_code_id,
+                'project_category' => $row->project_category,
+                'manual_project_code_name' => $row->manual_project_code_name,
                 'project_name'   => $row->project_name,
                 'project_code'   => $row->projectCode ? $row->projectCode->code : '',
                 'row_order'      => $row->row_order,
@@ -407,7 +415,8 @@ class TimesheetController extends Controller
                 $hoursData[$d] = ['normal_nc' => 0, 'normal_cobq' => 0, 'ot_nc' => 0, 'ot_cobq' => 0];
             }
             $projectRowsData[] = [
-                'id' => null, 'project_code_id' => null, 'project_name' => '',
+                'id' => null, 'project_code_id' => null, 'project_category' => null,
+                'manual_project_code_name' => null, 'project_name' => '',
                 'project_code' => '', 'row_order' => count($projectRowsData) + 1,
                 'hours' => $hoursData,
             ];

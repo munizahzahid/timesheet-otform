@@ -11,7 +11,7 @@ class TimesheetProjectRow extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'timesheet_id', 'project_code_id', 'project_name', 'row_order',
+        'timesheet_id', 'project_code_id', 'project_category', 'manual_project_code_name', 'project_name', 'row_order',
     ];
 
     public function timesheet(): BelongsTo

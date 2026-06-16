@@ -105,11 +105,19 @@ class TimesheetApprovalController extends Controller
                     ];
                 }
             }
+            // Build display name: prefer category for special entries, otherwise use project code
+            $displayCode = $row->projectCode ? $row->projectCode->code : '';
+            $displayName = $row->projectCode ? $row->projectCode->name : '';
+            if ($row->project_category) {
+                $displayCode = $row->project_category;
+                $displayName = $row->manual_project_code_name ?? '';
+            }
+
             $projectRowsData[] = [
                 'id' => $row->id,
                 'project_code_id' => $row->project_code_id,
-                'project_code' => $row->projectCode ? $row->projectCode->code : '',
-                'project_name' => $row->projectCode ? $row->projectCode->name : '',
+                'project_code' => $displayCode,
+                'project_name' => $displayName,
                 'hours' => $hoursData,
             ];
         }

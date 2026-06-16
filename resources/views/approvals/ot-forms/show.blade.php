@@ -62,15 +62,19 @@
                             </thead>
                             <tbody>
                                 @foreach($otForm->entries as $entry)
-                                    @php $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time; @endphp
+                                    @php $isFilled = $entry->project_code_id || $entry->project_category || $entry->planned_start_time || $entry->actual_start_time; @endphp
                                     @if($isFilled)
                                     <tr>
                                         <td class="border px-2 py-1 text-center">
                                             {{ $otForm->isExecutive() ? $entry->entry_date->format('j/n/Y') : $entry->entry_date->day }}
                                         </td>
                                         <td class="border px-2 py-1">
-                                            {{ $entry->project_code ? $entry->project_code->code : '' }}
-                                            {{ $entry->project_name ? $entry->project_name : '' }}
+                                            @if($entry->project_category)
+                                                {{ $entry->project_category }}{{ $entry->manual_project_code_name ? ' - ' . $entry->manual_project_code_name : '' }}
+                                            @else
+                                                {{ $entry->projectCode ? $entry->projectCode->code : '' }}
+                                                {{ $entry->project_name ? $entry->project_name : '' }}
+                                            @endif
                                         </td>
                                         <td class="border px-2 py-1 text-center">{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}</td>
                                         <td class="border px-2 py-1 text-center">{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}</td>

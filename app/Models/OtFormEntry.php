@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OtFormEntry extends Model
 {
     protected $fillable = [
-        'ot_form_id', 'entry_date', 'project_code_id', 'project_name',
+        'ot_form_id', 'entry_date', 'project_code_id', 'project_category', 'manual_project_code_name', 'project_name',
         'planned_start_time', 'planned_end_time', 'planned_total_hours',
         'actual_start_time', 'actual_end_time', 'actual_total_hours',
         'ot_normal_day_hours', 'ot_rest_day_hours', 'ot_rest_day_excess_hours', 'ot_rest_day_count', 'ot_ph_hours',

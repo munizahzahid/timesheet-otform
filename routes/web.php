@@ -15,6 +15,7 @@ use App\Http\Controllers\TimesheetApprovalController;
 use App\Http\Controllers\OtFormController;
 use App\Http\Controllers\OtApprovalController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\ProjectCodeSearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -66,6 +67,9 @@ Route::middleware('auth')->group(function () {
 
     // History
     Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
+
+    // Project code search API
+    Route::get('/api/project-codes/search', [ProjectCodeSearchController::class, 'search'])->name('api.project-codes.search');
 
     // OT Form Approvals
     Route::get('/approvals/ot-forms', [OtApprovalController::class, 'index'])->name('approvals.ot-forms.index');

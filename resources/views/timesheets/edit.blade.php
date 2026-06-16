@@ -128,14 +128,24 @@
                                                     @endif
                                                 </div>
                                                 @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
-                                                    <select class="w-full text-[10px] border-gray-300 rounded px-1 py-0.5"
-                                                            :value="projectRows[fRow.pIdx].project_code_id"
-                                                            @change="updateProjectCode(fRow.pIdx, $event.target.value)">
-                                                        <option value="">-- Select --</option>
-                                                        @foreach($projectCodes as $pc)
-                                                            <option value="{{ $pc->id }}">{{ $pc->code }}</option>
-                                                        @endforeach
-                                                    </select>
+                                                    <div x-data="tsProjectSelector(fRow.pIdx)" @click.away="closePortal()">
+                                                        <div class="flex items-center gap-0.5">
+                                                            <input type="text" x-ref="tsInput" x-model="search"
+                                                                   @focus="openPortal()"
+                                                                   @input.debounce.200ms="fetchResults()"
+                                                                   @keydown.escape="closePortal()"
+                                                                   :placeholder="displayText || '-- Search --'"
+                                                                   class="w-full text-[10px] border-gray-300 rounded px-1 py-0.5" autocomplete="off">
+                                                            <button x-show="displayText" @click.prevent="clearSel()" type="button" class="text-gray-400 hover:text-red-500 text-[10px]">&times;</button>
+                                                        </div>
+                                                        {{-- Manual entry field --}}
+                                                        <template x-if="isSpecial">
+                                                            <input type="text" x-model="manualName"
+                                                                   @input="updateManual()"
+                                                                   placeholder="Enter project code/name"
+                                                                   class="w-full text-[10px] border-gray-300 rounded px-1 py-0.5 mt-0.5">
+                                                        </template>
+                                                    </div>
                                                     <div class="text-[9px] text-gray-400 mt-0.5 truncate" x-text="projectRows[fRow.pIdx].project_name"></div>
                                                 @else
                                                     <div class="text-[10px] font-medium" x-text="projectRows[fRow.pIdx].project_name"></div>
@@ -377,10 +387,14 @@
                 this.projectRows[pIdx].hours[day][field] = parseFloat(value) || 0;
             },
 
-            updateProjectCode(pIdx, codeId) {
+            updateProjectCode(pIdx, codeId, category = null, manualName = null) {
                 this.projectRows[pIdx].project_code_id = codeId ? parseInt(codeId) : null;
+                this.projectRows[pIdx].project_category = category || null;
+                this.projectRows[pIdx].manual_project_code_name = manualName || null;
                 if (codeId && this.projectCodesLookup[codeId]) {
                     this.projectRows[pIdx].project_name = this.projectCodesLookup[codeId].name;
+                } else if (category) {
+                    this.projectRows[pIdx].project_name = category + (manualName ? ' - ' + manualName : '');
                 } else {
                     this.projectRows[pIdx].project_name = '';
                 }
@@ -391,6 +405,8 @@
                 let newRow = {
                     id: 'new_' + Date.now(),
                     project_code_id: null,
+                    project_category: null,
+                    manual_project_code_name: null,
                     project_name: '',
                     row_order: this.projectRows.length + 1,
                     hours: {}
@@ -737,6 +753,159 @@
                     console.error(e);
                     alert('Error: ' + e.message);
                 }
+            },
+        };
+    }
+
+    function tsProjectSelector(pIdx) {
+        return {
+            pIdx: pIdx,
+            search: '',
+            results: [],
+            isSpecial: false,
+            manualName: '',
+            displayText: '',
+            specialCategories: ['RFQ', 'MKT', 'PUR', 'R&D', 'A.S.S', 'TDR'],
+            searchUrl: @json(route('api.project-codes.search')),
+            _portalEl: null,
+            _portalOpen: false,
+
+            init() {
+                const row = this.getParentData().projectRows[this.pIdx];
+                if (row.project_category && this.specialCategories.includes(row.project_category)) {
+                    this.displayText = row.project_category;
+                    this.isSpecial = true;
+                    this.manualName = row.manual_project_code_name || '';
+                } else if (row.project_code_id) {
+                    const lookup = this.getParentData().projectCodesLookup;
+                    if (lookup[row.project_code_id]) {
+                        this.displayText = lookup[row.project_code_id].code + ' - ' + (lookup[row.project_code_id].name || '');
+                    }
+                }
+            },
+
+            getParentData() {
+                return Alpine.$data(this.$el.closest('[x-data*="timesheetMatrix"]'));
+            },
+
+            _esc(str) {
+                const d = document.createElement('div');
+                d.textContent = str;
+                return d.innerHTML;
+            },
+
+            _buildPortalHtml() {
+                let html = `<div style="max-height:220px;overflow-y:auto;background:#fff;border:1px solid #d1d5db;border-radius:0.375rem;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);font-size:10px;">`;
+                html += `<div style="padding:3px 8px;font-size:9px;font-weight:600;color:#6b7280;text-transform:uppercase;background:#f9fafb;border-bottom:1px solid #e5e7eb;">Manual Entry</div>`;
+                this.specialCategories.forEach(cat => {
+                    html += `<div data-action="category" data-cat="${cat}" style="padding:4px 8px;cursor:pointer;white-space:nowrap;" onmouseenter="this.style.background='#eef2ff'" onmouseleave="this.style.background='transparent'"><span style="font-weight:600;color:#4f46e5;">${cat}</span></div>`;
+                });
+                html += `<div style="padding:3px 8px;font-size:9px;font-weight:600;color:#6b7280;text-transform:uppercase;background:#f9fafb;border-top:1px solid #e5e7eb;">Project Codes</div>`;
+                if (this.results.length > 0) {
+                    this.results.forEach(item => {
+                        html += `<div data-action="project" data-id="${item.id}" data-code="${this._esc(item.code)}" data-name="${this._esc(item.name || '')}" style="padding:4px 8px;cursor:pointer;white-space:nowrap;" onmouseenter="this.style.background='#eef2ff'" onmouseleave="this.style.background='transparent'"><span style="font-weight:500;">${this._esc(item.code)}</span>${item.name ? ' <span style="color:#9ca3af;">- ' + this._esc(item.name) + '</span>' : ''}</div>`;
+                    });
+                } else if (this.search.length > 0) {
+                    html += `<div style="padding:6px;text-align:center;color:#9ca3af;">No results</div>`;
+                } else {
+                    html += `<div style="padding:6px;text-align:center;color:#9ca3af;">Loading...</div>`;
+                }
+                html += `</div>`;
+                return html;
+            },
+
+            _renderPortal() {
+                if (!this._portalEl) {
+                    const el = document.createElement('div');
+                    el.style.cssText = 'position:fixed;z-index:99999;';
+                    document.body.appendChild(el);
+                    this._portalEl = el;
+
+                    document.addEventListener('mousedown', (e) => {
+                        if (this._portalEl && !this._portalEl.contains(e.target) && !this.$el.contains(e.target)) {
+                            this.closePortal();
+                        }
+                    });
+                    const reposition = () => { if (this._portalOpen) this._positionPortal(); };
+                    window.addEventListener('scroll', reposition, true);
+                    window.addEventListener('resize', reposition, true);
+                }
+
+                this._positionPortal();
+                this._portalEl.innerHTML = this._buildPortalHtml();
+                this._portalEl.style.display = 'block';
+
+                this._portalEl.querySelectorAll('[data-action="category"]').forEach(el => {
+                    el.addEventListener('mousedown', (e) => { e.preventDefault(); this.pickCategory(el.dataset.cat); });
+                });
+                this._portalEl.querySelectorAll('[data-action="project"]').forEach(el => {
+                    el.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        this.pickProject({ id: parseInt(el.dataset.id), code: el.dataset.code, name: el.dataset.name });
+                    });
+                });
+            },
+
+            _positionPortal() {
+                if (!this._portalEl || !this.$refs.tsInput) return;
+                const rect = this.$refs.tsInput.getBoundingClientRect();
+                const w = Math.max(rect.width, 200);
+                this._portalEl.style.top = (rect.bottom + 2) + 'px';
+                this._portalEl.style.left = rect.left + 'px';
+                this._portalEl.style.width = w + 'px';
+            },
+
+            openPortal() {
+                this._portalOpen = true;
+                this._renderPortal();
+                this.fetchResults();
+            },
+
+            closePortal() {
+                this._portalOpen = false;
+                if (this._portalEl) this._portalEl.style.display = 'none';
+            },
+
+            fetchResults() {
+                const q = this.search || '';
+                fetch(this.searchUrl + '?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => {
+                        this.results = data;
+                        if (this._portalOpen) this._renderPortal();
+                    })
+                    .catch(() => {});
+            },
+
+            pickProject(item) {
+                this.displayText = item.code + (item.name ? ' - ' + item.name : '');
+                this.isSpecial = false;
+                this.manualName = '';
+                this.search = '';
+                this.closePortal();
+                this.getParentData().updateProjectCode(this.pIdx, item.id, null, null);
+            },
+
+            pickCategory(cat) {
+                this.displayText = cat;
+                this.isSpecial = true;
+                this.manualName = '';
+                this.search = '';
+                this.closePortal();
+                this.getParentData().updateProjectCode(this.pIdx, null, cat, null);
+            },
+
+            updateManual() {
+                this.getParentData().updateProjectCode(this.pIdx, null, this.getParentData().projectRows[this.pIdx].project_category, this.manualName);
+            },
+
+            clearSel() {
+                this.displayText = '';
+                this.isSpecial = false;
+                this.manualName = '';
+                this.search = '';
+                this.closePortal();
+                this.getParentData().updateProjectCode(this.pIdx, null, null, null);
             },
         };
     }

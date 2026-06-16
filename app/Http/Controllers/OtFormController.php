@@ -301,6 +301,8 @@ class OtFormController extends Controller
 
             $entry->update([
                 'project_code_id' => !empty($data['project_code_id']) ? $data['project_code_id'] : null,
+                'project_category' => $data['project_category'] ?? null,
+                'manual_project_code_name' => $data['manual_project_code_name'] ?? null,
                 'project_name' => $data['project_name'] ?? null,
                 'planned_start_time' => $plannedStart ?: null,
                 'planned_end_time' => $plannedEnd ?: null,
@@ -370,11 +372,14 @@ class OtFormController extends Controller
             return response()->json(['error' => 'OT form cannot be submitted in its current status.'], 400);
         }
 
-        // Validate at least 1 entry with planned times
+        // Validate at least 1 entry with planned times and a project selection
         $filledEntries = $otForm->entries()
             ->whereNotNull('planned_start_time')
             ->whereNotNull('planned_end_time')
-            ->whereNotNull('project_code_id')
+            ->where(function ($q) {
+                $q->whereNotNull('project_code_id')
+                  ->orWhereNotNull('project_category');
+            })
             ->count();
 
         if ($filledEntries === 0) {

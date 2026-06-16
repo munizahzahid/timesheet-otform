@@ -398,10 +398,14 @@
             @for ($day = 1; $day <= 31; $day++)
                 @php
                     $e = $entries->get($day);
-                    $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
+                    $isFilled = $e && ($e->project_code_id || $e->project_category || $e->planned_start_time || $e->actual_start_time);
                     $tugas = '';
                     if ($e) {
-                        $tugas = trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? ''));
+                        if ($e->project_category) {
+                            $tugas = $e->project_category . ($e->manual_project_code_name ? ' - ' . $e->manual_project_code_name : '');
+                        } else {
+                            $tugas = trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? ''));
+                        }
                     }
 
                     $pStart = $e ? $e->planned_start_time : null;
@@ -662,7 +666,7 @@
             {{-- Data rows: 18 rows --}}
             @php
                 $filledEntries = $otForm->entries()->with('projectCode')->get()
-                    ->filter(fn($e) => $e->project_code_id || $e->planned_start_time || $e->actual_start_time)
+                    ->filter(fn($e) => $e->project_code_id || $e->project_category || $e->planned_start_time || $e->actual_start_time)
                     ->values();
                 $rowCount = max($filledEntries->count(), 18);
                 $totalPlanOCF = 0; $totalActualOCF = 0; $totalNorm = 0; $totalRest = 0; $totalPH = 0;
@@ -670,7 +674,14 @@
             @for ($i = 0; $i < $rowCount; $i++)
                 @php
                     $e = $filledEntries[$i] ?? null;
-                    $particulars = $e ? trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? '')) : '';
+                    $particulars = '';
+                    if ($e) {
+                        if ($e->project_category) {
+                            $particulars = $e->project_category . ($e->manual_project_code_name ? ' - ' . $e->manual_project_code_name : '');
+                        } else {
+                            $particulars = trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? ''));
+                        }
+                    }
                     
                     $pStart = $e ? $e->planned_start_time : null;
                     $pEnd = $e ? $e->planned_end_time : null;
@@ -705,7 +716,7 @@
                     $totalRest += $otRest;
                     $totalPH += $otPH;
                     
-                    $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
+                    $isFilled = $e && ($e->project_code_id || $e->project_category || $e->planned_start_time || $e->actual_start_time);
                 @endphp
                 <tr class="f6 tc" style="height: 18px;">
                     <td style="height: 18px;">{{ $e ? $e->entry_date->format('d/m/Y') : '' }}</td>

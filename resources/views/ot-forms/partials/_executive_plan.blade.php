@@ -57,23 +57,25 @@
                     {{-- PARTICULARS --}}
                     <td class="border border-gray-200 px-1 py-0.5">
                         @if($entry && $otForm->isEditable())
-                            <select name="entries[{{ $entry->id }}][project_code_id]"
-                                    id="project-code-{{ $entry->id }}"
-                                    onchange="updateProjectName({{ $entry->id }})"
-                                    class="w-full border-0 text-xs py-1 px-1 focus:ring-0 bg-transparent">
-                                <option value="">--</option>
-                                @foreach($projectCodes as $p)
-                                    <option value="{{ $p->id }}" {{ $entry->project_code_id == $p->id ? 'selected' : '' }}
-                                            data-name="{{ $p->name }}">
-                                        {{ $p->code }}{{ $p->name ? ' - ' . $p->name : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <input type="hidden" name="entries[{{ $entry->id }}][project_name]"
-                                   id="project-name-{{ $entry->id }}" value="{{ $entry->project_name }}">
+                            <x-project-code-selector
+                                :entry-id="'exec-' . $entry->id"
+                                :name-prefix="'entries[' . $entry->id . ']'"
+                                :selected-project-code-id="$entry->project_code_id"
+                                :selected-category="$entry->project_category"
+                                :manual-project-name="$entry->manual_project_code_name"
+                                :project-name="$entry->project_name"
+                                input-class="w-full border-0 text-xs py-1 px-1 focus:ring-0 bg-transparent"
+                                :disabled="false"
+                            />
                         @elseif($entry)
-                            <span class="px-1 text-xs">{{ $entry->project_code ? $entry->project_code->code : '' }}
-                            {{ $entry->project_name ? $entry->project_name : '' }}</span>
+                            <span class="px-1 text-xs">
+                                @if($entry->project_category)
+                                    {{ $entry->project_category }}{{ $entry->manual_project_code_name ? ' - ' . $entry->manual_project_code_name : '' }}
+                                @else
+                                    {{ $entry->projectCode ? $entry->projectCode->code : '' }}
+                                    {{ $entry->project_name ? $entry->project_name : '' }}
+                                @endif
+                            </span>
                         @endif
                     </td>
 
