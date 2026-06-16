@@ -139,7 +139,7 @@ class OtAutoFillService
      * For each day, find the project row that has OT hours (ot_nc or ot_cobq).
      * Falls back to the project row with the most total hours on that day.
      *
-     * @return array<string, array{project_code_id: int|null, project_name: string, project_category: string|null, manual_project_code_name: string|null, ot_hours: float}>
+     * @return array<string, array{project_code_id: int, project_name: string, ot_hours: float}>
      */
     protected function getProjectCodeMapFromTimesheet(int $userId, int $month, int $year): array
     {
@@ -175,9 +175,19 @@ class OtAutoFillService
                     || ($otHours > 0 && ($existing['ot_hours'] ?? 0) <= 0)
                     || ($otHours > 0 && $otHours > ($existing['ot_hours'] ?? 0))
                 ) {
+                    // Build project name: use project code name, or category + manual name
+                    $projectName = $row->projectCode
+                        ? $row->projectCode->name
+                        : ($row->project_name ?? '');
+
+                    if (!$projectName && $row->project_category) {
+                        $projectName = $row->project_category
+                            . ($row->manual_project_code_name ? ' - ' . $row->manual_project_code_name : '');
+                    }
+
                     $map[$dateStr] = [
                         'project_code_id' => $row->project_code_id,
-                        'project_name' => $row->projectCode ? $row->projectCode->name : ($row->project_name ?? ''),
+                        'project_name' => $projectName,
                         'project_category' => $row->project_category,
                         'manual_project_code_name' => $row->manual_project_code_name,
                         'ot_hours' => $otHours,

@@ -557,6 +557,8 @@
                             project_rows: this.projectRows.map((p, idx) => ({
                                 id: (typeof p.id === 'string' && p.id.startsWith('new_')) ? 'new' : p.id,
                                 project_code_id: p.project_code_id,
+                                project_category: p.project_category,
+                                manual_project_code_name: p.manual_project_code_name,
                                 project_name: p.project_name,
                                 row_order: idx + 1,
                                 hours: p.hours,
