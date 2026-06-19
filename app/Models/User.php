@@ -118,4 +118,14 @@ class User extends Authenticatable
     {
         return in_array($this->role, ['ceo', 'admin']);
     }
+
+    public function isHR(): bool
+    {
+        return $this->role === 'hr';
+    }
+
+    public function canReviewOTForm(): bool
+    {
+        return in_array($this->role, ['hr', 'admin']);
+    }
 }

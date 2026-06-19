@@ -76,6 +76,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/approvals/ot-forms/{otForm}', [OtApprovalController::class, 'show'])->name('approvals.ot-forms.show');
     Route::post('/approvals/ot-forms/{otForm}/approve', [OtApprovalController::class, 'approve'])->name('approvals.ot-forms.approve');
     Route::post('/approvals/ot-forms/{otForm}/reject', [OtApprovalController::class, 'reject'])->name('approvals.ot-forms.reject');
+    Route::post('/approvals/ot-forms/{otForm}/hr-forward', [OtApprovalController::class, 'hrForward'])->name('approvals.ot-forms.hr-forward');
+    Route::post('/approvals/ot-forms/{otForm}/hr-return', [OtApprovalController::class, 'hrReturn'])->name('approvals.ot-forms.hr-return');
 });
 
 // Admin routes

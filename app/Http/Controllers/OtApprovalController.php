@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApprovalLog;
+use App\Models\Notification;
 use App\Models\OtForm;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -11,20 +12,35 @@ use Illuminate\Support\Facades\Auth;
 class OtApprovalController extends Controller
 {
     /**
-     * List OT forms pending the current user's approval.
+     * List OT forms pending the current user's approval/review.
      */
     public function index()
     {
         $user = Auth::user();
         $pendingStatuses = $this->getPendingStatusesForUser($user);
 
+        if (empty($pendingStatuses)) {
+            $otForms = OtForm::where('id', 0)->paginate(20);
+            return view('approvals.ot-forms.index', compact('otForms'));
+        }
+
         $query = OtForm::with('user')
             ->whereIn('status', $pendingStatuses);
 
-        // Filter by reports_to for pending_manager (level 1)
-        if (in_array('pending_manager', $pendingStatuses) && $user->role !== 'admin') {
-            $query->whereHas('user', function ($q) use ($user) {
-                $q->where('reports_to', $user->id);
+        // Filter by reports_to for pending_manager (level 1) — not for admin/hr
+        if (in_array('pending_manager', $pendingStatuses) && !in_array($user->role, ['admin', 'hr'])) {
+            $query->where(function ($q) use ($user, $pendingStatuses) {
+                $q->where(function ($sub) use ($user) {
+                    $sub->where('status', 'pending_manager')
+                        ->whereHas('user', function ($uq) use ($user) {
+                            $uq->where('reports_to', $user->id);
+                        });
+                });
+                // Also include other statuses the user can see
+                $otherStatuses = array_diff($pendingStatuses, ['pending_manager']);
+                if (!empty($otherStatuses)) {
+                    $q->orWhereIn('status', $otherStatuses);
+                }
             });
         }
 
@@ -41,14 +57,14 @@ class OtApprovalController extends Controller
         $otForm->load('entries.projectCode', 'user.department');
 
         // Build approval stamps
-        $approvalLogs = $otForm->approvalLogs();
+        $approvalLogs = $otForm->approvalLogs()->get();
         $approvalStamps = $this->buildApprovalStamps($otForm, $approvalLogs);
 
         return view('approvals.ot-forms.show', compact('otForm', 'approvalStamps'));
     }
 
     /**
-     * Approve OT form.
+     * Approve OT form (Manager/HOD or CEO).
      */
     public function approve(Request $request, OtForm $otForm)
     {
@@ -67,7 +83,11 @@ class OtApprovalController extends Controller
 
         $request->validate(['signature' => 'required|string']);
 
-        $level = $nextStatus === 'pending_gm' ? 2 : 1;
+        $level = match ($otForm->status) {
+            'pending_manager' => 2,  // Manager/HOD level
+            'pending_gm' => 1,       // GM/CEO level
+            default => 1,
+        };
 
         $otForm->update(['status' => $nextStatus]);
 
@@ -82,14 +102,107 @@ class OtApprovalController extends Controller
                 'acted_at' => now(),
             ]);
         } catch (\Exception $e) {
-            // Log error but don't fail the approval
             \Log::error('Failed to create approval log: ' . $e->getMessage());
         }
+
+        // Send notifications based on new status
+        if ($nextStatus === 'pending_hr') {
+            $monthName = \DateTime::createFromFormat('!m', $otForm->month)->format('F');
+            $this->notifyHRUsers($otForm, 'OT Form Pending HR Review', "{$otForm->user->name}'s OT Form ({$otForm->form_type_label}) for {$monthName} {$otForm->year} is pending your review.");
+        }
+
+        $message = match ($nextStatus) {
+            'pending_hr' => 'OT form approved by Manager/HOD, forwarded to HR for review.',
+            'approved' => 'OT form approved by CEO.',
+            default => 'OT form approved.',
+        };
 
         return response()->json([
             'success' => true,
             'status' => $otForm->status,
-            'message' => $otForm->status === 'approved' ? 'OT form approved.' : 'OT form approved, forwarded to GM.',
+            'message' => $message,
+        ]);
+    }
+
+    /**
+     * HR forwards OT form to CEO.
+     */
+    public function hrForward(Request $request, OtForm $otForm)
+    {
+        $user = Auth::user();
+
+        if (!$user->canReviewOTForm()) {
+            return response()->json(['error' => 'You are not authorized to review this OT form.'], 403);
+        }
+
+        if ($otForm->status !== 'pending_hr') {
+            return response()->json(['error' => 'This OT form is not pending HR review.'], 400);
+        }
+
+        $otForm->update(['status' => 'pending_gm']);
+
+        ApprovalLog::create([
+            'approvable_type' => 'ot_form',
+            'approvable_id' => $otForm->id,
+            'approver_id' => $user->id,
+            'phase' => 'ot_pre',
+            'level' => 0,
+            'action' => 'hr_forwarded',
+            'acted_at' => now(),
+        ]);
+
+        // Notify CEO / final approver
+        $this->notifyCEOUsers($otForm, 'OT Form Pending CEO Approval', "{$otForm->user->name}'s OT Form has been forwarded by HR for your approval.");
+
+        return response()->json([
+            'success' => true,
+            'status' => $otForm->status,
+            'message' => 'OT form forwarded to CEO for approval.',
+        ]);
+    }
+
+    /**
+     * HR returns OT form for correction.
+     */
+    public function hrReturn(Request $request, OtForm $otForm)
+    {
+        $user = Auth::user();
+
+        if (!$user->canReviewOTForm()) {
+            return response()->json(['error' => 'You are not authorized to review this OT form.'], 403);
+        }
+
+        if ($otForm->status !== 'pending_hr') {
+            return response()->json(['error' => 'This OT form is not pending HR review.'], 400);
+        }
+
+        $request->validate(['remarks' => 'required|string']);
+
+        $otForm->update(['status' => 'returned_hr']);
+
+        ApprovalLog::create([
+            'approvable_type' => 'ot_form',
+            'approvable_id' => $otForm->id,
+            'approver_id' => $user->id,
+            'phase' => 'ot_pre',
+            'level' => 0,
+            'action' => 'hr_returned',
+            'remarks' => $request->remarks,
+            'acted_at' => now(),
+        ]);
+
+        // Notify employee
+        Notification::create([
+            'user_id' => $otForm->user_id,
+            'title' => 'OT Form Returned for Correction',
+            'message' => "Your OT Form has been returned by HR for correction. Reason: {$request->remarks}",
+            'link' => route('ot-forms.edit', $otForm),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'status' => $otForm->status,
+            'message' => 'OT form returned to employee for correction.',
         ]);
     }
 
@@ -206,15 +319,15 @@ class OtApprovalController extends Controller
         $designationLower = strtolower($user->designation ?? '');
 
         if ($currentStatus === 'pending_manager') {
-            // Manager/Asst Manager approves → send to GM
+            // Manager/Asst Manager approves → send to HR review (not directly to CEO)
             $isManager = str_contains($designationLower, 'manager') || str_contains($designationLower, 'asst');
             if ($isManager) {
-                return 'pending_gm';
+                return 'pending_hr';
             }
         }
 
         if ($currentStatus === 'pending_gm') {
-            // GM approves → final approval
+            // CEO approves → final approval
             $isGM = str_contains($designationLower, 'general manager') ||
                     str_contains($designationLower, 'gm') ||
                     str_contains($designationLower, 'ceo');
@@ -232,10 +345,15 @@ class OtApprovalController extends Controller
     private function getPendingStatusesForUser($user): array
     {
         if ($user->role === 'admin') {
-            return ['pending_manager', 'pending_gm'];
+            return ['pending_manager', 'pending_hr', 'pending_gm'];
         }
 
         $statuses = [];
+
+        // HR can review pending_hr forms
+        if ($user->canReviewOTForm()) {
+            $statuses[] = 'pending_hr';
+        }
 
         // Check if user is a supervisor (reports_to) for any staff
         $isSupervisor = User::where('reports_to', $user->id)->exists();
@@ -287,7 +405,7 @@ class OtApprovalController extends Controller
             $managerStatus = 'approved';
         } elseif (in_array($otForm->status, ['pending_manager'])) {
             $managerStatus = 'pending';
-        } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
+        } elseif (in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved', 'returned_hr'])) {
             $managerStatus = 'approved';
         }
 
@@ -336,5 +454,55 @@ class OtApprovalController extends Controller
         }
 
         return $stamps;
+    }
+
+    /**
+     * Notify all HR users about an OT form event.
+     */
+    private function notifyHRUsers(OtForm $otForm, string $title, string $message): void
+    {
+        $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
+        foreach ($hrUsers as $hrUser) {
+            Notification::create([
+                'user_id' => $hrUser->id,
+                'title' => $title,
+                'message' => $message,
+                'link' => route('approvals.ot-forms.show', $otForm),
+            ]);
+        }
+    }
+
+    /**
+     * Notify CEO / final approver users about an OT form event.
+     */
+    private function notifyCEOUsers(OtForm $otForm, string $title, string $message): void
+    {
+        $formUser = $otForm->user;
+
+        // Try designated final approver first
+        $finalApproverId = $otForm->form_type === 'executive'
+            ? $formUser->ot_exec_final_approver_id
+            : $formUser->ot_non_exec_final_approver_id;
+
+        if ($finalApproverId) {
+            Notification::create([
+                'user_id' => $finalApproverId,
+                'title' => $title,
+                'message' => $message,
+                'link' => route('approvals.ot-forms.show', $otForm),
+            ]);
+            return;
+        }
+
+        // Fallback: notify all CEO-role users
+        $ceoUsers = User::where('role', 'ceo')->where('is_active', true)->get();
+        foreach ($ceoUsers as $ceoUser) {
+            Notification::create([
+                'user_id' => $ceoUser->id,
+                'title' => $title,
+                'message' => $message,
+                'link' => route('approvals.ot-forms.show', $otForm),
+            ]);
+        }
     }
 }

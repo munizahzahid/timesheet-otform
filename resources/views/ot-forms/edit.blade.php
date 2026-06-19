@@ -15,9 +15,11 @@
                 $badgeClass = match($otForm->status) {
                     'draft' => 'bg-gray-100 text-gray-700 border-gray-300',
                     'pending_manager' => 'bg-amber-50 text-amber-700 border-amber-300',
+                    'pending_hr' => 'bg-cyan-50 text-cyan-700 border-cyan-300',
                     'pending_gm' => 'bg-blue-50 text-blue-700 border-blue-300',
                     'approved' => 'bg-emerald-50 text-emerald-700 border-emerald-300',
                     'rejected' => 'bg-red-50 text-red-700 border-red-300',
+                    'returned_hr' => 'bg-orange-50 text-orange-700 border-orange-300',
                     default => 'bg-gray-100 text-gray-700 border-gray-300',
                 };
             @endphp
@@ -44,6 +46,27 @@
                     </svg>
                     {{ session('error') }}
                 </div>
+            @endif
+
+            {{-- HR Return Reason Notification --}}
+            @if($otForm->status === 'returned_hr')
+                @php
+                    $hrReturnLog = $otForm->approvalLogs()->where('action', 'hr_returned')->orderBy('acted_at', 'desc')->first();
+                @endphp
+                @if($hrReturnLog && $hrReturnLog->remarks)
+                    <div class="mb-4 bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-500 text-orange-800 px-4 py-3 rounded-r-lg shadow-sm">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <div>
+                                <p class="font-semibold">HR Return Reason:</p>
+                                <p class="mt-1">{{ $hrReturnLog->remarks }}</p>
+                                <p class="mt-2 text-sm text-orange-600">Please make the necessary corrections and resubmit.</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             @endif
 
             {{-- Auto-Fill button at top (only if editable) --}}

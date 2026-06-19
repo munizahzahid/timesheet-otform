@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Models\OtForm;
 use App\Models\OtFormEntry;
 use App\Models\ProjectCode;
 use App\Models\ApprovalLog;
+use App\Models\User;
 use App\Services\OtAutoFillService;
 use App\Services\OtFormExcelExport;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -77,7 +79,7 @@ class OtFormController extends Controller
             ->get();
 
         // Build approval stamps data
-        $approvalLogs = $otForm->approvalLogs();
+        $approvalLogs = $otForm->approvalLogs()->get();
         $approvalStamps = $this->buildOtApprovalStamps($otForm, $approvalLogs);
 
         // Approver names for mini stamps in table columns
@@ -368,7 +370,7 @@ class OtFormController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        if (!in_array($otForm->status, ['draft', 'rejected'])) {
+        if (!in_array($otForm->status, ['draft', 'rejected', 'returned_hr'])) {
             return response()->json(['error' => 'OT form cannot be submitted in its current status.'], 400);
         }
 
@@ -386,15 +388,27 @@ class OtFormController extends Controller
             return response()->json(['error' => 'At least one entry with planned times is required.'], 400);
         }
 
+        // If returned by HR, resubmit goes directly back to HR review
+        $isResubmitFromHR = $otForm->status === 'returned_hr';
+        $newStatus = $isResubmitFromHR ? 'pending_hr' : 'pending_manager';
+        $message = $isResubmitFromHR
+            ? 'Resubmitted for HR review.'
+            : 'Submitted for Manager/Asst Manager approval.';
+
         $otForm->update([
-            'status' => 'pending_manager',
+            'status' => $newStatus,
             'plan_submitted_at' => now(),
         ]);
+
+        // Notify HR users when resubmitting
+        if ($isResubmitFromHR) {
+            $this->notifyHRUsers($otForm, 'OT Form Resubmitted', "{$otForm->user->name}'s OT Form has been resubmitted after correction.");
+        }
 
         return response()->json([
             'success' => true,
             'status' => $otForm->status,
-            'message' => 'Submitted for Manager/Asst Manager approval.',
+            'message' => $message,
         ]);
     }
 
@@ -476,5 +490,21 @@ class OtFormController extends Controller
         }
 
         return $stamps;
+    }
+
+    /**
+     * Notify all HR users about an OT form event.
+     */
+    private function notifyHRUsers(OtForm $otForm, string $title, string $message): void
+    {
+        $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
+        foreach ($hrUsers as $hrUser) {
+            Notification::create([
+                'user_id' => $hrUser->id,
+                'title' => $title,
+                'message' => $message,
+                'link' => route('approvals.ot-forms.show', $otForm),
+            ]);
+        }
     }
 }

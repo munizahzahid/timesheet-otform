@@ -32,7 +32,18 @@
                         </div>
                         <div>
                             <span class="font-medium text-gray-500">STATUS:</span>
-                            <span class="ml-1 font-semibold text-yellow-700">{{ $otForm->status_label }}</span>
+                            @php
+                                $statusColor = match($otForm->status) {
+                                    'pending_manager' => 'text-yellow-700',
+                                    'pending_hr' => 'text-cyan-700',
+                                    'pending_gm' => 'text-blue-700',
+                                    'approved' => 'text-green-700',
+                                    'rejected' => 'text-red-700',
+                                    'returned_hr' => 'text-orange-700',
+                                    default => 'text-gray-700',
+                                };
+                            @endphp
+                            <span class="ml-1 font-semibold {{ $statusColor }}">{{ $otForm->status_label }}</span>
                         </div>
                         <div>
                             <span class="font-medium text-gray-500">TYPE:</span>
@@ -124,7 +135,27 @@
                 </div>
             </div>
 
-            {{-- Approval Actions --}}
+            {{-- HR Review Actions --}}
+            @if($otForm->status === 'pending_hr' && auth()->user()->canReviewOTForm())
+                <div class="bg-white shadow-sm sm:rounded-lg mb-6">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">HR Review</h3>
+                        <p class="text-sm text-gray-600 mb-4">This OT form has been approved by Manager/HOD and is awaiting your review before forwarding to CEO.</p>
+                        <div class="flex items-center gap-4">
+                            <button type="button" onclick="hrForwardForm()"
+                                    class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
+                                Forward to CEO
+                            </button>
+                            <button type="button" onclick="hrReturnForm()"
+                                    class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #f59e0b !important; color: white !important;">
+                                Return for Correction
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Approval Actions (Manager/HOD and CEO) --}}
             @if(in_array($otForm->status, ['pending_manager', 'pending_gm']))
                 @php
                     $user = auth()->user();
@@ -235,6 +266,51 @@
                 }
             } catch (err) {
                 console.error('Error:', err);
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function hrForwardForm() {
+            if (!confirm('Forward this OT form to CEO for final approval?')) return;
+            try {
+                const res = await fetch('{{ route("approvals.ot-forms.hr-forward", $otForm) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                console.log('HR Forward Response:', data);
+                if (data.success) {
+                    alert(data.message || 'Forwarded to CEO.');
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed.');
+                }
+            } catch (err) {
+                console.error('HR Forward Error:', err);
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function hrReturnForm() {
+            const remarks = prompt('Reason for returning this OT form:');
+            if (!remarks) return;
+            try {
+                const res = await fetch('{{ route("approvals.ot-forms.hr-return", $otForm) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    body: JSON.stringify({ remarks }),
+                });
+                const data = await res.json();
+                console.log('HR Return Response:', data);
+                if (data.success) {
+                    alert(data.message || 'Returned to employee.');
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed.');
+                }
+            } catch (err) {
+                console.error('HR Return Error:', err);
                 alert('Error: ' + err.message);
             }
         }

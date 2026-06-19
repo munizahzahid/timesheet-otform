@@ -156,13 +156,13 @@
             History
         </a>
 
-        {{-- Approvals (for managers/admin) --}}
-        @if(Auth::user()->role === 'admin' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1() || Auth::user()->canApproveTimesheetHOD() || Auth::user()->canApproveTimesheetL1())
+        {{-- Approvals (for managers/admin/hr) --}}
+        @if(Auth::user()->role === 'admin' || Auth::user()->role === 'hr' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1() || Auth::user()->canApproveTimesheetHOD() || Auth::user()->canApproveTimesheetL1())
             <div class="pt-4 pb-2">
                 <p class="px-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approvals</p>
             </div>
 
-            @if(Auth::user()->role === 'admin' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1())
+            @if(Auth::user()->role === 'admin' || Auth::user()->role === 'hr' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1())
                 <a href="{{ route('approvals.ot-forms.index') }}"
                    class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
                           {{ !$viewingOtherUser && request()->routeIs('approvals.ot-forms.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">

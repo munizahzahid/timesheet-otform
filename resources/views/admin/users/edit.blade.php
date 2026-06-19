@@ -30,6 +30,7 @@
                                 <option value="staff" {{ $user->role === 'staff' ? 'selected' : '' }}>Staff</option>
                                 <option value="assistant_manager" {{ $user->role === 'assistant_manager' ? 'selected' : '' }}>Assistant Manager</option>
                                 <option value="manager_hod" {{ $user->role === 'manager_hod' ? 'selected' : '' }}>Manager/HOD</option>
+                                <option value="hr" {{ $user->role === 'hr' ? 'selected' : '' }}>HR</option>
                                 <option value="ceo" {{ $user->role === 'ceo' ? 'selected' : '' }}>CEO</option>
                                 <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Admin</option>
                             </select>

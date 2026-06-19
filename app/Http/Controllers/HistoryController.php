@@ -219,8 +219,14 @@ class HistoryController extends Controller
 
     private function statusBadgeClass(string $status): string
     {
+        if ($status === 'pending_hr') {
+            return 'bg-cyan-100 text-cyan-800';
+        }
         if (str_starts_with($status, 'pending')) {
             return 'bg-yellow-100 text-yellow-800';
+        }
+        if ($status === 'returned_hr') {
+            return 'bg-orange-100 text-orange-800';
         }
         if (str_starts_with($status, 'rejected')) {
             return 'bg-red-100 text-red-800';

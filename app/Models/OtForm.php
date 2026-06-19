@@ -37,8 +37,7 @@ class OtForm extends Model
     {
         return ApprovalLog::where('approvable_type', 'ot_form')
             ->where('approvable_id', $this->id)
-            ->with('approver')
-            ->get();
+            ->with('approver');
     }
 
     public function isExecutive(): bool
@@ -53,7 +52,7 @@ class OtForm extends Model
 
     public function isEditable(): bool
     {
-        return in_array($this->status, ['draft', 'rejected']);
+        return in_array($this->status, ['draft', 'rejected', 'returned_hr']);
     }
 
     public function isPrintable(): bool
@@ -66,9 +65,11 @@ class OtForm extends Model
         return match ($this->status) {
             'draft' => 'Draft',
             'pending_manager' => 'Pending Manager/Asst Manager Approval',
-            'pending_gm' => 'Pending General Manager Approval',
+            'pending_hr' => 'Pending HR Review',
+            'pending_gm' => 'Pending CEO Approval',
             'approved' => 'Approved',
             'rejected' => 'Rejected',
+            'returned_hr' => 'Returned for Correction',
             default => ucfirst(str_replace('_', ' ', $this->status)),
         };
     }
