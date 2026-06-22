@@ -203,6 +203,54 @@
                 </div>
             </div>
 
+            {{-- Notes and Legend Section --}}
+            <div class="mt-6 bg-white shadow-sm sm:rounded-lg p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {{-- Notes --}}
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800 mb-3">NOTE:</h4>
+                        <ul class="text-xs text-gray-600 space-y-1">
+                            <li>• NORMAL DAY (EXCLUDE OT) - 8 HOURS</li>
+                            <li>• FRIDAY ONLY (EXCLUDE OT) - 7 HOURS</li>
+                        </ul>
+                    </div>
+
+                    {{-- Legend --}}
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800 mb-3">LEGEND:</h4>
+                        <ul class="text-xs text-gray-600 space-y-1">
+                            <li>• NC - NORMAL COST</li>
+                            <li>• COBQ - COST OF BAD QUALITY</li>
+                            <li>• MKT - MARKETING</li>
+                            <li>• PUR - PURCHASING</li>
+                            <li>• R&D - RESEARCH & DEV</li>
+                            <li>• TDR - TENDER</li>
+                            <li>• RFQ - REQUEST FOR QUOTATION</li>
+                            <li>• A.S.S - AFTER SALE SERVICE</li>
+                        </ul>
+                    </div>
+
+                    {{-- Color Legend --}}
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800 mb-3">COLUMN LEGEND:</h4>
+                        <ul class="text-xs text-gray-600 space-y-1">
+                            <li class="flex items-center gap-2">
+                                <span class="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></span>
+                                YELLOW - WEEKEND/REST DAY
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="w-4 h-4 bg-red-100 border border-red-300 rounded"></span>
+                                RED - PUBLIC HOLIDAY
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></span>
+                                ORANGE - LEAVE
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             {{-- Approval Stamps Section --}}
             <div class="mt-6 bg-white shadow-sm sm:rounded-lg p-6">
                 <h3 class="text-sm font-semibold text-gray-800 mb-4">Approval Trail</h3>
