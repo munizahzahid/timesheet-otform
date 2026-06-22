@@ -43,6 +43,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/timesheets/{timesheet}/export-pdf', [TimesheetController::class, 'exportPdf'])->name('timesheets.export-pdf');
     Route::post('/timesheets/{timesheet}/upload-attendance', [AttendanceUploadController::class, 'upload'])->name('timesheets.upload-attendance');
     Route::post('/timesheets/{timesheet}/upload-excel', [ExcelUploadController::class, 'upload'])->name('timesheets.upload-excel');
+    Route::post('/timesheets/{timesheet}/delete-excel', [ExcelUploadController::class, 'delete'])->name('timesheets.delete-excel');
+    Route::get('/timesheets/{timesheet}/view-pdf', [ExcelUploadController::class, 'view'])->name('timesheets.view-pdf');
     
     // Timesheet approval workflow
     Route::get('/approvals/timesheets', [TimesheetApprovalController::class, 'index'])->name('approvals.timesheets.index');

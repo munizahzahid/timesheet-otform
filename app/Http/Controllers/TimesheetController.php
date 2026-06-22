@@ -164,9 +164,12 @@ class TimesheetController extends Controller
         // Build approval stamps for timesheet
         $approvalStamps = $this->buildTimesheetApprovalStamps($timesheet);
 
+        // Get uploaded file for this timesheet
+        $excelUpload = \App\Models\ExcelUpload::where('timesheet_id', $timesheet->id)->first();
+
         return view('timesheets.edit', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps'
+            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload'
         ));
     }
 

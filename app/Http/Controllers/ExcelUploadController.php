@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExcelUpload;
 use App\Models\Timesheet;
 use App\Services\ExcelParsingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ExcelUploadController extends Controller
 {
@@ -64,6 +66,21 @@ class ExcelUploadController extends Controller
                 'warnings_count' => count($result['warnings'] ?? []),
             ]);
 
+            // Save file to storage
+            $storedPath = $file->store('uploads/attendance', 'local');
+
+            // Save file record
+            ExcelUpload::create([
+                'user_id' => $request->user()->id,
+                'timesheet_id' => $timesheet->id,
+                'file_name' => $originalName,
+                'file_path' => $storedPath,
+                'month' => $timesheet->month,
+                'year' => $timesheet->year,
+                'rows_parsed' => $result['processed'] ?? 0,
+                'rows_failed' => 0,
+            ]);
+
             $message = "Excel processed successfully: {$result['processed']} days updated.";
             if ($result['employee_name']) {
                 $message .= " Employee: {$result['employee_name']}";
@@ -95,5 +112,62 @@ class ExcelUploadController extends Controller
             return redirect()->route('timesheets.edit', $timesheet)
                 ->with('upload_error', 'Failed to process Excel file: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Delete the uploaded file for a timesheet.
+     */
+    public function delete(Request $request, Timesheet $timesheet)
+    {
+        // Authorize: only owner or admin
+        if ($timesheet->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        // Only editable timesheets
+        if (!in_array($timesheet->status, ['draft', 'rejected_l1', 'rejected_l2'])) {
+            return redirect()->route('timesheets.edit', $timesheet)
+                ->with('upload_error', 'Timesheet cannot be edited in its current status.');
+        }
+
+        $upload = ExcelUpload::where('timesheet_id', $timesheet->id)->first();
+        if ($upload) {
+            // Delete file from storage
+            if (Storage::exists($upload->file_path)) {
+                Storage::delete($upload->file_path);
+            }
+            $upload->delete();
+        }
+
+        return redirect()->route('timesheets.edit', $timesheet)
+            ->with('upload_success', 'File deleted successfully. You can now upload a new file.');
+    }
+
+    /**
+     * View the uploaded file for a timesheet.
+     */
+    public function view(Request $request, Timesheet $timesheet)
+    {
+        // Authorize: only owner or admin
+        if ($timesheet->user_id !== $request->user()->id && !$request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        $upload = ExcelUpload::where('timesheet_id', $timesheet->id)->first();
+        if (!$upload) {
+            abort(404, 'No file uploaded for this timesheet.');
+        }
+
+        if (!Storage::exists($upload->file_path)) {
+            abort(404, 'File not found in storage.');
+        }
+
+        $file = Storage::get($upload->file_path);
+        $mimeType = Storage::mimeType($upload->file_path);
+
+        return response($file, 200, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $upload->file_name . '"',
+        ]);
     }
 }

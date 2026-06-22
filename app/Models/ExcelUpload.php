@@ -8,12 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ExcelUpload extends Model
 {
     protected $fillable = [
-        'user_id', 'file_name', 'file_path', 'month', 'year',
+        'user_id', 'timesheet_id', 'file_name', 'file_path', 'month', 'year',
         'rows_parsed', 'rows_failed',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function timesheet(): BelongsTo
+    {
+        return $this->belongsTo(Timesheet::class);
     }
 }

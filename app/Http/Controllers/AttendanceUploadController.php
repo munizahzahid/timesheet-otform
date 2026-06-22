@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExcelUpload;
 use App\Models\Timesheet;
 use App\Services\ExcelParsingService;
 use App\Services\PdfParsingService;
@@ -72,6 +73,21 @@ class AttendanceUploadController extends Controller
                 'file_type' => $extension,
                 'processed' => $result['processed'],
                 'warnings_count' => count($result['warnings'] ?? []),
+            ]);
+
+            // Save file to storage
+            $storedPath = $file->store('uploads/attendance', 'local');
+
+            // Save file record
+            ExcelUpload::create([
+                'user_id' => $request->user()->id,
+                'timesheet_id' => $timesheet->id,
+                'file_name' => $originalName,
+                'file_path' => $storedPath,
+                'month' => $timesheet->month,
+                'year' => $timesheet->year,
+                'rows_parsed' => $result['processed'] ?? 0,
+                'rows_failed' => 0,
             ]);
 
             $fileType = $extension === 'pdf' ? 'PDF' : 'Excel';
