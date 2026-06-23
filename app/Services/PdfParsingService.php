@@ -109,15 +109,11 @@ class PdfParsingService
             $timeOut = $row['time_out'];
             $reason = $row['reason'] ?? '';
 
-            // Determine day_type
-            // Treat 0:00 times as null (no actual clock data)
-            $hasValidClockData = false;
-            if ($timeIn && $timeIn->format('H:i') !== '00:00' && $timeIn->format('H:i') !== '00:01') {
-                $hasValidClockData = true;
-            }
-            if ($timeOut && $timeOut->format('H:i') !== '00:00' && $timeOut->format('H:i') !== '00:01') {
-                $hasValidClockData = true;
-            }
+            // Determine day_type based on reason code and clock data
+            $hasValidClockData = ($timeIn !== null || $timeOut !== null);
+
+            // Leave-type reason codes
+            $leaveReasons = ['CAL', 'EL', 'ML', 'AL', 'MC'];
 
             if ($reason === 'ABS') {
                 // Absent: leave blank (no hours), staff can fill manually
@@ -126,11 +122,11 @@ class PdfParsingService
             } elseif ($reason === 'PH') {
                 $dayType = 'public_holiday';
                 $availableHours = 0;
-            } elseif ($dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {
+            } elseif ($reason === 'RES' || $dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {
                 $dayType = 'off_day';
                 $availableHours = 0;
-            } elseif ($reason === 'CAL' || (!$hasValidClockData && !in_array($dow, [Carbon::SATURDAY, Carbon::SUNDAY]))) {
-                // No clock data on weekday = MC/Leave
+            } elseif (in_array($reason, $leaveReasons) || (!$hasValidClockData && !in_array($dow, [Carbon::SATURDAY, Carbon::SUNDAY]))) {
+                // Leave/MC reason code OR no clock data on weekday
                 $dayType = 'mc';
                 $availableHours = $dow === Carbon::FRIDAY ? $defaultHoursFri : $defaultHoursMon;
             } elseif ($dow === Carbon::FRIDAY) {
@@ -291,6 +287,11 @@ class PdfParsingService
     /**
      * Extract attendance data rows from PDF text lines.
      * Returns array of ['day' => int, 'time_in' => Carbon|null, 'time_out' => Carbon|null, 'reason' => string]
+     *
+     * Supports all 7 Infotech PDF formats by using range-based time detection:
+     * - Time Out: values with hour >= 12 (afternoon/evening clock-out)
+     * - Time In: values with 5 <= hour < 12, excluding standard working hours (8.00, 7.00)
+     * - Reason codes: detected before Day+Date pattern OR before NORMA2
      */
     protected function extractDataRows(array $lines, Timesheet $timesheet, array &$result): array
     {
@@ -299,8 +300,9 @@ class PdfParsingService
         $targetYear = $timesheet->year;
         $skippedDates = 0;
 
-        // Skip header lines and find data rows
-        // Data rows contain dates like 01-03-2026
+        // Standard working hours values to exclude from clock-in detection
+        $standardHours = ['8.00', '7.00'];
+
         foreach ($lines as $lineIdx => $line) {
             $line = trim($line);
             if (empty($line)) continue;
@@ -315,12 +317,24 @@ class PdfParsingService
                 stripos($line, 'Date Day') !== false ||
                 stripos($line, 'Grand Total') !== false ||
                 stripos($line, 'Total :') !== false ||
-                stripos($line, 'Cont...') !== false) {
+                stripos($line, 'Cont...') !== false ||
+                stripos($line, 'Actual Clocking') !== false ||
+                stripos($line, 'Allowance') !== false) {
                 continue;
             }
 
             // Look for date pattern DD-MM-YYYY anywhere in the line
             if (!preg_match('/(\d{2})-(\d{2})-(\d{4})/', $line, $dateMatch)) {
+                continue;
+            }
+
+            // Skip period range lines like "01-05-2026 To 31-05-2026"
+            if (preg_match('/\d{2}-\d{2}-\d{4}\s+To\s+\d{2}-\d{2}-\d{4}/i', $line)) {
+                continue;
+            }
+
+            // Skip timestamp lines like "22-06-2026 13:04:07"
+            if (preg_match('/\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2}:\d{2}/', $line)) {
                 continue;
             }
 
@@ -335,68 +349,79 @@ class PdfParsingService
 
             $baseDate = Carbon::create($targetYear, $targetMonth, $day);
 
-            // Extract time values from the line (format: H.MM like 7.46, 16.49)
-            // Only take first TWO time values as time_in and time_out
-            $timeValues = [];
-            preg_match_all('/(\d{1,2})\.(\d{2})/', $line, $timeMatches, PREG_SET_ORDER);
-
-            // Debug: log all matched times
-            $allMatchedTimes = [];
-            foreach ($timeMatches as $tm) {
-                $h = (int) $tm[1];
-                $m = (int) $tm[2];
-                if ($h >= 0 && $h <= 23 && $m >= 0 && $m <= 59) {
-                    $allMatchedTimes[] = sprintf('%02d:%02d', $h, $m);
-                }
-            }
-            Log::debug('Time matches found', [
-                'day' => $day,
-                'all_matches' => $allMatchedTimes,
-            ]);
-
-            // Take only first 2 valid time matches
-            foreach ($timeMatches as $tm) {
-                if (count($timeValues) >= 2) break;
-                $h = (int) $tm[1];
-                $m = (int) $tm[2];
-                if ($h >= 0 && $h <= 23 && $m >= 0 && $m <= 59) {
-                    $timeValues[] = (clone $baseDate)->setTime($h, $m);
-                }
-            }
-
-            // Extract reason code (PH, CAL, RES, ABS)
-            // These codes appear near the date like PHFri20-03-2026, CALTue24-03-2026
-            // Search specifically for these codes before the date pattern
+            // --- Extract reason code ---
+            // Reason codes: PH, CAL, RES, ABS, EL, ML, AL, MC
+            // Pattern 1: ReasonCode + DayName (e.g., PHFri, RESMon, ELTue)
+            // Pattern 2: ReasonCode + NORMA (e.g., PHNORMA2, RESNORMA2)
             $reason = '';
-            // Look for reason code followed by day abbreviation (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
-            if (preg_match('/(PH|CAL|RES|ABS)(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i', $line, $rm)) {
+            if (preg_match('/(PH|CAL|RES|ABS|EL|ML|AL|MC)\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i', $line, $rm)) {
+                $reason = strtoupper($rm[1]);
+            } elseif (preg_match('/(PH|CAL|RES|ABS|EL|ML|AL|MC)\s*NORMA/i', $line, $rm)) {
                 $reason = strtoupper($rm[1]);
             }
 
-            // In the concatenated format, the first two time values are typically In and Out
-            // The format appears to be: InTime OutTime NORMA2 ... Day Date ...
-            $timeIn = null;
-            $timeOut = null;
+            // --- Extract time values using range-based detection ---
+            // Find all H.MM patterns in the line
+            preg_match_all('/(\d{1,2})\.(\d{2})/', $line, $timeMatches, PREG_SET_ORDER);
 
-            if (count($timeValues) >= 2) {
-                $timeIn = $timeValues[0];
-                $timeOut = $timeValues[1];
-            } elseif (count($timeValues) === 1) {
-                $timeIn = $timeValues[0];
+            $afternoonTimes = []; // Hour >= 12 → candidates for Time Out
+            $morningTimes = [];   // 5 <= Hour < 12 → candidates for Time In
+
+            foreach ($timeMatches as $tm) {
+                $h = (int) $tm[1];
+                $m = (int) $tm[2];
+                $raw = $tm[0]; // e.g., "17.34", "8.14"
+
+                if ($h < 0 || $h > 23 || $m < 0 || $m > 59) continue;
+                if ($h === 0 && $m === 0) continue; // Skip 0.00
+
+                if ($h >= 12) {
+                    $afternoonTimes[] = ['h' => $h, 'm' => $m, 'raw' => $raw];
+                } elseif ($h >= 5 && $h < 12) {
+                    $morningTimes[] = ['h' => $h, 'm' => $m, 'raw' => $raw];
+                }
             }
 
-            // Skip if no time data and not a special day
-            if (empty($timeValues) && empty($reason)) {
+            // Determine Time Out: first unique afternoon value
+            $timeOut = null;
+            if (!empty($afternoonTimes)) {
+                $t = $afternoonTimes[0];
+                $timeOut = (clone $baseDate)->setTime($t['h'], $t['m']);
+            }
+
+            // Determine Time In: first morning value that's NOT standard hours
+            $timeIn = null;
+            $fallbackIn = null;
+            foreach ($morningTimes as $t) {
+                if (!in_array($t['raw'], $standardHours)) {
+                    $timeIn = (clone $baseDate)->setTime($t['h'], $t['m']);
+                    break;
+                } else {
+                    // Keep as fallback in case all morning values are standard hours
+                    if (!$fallbackIn) {
+                        $fallbackIn = (clone $baseDate)->setTime($t['h'], $t['m']);
+                    }
+                }
+            }
+
+            // If we have a Time Out but no distinct Time In, use fallback (e.g., exactly 8:00 clock-in)
+            if ($timeOut && !$timeIn && $fallbackIn) {
+                $timeIn = $fallbackIn;
+            }
+
+            // Skip if no time data and no reason code (not a data row)
+            $hasTimeData = ($timeIn !== null || $timeOut !== null);
+            if (!$hasTimeData && empty($reason)) {
                 continue;
             }
 
             Log::debug('PDF row parsed', [
                 'day' => $day,
-                'times_found' => count($timeValues),
                 'in' => $timeIn ? $timeIn->format('H:i') : null,
                 'out' => $timeOut ? $timeOut->format('H:i') : null,
                 'reason' => $reason,
-                'line_snippet' => substr($line, 0, 60),
+                'afternoon_count' => count($afternoonTimes),
+                'morning_count' => count($morningTimes),
             ]);
 
             $dataRows[] = [
