@@ -126,6 +126,11 @@
                 handleFileSelect(event) {
                     const file = event.target.files[0];
                     if (!file) return;
+                    if (!this.isValidPdf(file)) {
+                        alert('Please upload in PDF format.');
+                        this.$refs.fileInput.value = '';
+                        return;
+                    }
                     this.fileName = file.name;
                     this.submitForm();
                 },
@@ -134,9 +139,17 @@
                     this.dragOver = false;
                     const files = event.dataTransfer.files;
                     if (!files.length) return;
+                    if (!this.isValidPdf(files[0])) {
+                        alert('Please upload in PDF format.');
+                        return;
+                    }
                     this.$refs.fileInput.files = files;
                     this.fileName = files[0].name;
                     this.submitForm();
+                },
+
+                isValidPdf(file) {
+                    return file.name.toLowerCase().endsWith('.pdf');
                 },
 
                 submitForm() {

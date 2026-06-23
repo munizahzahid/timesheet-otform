@@ -7,7 +7,7 @@
                 <th rowspan="2" class="border px-1 py-0.5 text-left w-32">TUGAS ATAU AKTIVITI</th>
                 <th colspan="3" class="border px-1 py-0.5 text-center bg-blue-50">MASA DIRANCANG</th>
                 <th colspan="3" class="border px-1 py-0.5 text-center bg-green-50">MASA SEBENAR</th>
-                <th rowspan="2" class="border px-1 py-0.5 text-center w-8">MAKAN<br>0-3 JAM</th>
+                <th rowspan="2" class="border px-1 py-0.5 text-center w-8">MAKAN<br>(>3 JAM)</th>
                 <th rowspan="2" class="border px-1 py-0.5 text-center w-8">SHIFT</th>
                 <th colspan="3" class="border px-1 py-0.5 text-center bg-yellow-50">KELULUSAN</th>
                 <th colspan="4" class="border px-1 py-0.5 text-center bg-orange-50">JENIS OT</th>
@@ -26,7 +26,7 @@
                 <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">NOR-<br>MAL</th>
                 <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">TRAIN</th>
                 <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">KAI-<br>ZEN</th>
-                <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">SS</th>
+                <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">5S</th>
                 <th class="border px-0.5 py-0.5 text-center bg-purple-50 w-8">OT 1</th>
                 <th class="border px-0.5 py-0.5 text-center bg-purple-50 w-8">OT 2</th>
                 <th class="border px-0.5 py-0.5 text-center bg-purple-50 w-8">OT 3</th>

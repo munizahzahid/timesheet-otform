@@ -45,7 +45,9 @@ class AttendanceUploadController extends Controller
         }
 
         $request->validate([
-            'attendance_file' => 'required|file|mimes:pdf,xlsx,xls,csv|max:5120', // max 5MB
+            'attendance_file' => 'required|file|mimes:pdf|max:5120', // max 5MB, PDF only
+        ], [
+            'attendance_file.mimes' => 'Please upload in PDF format.',
         ]);
 
         try {
