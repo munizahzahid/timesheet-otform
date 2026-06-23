@@ -345,7 +345,7 @@
             </div>
 
             {{-- Rejection Modal --}}
-            <div x-show="showRejectionModalFlag" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div x-show="showRejectionModalFlag" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4" @click.stop>
                     <h3 class="text-lg font-semibold mb-4">Reject Timesheet</h3>
                     <textarea x-model="rejectionRemarks" class="w-full border border-gray-300 rounded p-2 text-sm" rows="3" placeholder="Enter rejection remarks..."></textarea>
