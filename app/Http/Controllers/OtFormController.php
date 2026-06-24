@@ -73,7 +73,9 @@ class OtFormController extends Controller
             abort(403);
         }
 
-        $otForm->load('entries.projectCode', 'user.department');
+        $otForm->load(['entries' => function ($q) {
+            $q->orderBy('entry_date')->orderBy('id');
+        }, 'entries.projectCode', 'user.department']);
         $projectCodes = ProjectCode::where('is_active', true)
             ->orderBy('code')
             ->get();
@@ -362,6 +364,73 @@ class OtFormController extends Controller
             'warnings' => $result['warnings'] ?? [],
             'message' => $result['message'],
         ]);
+    }
+
+    /**
+     * Add a new entry row for a given date on the OT form.
+     */
+    public function addEntry(Request $request, OtForm $otForm)
+    {
+        if ($otForm->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$otForm->isEditable()) {
+            return response()->json(['error' => 'OT form cannot be edited in its current status.'], 400);
+        }
+
+        $request->validate([
+            'entry_date' => 'required|date',
+        ]);
+
+        $entryDate = Carbon::parse($request->entry_date);
+
+        // Validate date is within the form's month/year
+        if ($entryDate->month !== $otForm->month || $entryDate->year !== $otForm->year) {
+            return response()->json(['error' => 'Date must be within the form\'s month/year.'], 400);
+        }
+
+        $entry = OtFormEntry::create([
+            'ot_form_id' => $otForm->id,
+            'entry_date' => $entryDate->toDateString(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'entry_id' => $entry->id,
+            'entry_date' => $entryDate->toDateString(),
+        ]);
+    }
+
+    /**
+     * Delete an entry row from the OT form (must keep at least 1 per date).
+     */
+    public function deleteEntry(OtForm $otForm, OtFormEntry $entry)
+    {
+        if ($otForm->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$otForm->isEditable()) {
+            return response()->json(['error' => 'OT form cannot be edited in its current status.'], 400);
+        }
+
+        if ($entry->ot_form_id !== $otForm->id) {
+            return response()->json(['error' => 'Entry does not belong to this form.'], 400);
+        }
+
+        // Must keep at least 1 entry per date
+        $countForDate = OtFormEntry::where('ot_form_id', $otForm->id)
+            ->where('entry_date', $entry->entry_date)
+            ->count();
+
+        if ($countForDate <= 1) {
+            return response()->json(['error' => 'Cannot delete the last entry for this date.'], 400);
+        }
+
+        $entry->delete();
+
+        return response()->json(['success' => true]);
     }
 
     public function submitPlan(Request $request, OtForm $otForm)

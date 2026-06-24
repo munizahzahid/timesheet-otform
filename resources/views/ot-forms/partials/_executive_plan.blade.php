@@ -27,19 +27,15 @@
         </thead>
         <tbody>
             @php
-                $entries = $otForm->entries->all();
-                $minRows = 20;
-                $totalRows = max(count($entries), $minRows);
+                $groupedEntries = $otForm->entries->groupBy(fn($e) => $e->entry_date->format('Y-m-d'));
             @endphp
-            @for($i = 0; $i < $totalRows; $i++)
+            @foreach($groupedEntries as $dateStr => $dateEntries)
+            @foreach($dateEntries as $entryIdx => $entry)
                 @php
-                    $entry = $entries[$i] ?? null;
-                    $isFilled = $entry && ($entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time);
-                    $isRestOrPH = false;
-                    if ($entry) {
-                        $dow = $entry->entry_date->dayOfWeek;
-                        $isRestOrPH = in_array($dow, [0, 6]) || $entry->is_public_holiday;
-                    }
+                    $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
+                    $dow = $entry->entry_date->dayOfWeek;
+                    $isRestOrPH = in_array($dow, [0, 6]) || $entry->is_public_holiday;
+                    $isFirstRow = $entryIdx === 0;
                     $planTimeOptions = [];
                     for ($h = 0; $h <= 23; $h++) {
                         for ($m = 0; $m < 60; $m += 30) {
@@ -47,16 +43,31 @@
                         }
                     }
                 @endphp
-                <tr class="entry-row hover:bg-gray-50 {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30' }}"
-                    @if($entry) data-entry-id="{{ $entry->id }}" data-is-weekend="{{ $isRestOrPH ? '1' : '0' }}" @endif>
+                <tr class="entry-row hover:bg-gray-50"
+                    data-entry-id="{{ $entry->id }}" data-entry-date="{{ $dateStr }}" data-is-weekend="{{ $isRestOrPH ? '1' : '0' }}">
                     {{-- DATE --}}
                     <td class="border border-gray-200 px-2 py-1.5 text-center text-xs">
-                        {{ $entry ? $entry->entry_date->format('j/n') : '' }}
+                        @if($isFirstRow)
+                            <div class="flex items-center justify-center gap-0.5">
+                                <span>{{ $entry->entry_date->format('j/n') }}</span>
+                                @if($otForm->isEditable())
+                                    <button type="button" onclick="addEntryRow('{{ $dateStr }}')" class="text-green-600 hover:text-green-800 ml-0.5" title="Add another entry for this day">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    </button>
+                                @endif
+                            </div>
+                        @else
+                            @if($otForm->isEditable())
+                                <button type="button" onclick="deleteEntryRow({{ $entry->id }})" class="text-red-500 hover:text-red-700" title="Remove this entry">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            @endif
+                        @endif
                     </td>
 
                     {{-- PARTICULARS --}}
                     <td class="border border-gray-200 px-1 py-0.5">
-                        @if($entry && $otForm->isEditable())
+                        @if($otForm->isEditable())
                             <x-project-code-selector
                                 :entry-id="'exec-' . $entry->id"
                                 :name-prefix="'entries[' . $entry->id . ']'"
@@ -67,7 +78,7 @@
                                 input-class="w-full border-0 text-xs py-1 px-1 focus:ring-0 bg-transparent"
                                 :disabled="false"
                             />
-                        @elseif($entry)
+                        @else
                             <span class="px-1 text-xs">
                                 @if($entry->project_category)
                                     {{ $entry->project_category }}{{ $entry->manual_project_code_name ? ' - ' . $entry->manual_project_code_name : '' }}
@@ -81,7 +92,7 @@
 
                     {{-- PLAN START --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
-                        @if($entry && $otForm->isEditable())
+                        @if($otForm->isEditable())
                             <select name="entries[{{ $entry->id }}][planned_start_time]"
                                     onchange="calcTotal({{ $entry->id }}, 'planned')"
                                     class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
@@ -90,14 +101,14 @@
                                     <option value="{{ $t }}" {{ $entry->planned_start_time && substr($entry->planned_start_time, 0, 5) === $t ? 'selected' : '' }}>{{ $t }}</option>
                                 @endforeach
                             </select>
-                        @elseif($entry)
+                        @else
                             <span class="text-xs">{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}</span>
                         @endif
                     </td>
 
                     {{-- PLAN END --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
-                        @if($entry && $otForm->isEditable())
+                        @if($otForm->isEditable())
                             <select name="entries[{{ $entry->id }}][planned_end_time]"
                                     onchange="calcTotal({{ $entry->id }}, 'planned')"
                                     class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
@@ -106,19 +117,17 @@
                                     <option value="{{ $t }}" {{ $entry->planned_end_time && substr($entry->planned_end_time, 0, 5) === $t ? 'selected' : '' }}>{{ $t }}</option>
                                 @endforeach
                             </select>
-                        @elseif($entry)
+                        @else
                             <span class="text-xs">{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}</span>
                         @endif
                     </td>
 
                     {{-- PLAN TOTAL --}}
                     <td class="border border-gray-200 px-1 py-1.5 text-center">
-                        @if($entry)
-                            <input type="text" id="planned-total-{{ $entry->id }}"
-                                   name="entries[{{ $entry->id }}][planned_total_hours]"
-                                   value="{{ number_format(abs($entry->planned_total_hours ?? 0), 2) }}"
-                                   class="plan-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
-                        @endif
+                        <input type="text" id="planned-total-{{ $entry->id }}"
+                               name="entries[{{ $entry->id }}][planned_total_hours]"
+                               value="{{ number_format(abs($entry->planned_total_hours ?? 0), 2) }}"
+                               class="plan-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
 
                     {{-- APPROVAL BEFORE: EXEC --}}
@@ -151,62 +160,61 @@
 
                     {{-- ACTUAL START --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
-                        @if($entry && $otForm->isEditable())
+                        @if($otForm->isEditable())
                             <input type="time" name="entries[{{ $entry->id }}][actual_start_time]"
                                    value="{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}"
                                    onchange="calcTotal({{ $entry->id }}, 'actual')"
                                    class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
-                        @elseif($entry)
+                        @else
                             <span class="text-xs">{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}</span>
                         @endif
                     </td>
 
                     {{-- ACTUAL END --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
-                        @if($entry && $otForm->isEditable())
+                        @if($otForm->isEditable())
                             <input type="time" name="entries[{{ $entry->id }}][actual_end_time]"
                                    value="{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}"
                                    onchange="calcTotal({{ $entry->id }}, 'actual')"
                                    class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
-                        @elseif($entry)
+                        @else
                             <span class="text-xs">{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}</span>
                         @endif
                     </td>
 
                     {{-- ACTUAL TOTAL --}}
                     <td class="border border-gray-200 px-1 py-1.5 text-center">
-                        @if($entry)
-                            <input type="text" id="actual-total-{{ $entry->id }}"
-                                   name="entries[{{ $entry->id }}][actual_total_hours]"
-                                   value="{{ number_format(abs($entry->actual_total_hours ?? 0), 2) }}"
-                                   class="actual-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
-                        @endif
+                        <input type="text" id="actual-total-{{ $entry->id }}"
+                               name="entries[{{ $entry->id }}][actual_total_hours]"
+                               value="{{ number_format(abs($entry->actual_total_hours ?? 0), 2) }}"
+                               class="actual-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
 
                     {{-- TOTAL HOURS: NORMAL DAY, REST DAY, PUBLIC HOLIDAY --}}
                     <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
-                        @if($entry && $entry->ot_normal_day_hours > 0)
+                        @if($entry->ot_normal_day_hours > 0)
                             {{ number_format($entry->ot_normal_day_hours, 2) }}
                         @else
                             <span class="text-gray-400">-</span>
                         @endif
                     </td>
                     <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
-                        @if($entry && $entry->ot_rest_day_hours > 0)
+                        @if($entry->ot_rest_day_hours > 0)
                             {{ number_format($entry->ot_rest_day_hours, 2) }}
                         @else
                             <span class="text-gray-400">-</span>
                         @endif
                     </td>
                     <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
-                        @if($entry && $entry->ot_ph_hours > 0)
+                        @if($entry->ot_ph_hours > 0)
                             {{ number_format($entry->ot_ph_hours, 2) }}
                         @else
                             <span class="text-gray-400">-</span>
                         @endif
                     </td>
                 </tr>
-            @endfor
+            @endforeach
+            @endforeach
         </tbody>
     </table>
 </div>

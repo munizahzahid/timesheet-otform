@@ -420,6 +420,51 @@
             document.getElementById('actualTotalDisplay').textContent = actualTotal.toFixed(2);
         }
 
+        // Add a new entry row for the given date
+        async function addEntryRow(dateStr) {
+            try {
+                const res = await fetch('{{ route("ot-forms.add-entry", $otForm) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ entry_date: dateStr }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed to add entry.');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // Delete an extra entry row
+        async function deleteEntryRow(entryId) {
+            if (!confirm('Remove this entry row?')) return;
+            try {
+                const res = await fetch('{{ url("ot-forms") }}/{{ $otForm->id }}/entries/' + entryId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed to delete entry.');
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
         // Calculate OT1-OT5 based on day type and actual hours (Malaysian labor law)
         function calcOT(entryId) {
             const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);

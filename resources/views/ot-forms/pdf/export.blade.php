@@ -208,7 +208,7 @@
             ];
         }
 
-        $entries = $otForm->entries()->with('projectCode')->get()->keyBy(fn($e) => $e->entry_date->day);
+        $entries = $otForm->entries()->with('projectCode')->get()->groupBy(fn($e) => $e->entry_date->format('Y-m-d'));
 
         $totalPlan = $totalActual = 0.0;
         $totalMeal = $totalShift = 0;
@@ -397,7 +397,11 @@
             {{-- Data rows: 31 days --}}
             @for ($day = 1; $day <= 31; $day++)
                 @php
-                    $e = $entries->get($day);
+                    $dateStr = \Carbon\Carbon::create($otForm->year, $otForm->month, $day)->format('Y-m-d');
+                    $dayEntries = $entries->get($dateStr, collect());
+                @endphp
+                @foreach($dayEntries as $entryIdx => $e)
+                @php
                     $isFilled = $e && ($e->project_code_id || $e->project_category || $e->planned_start_time || $e->actual_start_time);
                     $tugas = '';
                     if ($e) {
@@ -466,15 +470,16 @@
                     <td class="f6">{{ $ot4 > 0 ? number_format($ot4, 2) : '' }}</td>
                     <td class="f6">{{ $ot5 > 0 ? $ot5 : '' }}</td>
                 </tr>
+                @endforeach
             @endfor
 
             {{-- JUMLAH + signature labels + OT totals row --}}
             <tr class="f6 b tc">
                 <td class="tl f7 nb" colspan="2" style="padding-left: 4px; border-left: 0 !important; border-bottom: 0 !important;">NOTA :</td>
                 <td colspan="2" class="f7 nb" style="border-left: 0 !important; border-bottom: 0 !important;">JUMLAH</td>
-                <td class="dbl f7">{{ $totalPlan > 0 ? number_format($totalPlan, 0) : '' }}</td>
+                <td class="dbl f7">{{ $totalPlan > 0 ? number_format($totalPlan, 2) : '' }}</td>
                 <td colspan="2" class="nb" style="border-bottom: 0 !important;"></td>
-                <td class="dbl f7">{{ $totalActual > 0 ? number_format($totalActual, 0) : '' }}</td>
+                <td class="dbl f7">{{ $totalActual > 0 ? number_format($totalActual, 2) : '' }}</td>
                 <td class="dbl f7">{{ $totalMeal > 0 ? $totalMeal : '' }}</td>
                 <td class="dbl f7">{{ $totalShift > 0 ? $totalShift : '' }}</td>
                 <td class="f5">Disediakan<br>Oleh :</td>
@@ -667,13 +672,15 @@
             @php
                 $filledEntries = $otForm->entries()->with('projectCode')->get()
                     ->filter(fn($e) => $e->project_code_id || $e->project_category || $e->planned_start_time || $e->actual_start_time)
-                    ->values();
+                    ->groupBy(fn($e) => $e->entry_date->format('Y-m-d'))
+                    ->sortKeys();
                 $rowCount = max($filledEntries->count(), 18);
                 $totalPlanOCF = 0; $totalActualOCF = 0; $totalNorm = 0; $totalRest = 0; $totalPH = 0;
             @endphp
-            @for ($i = 0; $i < $rowCount; $i++)
+            @php $rowIdx = 0; @endphp
+            @foreach($filledEntries as $dateStr => $dateEntries)
+            @foreach($dateEntries as $entryIdx => $e)
                 @php
-                    $e = $filledEntries[$i] ?? null;
                     $particulars = '';
                     if ($e) {
                         if ($e->project_category) {
@@ -682,7 +689,7 @@
                             $particulars = trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? ''));
                         }
                     }
-                    
+
                     $pStart = $e ? $e->planned_start_time : null;
                     $pEnd = $e ? $e->planned_end_time : null;
                     $pHours = $e ? (float)$e->planned_total_hours : 0;
@@ -690,7 +697,7 @@
                         $pHours = \App\Services\OtFormExcelExport::calcHours($pStart, $pEnd);
                     }
                     $totalPlanOCF += $pHours;
-                    
+
                     $aStart = $e ? $e->actual_start_time : null;
                     $aEnd = $e ? $e->actual_end_time : null;
                     $aHours = $e ? (float)$e->actual_total_hours : 0;
@@ -698,7 +705,7 @@
                         $aHours = \App\Services\OtFormExcelExport::calcHours($aStart, $aEnd);
                     }
                     $totalActualOCF += $aHours;
-                    
+
                     // OT hours
                     $otNormal = $e ? (float)$e->ot_normal_day_hours : 0;
                     $otRest = $e ? (float)$e->ot_rest_day_hours : 0;
@@ -715,8 +722,9 @@
                     $totalNorm += $otNormal;
                     $totalRest += $otRest;
                     $totalPH += $otPH;
-                    
+
                     $isFilled = $e && ($e->project_code_id || $e->project_category || $e->planned_start_time || $e->actual_start_time);
+                    $rowIdx++;
                 @endphp
                 <tr class="f6 tc" style="height: 18px;">
                     <td style="height: 18px;">{{ $e ? $e->entry_date->format('d/m/Y') : '' }}</td>
@@ -746,7 +754,27 @@
                     <td>{{ $otRest > 0 ? number_format($otRest, 2) : '' }}</td>
                     <td>{{ $otPH > 0 ? number_format($otPH, 2) : '' }}</td>
                 </tr>
-            @endfor
+            @endforeach
+            @endforeach
+            @while($rowIdx < 18)
+                @php $rowIdx++; @endphp
+                <tr class="f6 tc" style="height: 18px;">
+                    <td style="height: 18px;"></td>
+                    <td class="tl" style="height: 18px; padding-left: 3px;"></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            @endwhile
 
             {{-- Empty row with wider height --}}
             <tr style="height: 70px;">

@@ -232,7 +232,7 @@ class OtFormExcelExport
 
         // ── Data rows (31 days) ──────────────────────────────────────────────────
         $allEntries = $otForm->entries()->with('projectCode')->get()
-            ->keyBy(fn($e) => $e->entry_date->day);
+            ->groupBy(fn($e) => $e->entry_date->format('Y-m-d'));
 
         // Fetch approval logs — HOD=level2, GM=level1 (per OtApprovalController)
         $logs = ApprovalLog::where('approvable_type', 'ot_form')
@@ -287,134 +287,137 @@ class OtFormExcelExport
         $totalOt1 = 0; $totalOt2 = 0; $totalOt3 = 0; $totalOt4 = 0; $totalOt5 = 0;
 
         for ($day = 1; $day <= 31; $day++) {
-            $e = $allEntries->get($day);
-            $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
-            $tugas = $e ? trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? '')) : '';
+            $dateStr = \Carbon\Carbon::create($otForm->year, $otForm->month, $day)->format('Y-m-d');
+            $dayEntries = $allEntries->get($dateStr, collect());
+            foreach ($dayEntries as $e) {
+                $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
+                $tugas = $e ? trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? '')) : '';
 
-            $sheet->setCellValue("B{$r}", $day);
-            $sheet->getStyle("B{$r}")->getFont()->setBold(true)->setSize(12);
-            $sheet->mergeCells("C{$r}:H{$r}");
-            $sheet->setCellValue("C{$r}", $tugas);
-            $sheet->getStyle("C{$r}")->getAlignment()->setWrapText(true);
+                $sheet->setCellValue("B{$r}", $day);
+                $sheet->getStyle("B{$r}")->getFont()->setBold(true)->setSize(12);
+                $sheet->mergeCells("C{$r}:H{$r}");
+                $sheet->setCellValue("C{$r}", $tugas);
+                $sheet->getStyle("C{$r}")->getAlignment()->setWrapText(true);
 
-            // Planned times & hours (calc from times if stored value is 0)
-            $pStart = $e ? $e->planned_start_time : null;
-            $pEnd   = $e ? $e->planned_end_time : null;
-            $pHours = $e ? ((float)$e->planned_total_hours ?: $this->calcHours($pStart, $pEnd)) : 0;
-            $sheet->setCellValue("I{$r}", $pStart ? substr($pStart, 0, 5) : '');
-            $sheet->setCellValue("J{$r}", $pEnd ? substr($pEnd, 0, 5) : '');
-            $sheet->setCellValue("K{$r}", $pHours > 0 ? number_format($pHours, 2) : '');
+                // Planned times & hours (calc from times if stored value is 0)
+                $pStart = $e ? $e->planned_start_time : null;
+                $pEnd   = $e ? $e->planned_end_time : null;
+                $pHours = $e ? ((float)$e->planned_total_hours ?: $this->calcHours($pStart, $pEnd)) : 0;
+                $sheet->setCellValue("I{$r}", $pStart ? substr($pStart, 0, 5) : '');
+                $sheet->setCellValue("J{$r}", $pEnd ? substr($pEnd, 0, 5) : '');
+                $sheet->setCellValue("K{$r}", $pHours > 0 ? number_format($pHours, 2) : '');
 
-            // Actual times & hours
-            $aStart = $e ? $e->actual_start_time : null;
-            $aEnd   = $e ? $e->actual_end_time : null;
-            $aHours = $e ? ((float)$e->actual_total_hours ?: $this->calcHours($aStart, $aEnd)) : 0;
-            $sheet->setCellValue("L{$r}", $aStart ? substr($aStart, 0, 5) : '');
-            $sheet->setCellValue("M{$r}", $aEnd ? substr($aEnd, 0, 5) : '');
-            $sheet->setCellValue("N{$r}", $aHours > 0 ? number_format($aHours, 2) : '');
+                // Actual times & hours
+                $aStart = $e ? $e->actual_start_time : null;
+                $aEnd   = $e ? $e->actual_end_time : null;
+                $aHours = $e ? ((float)$e->actual_total_hours ?: $this->calcHours($aStart, $aEnd)) : 0;
+                $sheet->setCellValue("L{$r}", $aStart ? substr($aStart, 0, 5) : '');
+                $sheet->setCellValue("M{$r}", $aEnd ? substr($aEnd, 0, 5) : '');
+                $sheet->setCellValue("N{$r}", $aHours > 0 ? number_format($aHours, 2) : '');
 
-            $totalPlan += $pHours;
-            $totalActual += $aHours;
+                $totalPlan += $pHours;
+                $totalActual += $aHours;
 
-            // Meal & Shift
-            $sheet->setCellValue("O{$r}", $e && $e->meal_break ? '/' : '');
-            $sheet->setCellValue("P{$r}", $e && $e->is_shift ? '/' : '');
-            if ($e && $e->meal_break) $totalMeal++;
-            if ($e && $e->is_shift) $totalShift++;
+                // Meal & Shift
+                $sheet->setCellValue("O{$r}", $e && $e->meal_break ? '/' : '');
+                $sheet->setCellValue("P{$r}", $e && $e->is_shift ? '/' : '');
+                if ($e && $e->meal_break) $totalMeal++;
+                if ($e && $e->is_shift) $totalShift++;
 
-            // KELULUSAN: signer short name in dark blue (merged Q-R, S-T, U-V)
-            $sheet->mergeCells("Q{$r}:R{$r}");
-            $sheet->mergeCells("S{$r}:T{$r}");
-            $sheet->mergeCells("U{$r}:V{$r}");
-            if ($isFilled && !in_array($otForm->status, ['draft'])) {
-                $sheet->setCellValue("Q{$r}", $staffSignerName);
-                $sheet->getStyle("Q{$r}")->applyFromArray($blueFont);
+                // KELULUSAN: signer short name in dark blue (merged Q-R, S-T, U-V)
+                $sheet->mergeCells("Q{$r}:R{$r}");
+                $sheet->mergeCells("S{$r}:T{$r}");
+                $sheet->mergeCells("U{$r}:V{$r}");
+                if ($isFilled && !in_array($otForm->status, ['draft'])) {
+                    $sheet->setCellValue("Q{$r}", $staffSignerName);
+                    $sheet->getStyle("Q{$r}")->applyFromArray($blueFont);
+                }
+                if ($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName) {
+                    $sheet->setCellValue("S{$r}", $hodSignerName);
+                    $sheet->getStyle("S{$r}")->applyFromArray($blueFont);
+                }
+                if ($isFilled && $otForm->status === 'approved' && $gmSignerName) {
+                    $sheet->setCellValue("U{$r}", $gmSignerName);
+                    $sheet->getStyle("U{$r}")->applyFromArray($blueFont);
+                }
+
+                // JENIS OT (W-Z)
+                $sheet->setCellValue("W{$r}", $e && $e->jenis_ot_normal   ? '/' : '');
+                $sheet->setCellValue("X{$r}", $e && $e->jenis_ot_training ? '/' : '');
+                $sheet->setCellValue("Y{$r}", $e && $e->jenis_ot_kaizen   ? '/' : '');
+                $sheet->setCellValue("Z{$r}", $e && $e->jenis_ot_5s       ? '/' : '');
+
+                // PENGIRAAN OT: AB=OT1, AC=OT2, AD=OT3, AE=OT4, AF=OT5
+                // Use stored values if available, otherwise calculate
+                if ($aHours > 0 && $e) {
+                    $dow = $e->entry_date->dayOfWeek; // 0=Sun, 6=Sat
+                    $isPH = $e->is_public_holiday ?? false;
+                    $isRestDay = in_array($dow, [0, 6]);
+
+                    // Use stored OT values if available
+                    $ot1 = (float)($e->ot_normal_day_hours ?? 0);
+                    $ot2 = (float)($e->ot_rest_day_hours ?? 0);
+                    $ot3 = (float)($e->ot_rest_day_excess_hours ?? 0);
+                    $ot4 = (float)($e->ot_ph_hours ?? 0);
+                    $ot5 = (int)($e->ot_rest_day_count ?? 0);
+
+                    if ($ot1 > 0) {
+                        $sheet->setCellValue("AB{$r}", number_format($ot1, 2));
+                        $totalOt1 += $ot1;
+                    } elseif (!$isPH && !$isRestDay) {
+                        // Calculate OT1 if not stored
+                        $sheet->setCellValue("AB{$r}", number_format($aHours, 2));
+                        $totalOt1 += $aHours;
+                    }
+
+                    if ($ot2 > 0) {
+                        $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
+                        $totalOt2 += $ot2;
+                    } elseif ($isRestDay && !$isPH) {
+                        // Calculate OT2 if not stored
+                        $ot2h = min($aHours, 7.5);
+                        $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
+                        $totalOt2 += $ot2h;
+                    }
+
+                    if ($ot3 > 0) {
+                        $sheet->setCellValue("AD{$r}", number_format($ot3, 2));
+                        $totalOt3 += $ot3;
+                    } elseif ($isRestDay && !$isPH && $aHours > 7.5) {
+                        // Calculate OT3 if not stored
+                        $ot3h = max($aHours - 7.5, 0);
+                        $sheet->setCellValue("AD{$r}", number_format($ot3h, 2));
+                        $totalOt3 += $ot3h;
+                    }
+
+                    if ($ot4 > 0) {
+                        $sheet->setCellValue("AE{$r}", number_format($ot4, 2));
+                        $totalOt4 += $ot4;
+                    } elseif ($isPH && $aHours > 7.5) {
+                        // Calculate OT4 if not stored
+                        $ot4h = max($aHours - 7.5, 0);
+                        $sheet->setCellValue("AE{$r}", number_format($ot4h, 2));
+                        $totalOt4 += $ot4h;
+                    }
+
+                    if ($ot5 > 0) {
+                        $sheet->setCellValue("{$lastCol}{$r}", $ot5);
+                        $totalOt5 += $ot5;
+                    } elseif ($isRestDay && !$isPH) {
+                        // Calculate OT5 if not stored
+                        $sheet->setCellValue("{$lastCol}{$r}", '1');
+                        $totalOt5 += 1;
+                    }
+                }
+
+                // Row styling
+                $this->c($sheet, "B{$r}:{$lastCol}{$r}");
+                $this->borders($sheet, "B{$r}:{$lastCol}{$r}");
+                $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                $sheet->getStyle("B{$r}:{$lastCol}{$r}")->getFont()->setSize(10);
+                $sheet->getRowDimension($r)->setRowHeight($day <= 3 ? 24 : 18);
+                $r++;
             }
-            if ($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName) {
-                $sheet->setCellValue("S{$r}", $hodSignerName);
-                $sheet->getStyle("S{$r}")->applyFromArray($blueFont);
-            }
-            if ($isFilled && $otForm->status === 'approved' && $gmSignerName) {
-                $sheet->setCellValue("U{$r}", $gmSignerName);
-                $sheet->getStyle("U{$r}")->applyFromArray($blueFont);
-            }
-
-            // JENIS OT (W-Z)
-            $sheet->setCellValue("W{$r}", $e && $e->jenis_ot_normal   ? '/' : '');
-            $sheet->setCellValue("X{$r}", $e && $e->jenis_ot_training ? '/' : '');
-            $sheet->setCellValue("Y{$r}", $e && $e->jenis_ot_kaizen   ? '/' : '');
-            $sheet->setCellValue("Z{$r}", $e && $e->jenis_ot_5s       ? '/' : '');
-
-            // PENGIRAAN OT: AB=OT1, AC=OT2, AD=OT3, AE=OT4, AF=OT5
-            // Use stored values if available, otherwise calculate
-            if ($aHours > 0 && $e) {
-                $dow = $e->entry_date->dayOfWeek; // 0=Sun, 6=Sat
-                $isPH = $e->is_public_holiday ?? false;
-                $isRestDay = in_array($dow, [0, 6]);
-
-                // Use stored OT values if available
-                $ot1 = (float)($e->ot_normal_day_hours ?? 0);
-                $ot2 = (float)($e->ot_rest_day_hours ?? 0);
-                $ot3 = (float)($e->ot_rest_day_excess_hours ?? 0);
-                $ot4 = (float)($e->ot_ph_hours ?? 0);
-                $ot5 = (int)($e->ot_rest_day_count ?? 0);
-
-                if ($ot1 > 0) {
-                    $sheet->setCellValue("AB{$r}", number_format($ot1, 2));
-                    $totalOt1 += $ot1;
-                } elseif (!$isPH && !$isRestDay) {
-                    // Calculate OT1 if not stored
-                    $sheet->setCellValue("AB{$r}", number_format($aHours, 2));
-                    $totalOt1 += $aHours;
-                }
-
-                if ($ot2 > 0) {
-                    $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
-                    $totalOt2 += $ot2;
-                } elseif ($isRestDay && !$isPH) {
-                    // Calculate OT2 if not stored
-                    $ot2h = min($aHours, 7.5);
-                    $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
-                    $totalOt2 += $ot2h;
-                }
-
-                if ($ot3 > 0) {
-                    $sheet->setCellValue("AD{$r}", number_format($ot3, 2));
-                    $totalOt3 += $ot3;
-                } elseif ($isRestDay && !$isPH && $aHours > 7.5) {
-                    // Calculate OT3 if not stored
-                    $ot3h = max($aHours - 7.5, 0);
-                    $sheet->setCellValue("AD{$r}", number_format($ot3h, 2));
-                    $totalOt3 += $ot3h;
-                }
-
-                if ($ot4 > 0) {
-                    $sheet->setCellValue("AE{$r}", number_format($ot4, 2));
-                    $totalOt4 += $ot4;
-                } elseif ($isPH && $aHours > 7.5) {
-                    // Calculate OT4 if not stored
-                    $ot4h = max($aHours - 7.5, 0);
-                    $sheet->setCellValue("AE{$r}", number_format($ot4h, 2));
-                    $totalOt4 += $ot4h;
-                }
-
-                if ($ot5 > 0) {
-                    $sheet->setCellValue("{$lastCol}{$r}", $ot5);
-                    $totalOt5 += $ot5;
-                } elseif ($isRestDay && !$isPH) {
-                    // Calculate OT5 if not stored
-                    $sheet->setCellValue("{$lastCol}{$r}", '1');
-                    $totalOt5 += 1;
-                }
-            }
-
-            // Row styling
-            $this->c($sheet, "B{$r}:{$lastCol}{$r}");
-            $this->borders($sheet, "B{$r}:{$lastCol}{$r}");
-            $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-            $sheet->getStyle("B{$r}:{$lastCol}{$r}")->getFont()->setSize(10);
-            $sheet->getRowDimension($r)->setRowHeight($day <= 3 ? 24 : 18);
-            $r++;
         }
 
         // ── Spacer before footer ─────────────────────────────────────────────
@@ -430,10 +433,10 @@ class OtFormExcelExport
         $this->b($sheet, "I{$r}"); $this->c($sheet, "I{$r}");
         $sheet->getStyle("I{$r}")->getFont()->setSize(14);
         // Plan total (double border)
-        $sheet->setCellValue("K{$r}", $totalPlan > 0 ? number_format($totalPlan, 0) : '');
+        $sheet->setCellValue("K{$r}", $totalPlan > 0 ? number_format($totalPlan, 2) : '');
         $this->doubleBorders($sheet, "K{$r}"); $this->c($sheet, "K{$r}");
         // Actual total (double border)
-        $sheet->setCellValue("N{$r}", $totalActual > 0 ? number_format($totalActual, 0) : '');
+        $sheet->setCellValue("N{$r}", $totalActual > 0 ? number_format($totalActual, 2) : '');
         $this->doubleBorders($sheet, "N{$r}"); $this->c($sheet, "N{$r}");
         // Meal & Shift totals
         $sheet->setCellValue("O{$r}", $totalMeal > 0 ? $totalMeal : '');
@@ -832,63 +835,105 @@ class OtFormExcelExport
         // ── Data rows (18 rows, rows 19-36) ─────────────────────────────────────
         $filled = $otForm->entries()->with('projectCode')->get()
             ->filter(fn($e) => $e->project_code_id || $e->planned_start_time || $e->actual_start_time)
-            ->values();
+            ->groupBy(fn($e) => $e->entry_date->format('Y-m-d'))
+            ->sortKeys();
         $rowCount = max($filled->count(), 18);
 
-        for ($i = 0; $i < $rowCount; $i++) {
-            $e = $filled[$i] ?? null;
-            $particulars = $e ? trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? '')) : '';
-            $sheet->setCellValue("C{$r}", $e ? $e->entry_date->format('d/m/Y') : '');
-            $sheet->mergeCells("D{$r}:G{$r}");
-            $sheet->setCellValue("D{$r}", $particulars);
-            $sheet->getStyle("D{$r}")->getAlignment()->setWrapText(true);
-            $sheet->setCellValue("H{$r}", $e && $e->planned_start_time ? substr($e->planned_start_time, 0, 5) : '');
-            $sheet->setCellValue("I{$r}", $e && $e->planned_end_time   ? substr($e->planned_end_time, 0, 5)   : '');
-            // Compute planned total hours from times if stored value is invalid
-            $plannedHours = $e ? (float)$e->planned_total_hours : 0;
-            if ($plannedHours <= 0 && $e && $e->planned_start_time && $e->planned_end_time) {
-                $plannedHours = $this->calcHoursFromTimes($e->planned_start_time, $e->planned_end_time);
-            }
-            $sheet->setCellValue("J{$r}", $plannedHours > 0 ? number_format($plannedHours, 2) : '');
-            // K, L, M = approval signature columns (EXEC, HOD, DGM/CEO)
-            $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
-            if ($isFilled && !in_array($otForm->status, ['draft'])) {
-                $sheet->setCellValue("K{$r}", $staffSignerName);
-                $sheet->getStyle("K{$r}")->applyFromArray($blueFont);
-            }
-            if ($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName) {
-                $sheet->setCellValue("L{$r}", $hodSignerName);
-                $sheet->getStyle("L{$r}")->applyFromArray($blueFont);
-            }
-            if ($isFilled && $otForm->status === 'approved' && $gmSignerName) {
-                $sheet->setCellValue("M{$r}", $gmSignerName);
-                $sheet->getStyle("M{$r}")->applyFromArray($blueFont);
-            }
-            $sheet->setCellValue("N{$r}", $e && $e->actual_start_time ? substr($e->actual_start_time, 0, 5) : '');
-            $sheet->setCellValue("O{$r}", $e && $e->actual_end_time   ? substr($e->actual_end_time, 0, 5)   : '');
-            // Compute actual total hours from times if stored value is invalid
-            $actualHours = $e ? (float)$e->actual_total_hours : 0;
-            if ($actualHours <= 0 && $e && $e->actual_start_time && $e->actual_end_time) {
-                $actualHours = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
-            }
-            $sheet->setCellValue("P{$r}", $actualHours > 0 ? number_format($actualHours, 2) : '');
-            // Distribute OT hours: use stored values, or fallback to actual hours by day type
-            $otNormal = $e ? (float)$e->ot_normal_day_hours : 0;
-            $otRest = $e ? (float)$e->ot_rest_day_hours : 0;
-            $otPH = $e ? (float)$e->ot_ph_hours : 0;
-            if ($actualHours > 0 && ($otNormal + $otRest + $otPH) <= 0 && $e) {
-                if ($e->is_public_holiday) {
-                    $otPH = $actualHours;
-                } elseif ($e->entry_date && $e->entry_date->isWeekend()) {
-                    $otRest = $actualHours;
-                } else {
-                    $otNormal = $actualHours;
+        $rowIdx = 0;
+        foreach ($filled as $dateStr => $dateEntries) {
+            foreach ($dateEntries as $e) {
+                $particulars = $e ? trim(($e->projectCode ? $e->projectCode->code : '') . ' ' . ($e->project_name ?? '')) : '';
+                $sheet->setCellValue("C{$r}", $e ? $e->entry_date->format('d/m/Y') : '');
+                $sheet->mergeCells("D{$r}:G{$r}");
+                $sheet->setCellValue("D{$r}", $particulars);
+                $sheet->getStyle("D{$r}")->getAlignment()->setWrapText(true);
+                $sheet->setCellValue("H{$r}", $e && $e->planned_start_time ? substr($e->planned_start_time, 0, 5) : '');
+                $sheet->setCellValue("I{$r}", $e && $e->planned_end_time   ? substr($e->planned_end_time, 0, 5)   : '');
+                // Compute planned total hours from times if stored value is invalid
+                $plannedHours = $e ? (float)$e->planned_total_hours : 0;
+                if ($plannedHours <= 0 && $e && $e->planned_start_time && $e->planned_end_time) {
+                    $plannedHours = $this->calcHoursFromTimes($e->planned_start_time, $e->planned_end_time);
                 }
+                $sheet->setCellValue("J{$r}", $plannedHours > 0 ? number_format($plannedHours, 2) : '');
+                // K, L, M = approval signature columns (EXEC, HOD, DGM/CEO)
+                $isFilled = $e && ($e->project_code_id || $e->planned_start_time || $e->actual_start_time);
+                if ($isFilled && !in_array($otForm->status, ['draft'])) {
+                    $sheet->setCellValue("K{$r}", $staffSignerName);
+                    $sheet->getStyle("K{$r}")->applyFromArray($blueFont);
+                }
+                if ($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName) {
+                    $sheet->setCellValue("L{$r}", $hodSignerName);
+                    $sheet->getStyle("L{$r}")->applyFromArray($blueFont);
+                }
+                if ($isFilled && $otForm->status === 'approved' && $gmSignerName) {
+                    $sheet->setCellValue("M{$r}", $gmSignerName);
+                    $sheet->getStyle("M{$r}")->applyFromArray($blueFont);
+                }
+                $sheet->setCellValue("N{$r}", $e && $e->actual_start_time ? substr($e->actual_start_time, 0, 5) : '');
+                $sheet->setCellValue("O{$r}", $e && $e->actual_end_time   ? substr($e->actual_end_time, 0, 5)   : '');
+                // Compute actual total hours from times if stored value is invalid
+                $actualHours = $e ? (float)$e->actual_total_hours : 0;
+                if ($actualHours <= 0 && $e && $e->actual_start_time && $e->actual_end_time) {
+                    $actualHours = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
+                }
+                $sheet->setCellValue("P{$r}", $actualHours > 0 ? number_format($actualHours, 2) : '');
+                // Distribute OT hours: use stored values, or fallback to actual hours by day type
+                $otNormal = $e ? (float)$e->ot_normal_day_hours : 0;
+                $otRest = $e ? (float)$e->ot_rest_day_hours : 0;
+                $otPH = $e ? (float)$e->ot_ph_hours : 0;
+                if ($actualHours > 0 && ($otNormal + $otRest + $otPH) <= 0 && $e) {
+                    if ($e->is_public_holiday) {
+                        $otPH = $actualHours;
+                    } elseif ($e->entry_date && $e->entry_date->isWeekend()) {
+                        $otRest = $actualHours;
+                    } else {
+                        $otNormal = $actualHours;
+                    }
+                }
+                $sheet->setCellValue("R{$r}", $otNormal > 0 ? number_format($otNormal, 2) : '');
+                $sheet->setCellValue("S{$r}", $otRest > 0 ? number_format($otRest, 2) : '');
+                $sheet->setCellValue("T{$r}", $otPH > 0 ? number_format($otPH, 2) : '');
+                // Borders: C-G bottom+left, H-P all thin, R-T all thin
+                $this->borders($sheet, "H{$r}:P{$r}");
+                $this->borders($sheet, "R{$r}:T{$r}");
+                $sheet->getStyle("C{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
+                $sheet->getStyle("C{$r}")->getBorders()->getLeft()->setBorderStyle(self::THIN);
+                $sheet->getStyle("D{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
+                $sheet->getStyle("D{$r}")->getBorders()->getLeft()->setBorderStyle(self::THIN);
+                $sheet->getStyle("E{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
+                $sheet->getStyle("F{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
+                $sheet->getStyle("G{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
+                $this->c($sheet, "C{$r}:T{$r}");
+                $sheet->getStyle("D{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                // Auto-calculate row height based on text length for wrapped PARTICULARS
+                $textLen = strlen($particulars);
+                if ($textLen > 45) {
+                    $lines = ceil($textLen / 45);
+                    $sheet->getRowDimension($r)->setRowHeight($lines * 13);
+                } else {
+                    $sheet->getRowDimension($r)->setRowHeight(15.75);
+                }
+                $r++;
+                $rowIdx++;
             }
-            $sheet->setCellValue("R{$r}", $otNormal > 0 ? number_format($otNormal, 2) : '');
-            $sheet->setCellValue("S{$r}", $otRest > 0 ? number_format($otRest, 2) : '');
-            $sheet->setCellValue("T{$r}", $otPH > 0 ? number_format($otPH, 2) : '');
-            // Borders: C-G bottom+left, H-P all thin, R-T all thin
+        }
+        // Fill remaining empty rows to reach 18
+        while ($rowIdx < 18) {
+            $sheet->setCellValue("C{$r}", '');
+            $sheet->mergeCells("D{$r}:G{$r}");
+            $sheet->setCellValue("D{$r}", '');
+            $sheet->setCellValue("H{$r}", '');
+            $sheet->setCellValue("I{$r}", '');
+            $sheet->setCellValue("J{$r}", '');
+            $sheet->setCellValue("K{$r}", '');
+            $sheet->setCellValue("L{$r}", '');
+            $sheet->setCellValue("M{$r}", '');
+            $sheet->setCellValue("N{$r}", '');
+            $sheet->setCellValue("O{$r}", '');
+            $sheet->setCellValue("P{$r}", '');
+            $sheet->setCellValue("R{$r}", '');
+            $sheet->setCellValue("S{$r}", '');
+            $sheet->setCellValue("T{$r}", '');
             $this->borders($sheet, "H{$r}:P{$r}");
             $this->borders($sheet, "R{$r}:T{$r}");
             $sheet->getStyle("C{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
@@ -899,16 +944,9 @@ class OtFormExcelExport
             $sheet->getStyle("F{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
             $sheet->getStyle("G{$r}")->getBorders()->getBottom()->setBorderStyle(self::THIN);
             $this->c($sheet, "C{$r}:T{$r}");
-            $sheet->getStyle("D{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-            // Auto-calculate row height based on text length for wrapped PARTICULARS
-            $textLen = strlen($particulars);
-            if ($textLen > 45) {
-                $lines = ceil($textLen / 45);
-                $sheet->getRowDimension($r)->setRowHeight($lines * 13);
-            } else {
-                $sheet->getRowDimension($r)->setRowHeight(15.75);
-            }
+            $sheet->getRowDimension($r)->setRowHeight(15.75);
             $r++;
+            $rowIdx++;
         }
 
         // ── Row 37: spacer ──────────────────────────────────────────────────────
@@ -917,30 +955,32 @@ class OtFormExcelExport
 
         // ── Row 38: Totals ──────────────────────────────────────────────────────
         $totalPlan = 0; $totalActual = 0; $totalNorm = 0; $totalRest = 0; $totalPH = 0;
-        foreach ($filled as $e) {
-            $ph = (float)$e->planned_total_hours;
-            if ($ph <= 0 && $e->planned_start_time && $e->planned_end_time) {
-                $ph = $this->calcHoursFromTimes($e->planned_start_time, $e->planned_end_time);
-            }
-            $totalPlan += $ph;
+        foreach ($filled as $dateEntries) {
+            foreach ($dateEntries as $e) {
+                $ph = (float)$e->planned_total_hours;
+                if ($ph <= 0 && $e->planned_start_time && $e->planned_end_time) {
+                    $ph = $this->calcHoursFromTimes($e->planned_start_time, $e->planned_end_time);
+                }
+                $totalPlan += $ph;
 
-            $ah = (float)$e->actual_total_hours;
-            if ($ah <= 0 && $e->actual_start_time && $e->actual_end_time) {
-                $ah = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
-            }
-            $totalActual += $ah;
+                $ah = (float)$e->actual_total_hours;
+                if ($ah <= 0 && $e->actual_start_time && $e->actual_end_time) {
+                    $ah = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
+                }
+                $totalActual += $ah;
 
-            $on = (float)$e->ot_normal_day_hours;
-            $or = (float)$e->ot_rest_day_hours;
-            $op = (float)$e->ot_ph_hours;
-            if ($ah > 0 && ($on + $or + $op) <= 0) {
-                if ($e->is_public_holiday) { $op = $ah; }
-                elseif ($e->entry_date && $e->entry_date->isWeekend()) { $or = $ah; }
-                else { $on = $ah; }
+                $on = (float)$e->ot_normal_day_hours;
+                $or = (float)$e->ot_rest_day_hours;
+                $op = (float)$e->ot_ph_hours;
+                if ($ah > 0 && ($on + $or + $op) <= 0) {
+                    if ($e->is_public_holiday) { $op = $ah; }
+                    elseif ($e->entry_date && $e->entry_date->isWeekend()) { $or = $ah; }
+                    else { $on = $ah; }
+                }
+                $totalNorm += $on;
+                $totalRest += $or;
+                $totalPH += $op;
             }
-            $totalNorm += $on;
-            $totalRest += $or;
-            $totalPH += $op;
         }
 
         $sheet->mergeCells("C{$r}:F{$r}");

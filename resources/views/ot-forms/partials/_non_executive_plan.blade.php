@@ -35,13 +35,19 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($otForm->entries as $entry)
+            @php
+                $groupedEntries = $otForm->entries->groupBy(fn($e) => $e->entry_date->format('Y-m-d'));
+            @endphp
+            @foreach($groupedEntries as $dateStr => $dateEntries)
+            @foreach($dateEntries as $entryIdx => $entry)
                 @php
                     $dayOfWeek = $entry->entry_date->dayOfWeek;
                     $isWeekend = in_array($dayOfWeek, [0, 6]);
                     $isRestOrPH = $isWeekend || $entry->is_public_holiday;
                     $rowBg = $isWeekend ? 'bg-gray-50' : '';
                     $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
+                    $isFirstRow = $entryIdx === 0;
+                    $isExtraRow = $entryIdx > 0;
                     $planTimeOptions = [];
                     for ($h = 0; $h <= 23; $h++) {
                         for ($m = 0; $m < 60; $m += 30) {
@@ -55,7 +61,22 @@
                     data-is-weekend="{{ $isWeekend ? '1' : '0' }}">
                     {{-- TARIKH --}}
                     <td class="border px-1 py-0.5 text-center {{ $isWeekend ? 'text-red-600' : '' }}">
-                        {{ $entry->entry_date->day }}
+                        @if($isFirstRow)
+                            <div class="flex items-center justify-center gap-0.5">
+                                <span>{{ $entry->entry_date->day }}</span>
+                                @if($otForm->isEditable())
+                                    <button type="button" onclick="addEntryRow('{{ $dateStr }}')" class="text-green-600 hover:text-green-800 ml-0.5" title="Add another entry for this day">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    </button>
+                                @endif
+                            </div>
+                        @else
+                            @if($otForm->isEditable())
+                                <button type="button" onclick="deleteEntryRow({{ $entry->id }})" class="text-red-500 hover:text-red-700" title="Remove this entry">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            @endif
+                        @endif
                     </td>
 
                     {{-- TUGAS ATAU AKTIVITI --}}
@@ -256,6 +277,7 @@
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                 </tr>
+            @endforeach
             @endforeach
         </tbody>
     </table>
