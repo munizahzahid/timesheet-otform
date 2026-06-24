@@ -237,21 +237,21 @@
         }
     </script>
 
-    <x-help-button title="Bantuan Borang OT">
+    <x-help-button title="OT Form Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Borang OT Saya</h3>
-            <p class="mb-3">Urus borang lebih masa (OT) bulanan anda di sini.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Cara guna</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">My OT Forms</h3>
+            <p class="mb-3">Manage your monthly overtime (OT) forms here.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">How to use</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Buat Baru</strong> — Pilih bulan, tahun, jenis borang (Eksekutif/Bukan Eksekutif), dan syarikat</li>
-                <li><strong>Edit</strong> — Isi masa OT yang dirancang dan sebenar untuk setiap hari</li>
-                <li><strong>Auto-Fill</strong> — Muat naik PDF kehadiran dalam timesheet anda terlebih dahulu, kemudian gunakan butang Auto-Fill dalam borang OT untuk mengisi masa sebenar secara automatik</li>
-                <li><strong>Hantar</strong> — Hantar borang yang lengkap untuk kelulusan pengurus</li>
+                <li><strong>Create New</strong> — Select month, year, form type (Executive/Non-Executive), and company, then click <strong>"Create New OT Form"</strong></li>
+                <li><strong>Edit</strong> — Click <strong>"Edit"</strong> to fill in planned and actual OT times for each day</li>
+                <li><strong>Auto-Fill</strong> — Upload your attendance PDF in timesheet first, then use <strong>"Auto-Fill from Attendance"</strong> button in OT form to auto-fill actual times</li>
+                <li><strong>Submit</strong> — Submit completed form for manager approval using <strong>"Submit for Approval"</strong></li>
             </ul>
-            <h4 class="font-semibold text-gray-900 mb-1">Jenis Borang</h4>
+            <h4 class="font-semibold text-gray-900 mb-1">Form Types</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Eksekutif</strong> — Untuk staf peringkat eksekutif</li>
-                <li><strong>Bukan Eksekutif</strong> — Untuk staf bukan eksekutif dengan medan tambahan</li>
+                <li><strong>Executive</strong> — For executive level staff</li>
+                <li><strong>Non-Executive</strong> — For non-executive staff with additional fields</li>
             </ul>
         </x-slot>
     </x-help-button>

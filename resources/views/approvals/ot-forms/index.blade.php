@@ -64,15 +64,15 @@
             </div>
     </div>
 
-    <x-help-button title="Bantuan Kelulusan OT">
+    <x-help-button title="OT Form Approval Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Kelulusan Borang OT</h3>
-            <p class="mb-3">Semak dan luluskan atau tolak borang OT yang dihantar oleh ahli pasukan anda.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Cara guna</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">OT Form Approval</h3>
+            <p class="mb-3">Review and approve or reject OT forms submitted by your team members.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">How to use</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Semak</strong> — Klik "Semak" untuk melihat butiran lengkap borang OT</li>
-                <li><strong>Luluskan</strong> — Tandatang dan luluskan borang OT</li>
-                <li><strong>Tolak</strong> — Tolak dengan catatan untuk staf membetulkan</li>
+                <li><strong>Review</strong> — Click <strong>"Review"</strong> button to view full OT form details</li>
+                <li><strong>Approve</strong> — Sign and approve OT form</li>
+                <li><strong>Reject</strong> — Reject with notes for staff to correct</li>
             </ul>
         </x-slot>
     </x-help-button>

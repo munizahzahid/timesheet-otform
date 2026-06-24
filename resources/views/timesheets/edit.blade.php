@@ -962,23 +962,23 @@
     </script>
     @endpush
 
-    <x-help-button title="Bantuan Edit Timesheet">
+    <x-help-button title="Edit Timesheet Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Mengedit Timesheet Anda</h3>
-            <p class="mb-3">Isi jam kerja harian anda untuk bulan ini.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Langkah</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Editing Your Timesheet</h3>
+            <p class="mb-3">Fill in your daily work hours for this month.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Steps</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Muat Naik Kehadiran</strong> — Muat naik PDF kehadiran Infotech anda untuk mengisi masa masuk/keluar secara automatik</li>
-                <li><strong>Jam Admin</strong> — Jam diisi secara automatik dari data kehadiran</li>
-                <li><strong>Baris Projek</strong> — Tambah kod projek dan masukkan jam untuk setiap hari (Normal/OT, NC/COBQ)</li>
-                <li><strong>Auto-Simpan</strong> — Perubahan disimpan secara automatik semasa anda menaip</li>
-                <li><strong>Hantar</strong> — Gunakan butang hantar untuk menghantar untuk kelulusan</li>
+                <li><strong>Upload Attendance</strong> — Upload your Infotech attendance PDF to auto-fill check-in/out times</li>
+                <li><strong>Admin Hours</strong> — Hours are auto-filled from attendance data</li>
+                <li><strong>Project Rows</strong> — Add project codes and enter hours for each day (Normal/OT, NC/COBQ)</li>
+                <li><strong>Auto-Save</strong> — Changes are saved automatically as you type</li>
+                <li><strong>Submit</strong> — Use <strong>"Submit for Approval"</strong> button to submit for approval</li>
             </ul>
             <h4 class="font-semibold text-gray-900 mb-1">Tips</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li>Tatal secara mendatar untuk melihat semua hari dalam bulan</li>
-                <li>Baris ringkasan menunjukkan jumlah setiap hari</li>
-                <li>Pastikan jam projek sepadan dengan jam yang tersedia untuk setiap hari</li>
+                <li>Scroll horizontally to see all days in the month</li>
+                <li>Summary row shows totals for each day</li>
+                <li>Ensure project hours match available hours for each day</li>
             </ul>
         </x-slot>
     </x-help-button>

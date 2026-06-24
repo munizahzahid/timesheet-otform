@@ -582,20 +582,21 @@
     </script>
     @endpush
 
-    <x-help-button title="Bantuan Edit Borang OT">
+    <x-help-button title="Edit OT Form Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Mengedit Borang OT</h3>
-            <p class="mb-3">Isi jam lebih masa yang dirancang dan sebenar untuk setiap hari dalam bulan.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Langkah</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Editing OT Form</h3>
+            <p class="mb-3">Fill in planned and actual overtime hours for each day of the month.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Steps</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Rancang</strong> — Masukkan masa mula/tamat yang dirancang untuk OT yang dijangkakan</li>
-                <li><strong>Auto-Fill Sebenar</strong> — Klik butang "Auto-Fill dari Kehadiran" untuk mengisi masa sebenar dari PDF kehadiran yang anda muat naik</li>
-                <li><strong>Simpan</strong> — Klik "Simpan" untuk menyimpan kemajuan anda</li>
-                <li><strong>Hantar</strong> — Klik "Hantar untuk Kelulusan" apabila bersedia</li>
-                <li><strong>Cetak</strong> — Gunakan butang "Cetak" untuk mencetak borang</li>
+                <li><strong>Plan</strong> — Enter planned start/end times for expected OT</li>
+                <li><strong>Add OT Entry</strong> — Click <strong>"+"</strong> button next to date to add additional OT entry on the same day (if you have more than one OT session on the same day)</li>
+                <li><strong>Auto-Fill Actual</strong> — Click <strong>"Auto-Fill from Attendance"</strong> to fill actual times from your uploaded attendance PDF</li>
+                <li><strong>Save</strong> — Click <strong>"Save Draft"</strong> to save your progress</li>
+                <li><strong>Submit</strong> — Click <strong>"Submit for Approval"</strong> when ready</li>
+                <li><strong>Export</strong> — Use <strong>"Export Excel"</strong> or <strong>"Download PDF"</strong> to export the form</li>
             </ul>
-            <h4 class="font-semibold text-gray-900 mb-1">Penting</h4>
-            <p>Pastikan anda telah memuat naik PDF kehadiran dalam timesheet anda sebelum menggunakan Auto-Fill. Kod projek juga akan diisi secara automatik dari data timesheet anda.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Important</h4>
+            <p>Make sure you have uploaded your attendance PDF in timesheet before using Auto-Fill. Project codes will also be auto-filled from your timesheet data.</p>
         </x-slot>
     </x-help-button>
 </x-app-layout>

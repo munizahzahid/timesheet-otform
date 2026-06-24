@@ -79,15 +79,15 @@
             </div>
     </div>
 
-    <x-help-button title="Bantuan Kod Projek">
+    <x-help-button title="Project Codes Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Kod Projek</h3>
-            <p class="mb-3">Lihat semua kod projek yang disinkronkan dari Desknet. Ini adalah bacaan sahaja dan dikemaskini melalui Sinkronisasi Desknet.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Ciri-ciri</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">Project Codes</h3>
+            <p class="mb-3">View all project codes synced from Desknet. This is read-only and updated via Desknet Sync.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Features</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Cari</strong> — Tapis mengikut kod, nama, pelanggan, atau pengurus</li>
-                <li><strong>Tahun</strong> — Tapis mengikut tahun projek</li>
-                <li><strong>Status</strong> — Tunjukkan projek aktif atau tidak aktif</li>
+                <li><strong>Search</strong> — Filter by code, name, customer, or manager</li>
+                <li><strong>Year</strong> — Filter by project year</li>
+                <li><strong>Status</strong> — Show active or inactive projects</li>
             </ul>
         </x-slot>
     </x-help-button>

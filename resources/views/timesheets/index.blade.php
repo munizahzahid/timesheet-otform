@@ -200,23 +200,23 @@
         }
     </script>
 
-    <x-help-button title="Bantuan Timesheet">
+    <x-help-button title="Timesheet Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Timesheet Saya</h3>
-            <p class="mb-3">Halaman ini menunjukkan semua timesheet anda. Anda boleh membuat yang baru dan mengurus yang sedia ada.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Cara guna</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">My Timesheets</h3>
+            <p class="mb-3">This page shows all your timesheets. You can create new ones and manage existing ones.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">How to use</h4>
             <ul class="list-disc pl-5 space-y-1 mb-3">
-                <li><strong>Buat Baru</strong> — Pilih bulan dan tahun, kemudian klik "+ Timesheet Baru"</li>
-                <li><strong>Edit</strong> — Klik "Edit" untuk mengisi jam harian anda dan muat naik PDF kehadiran</li>
-                <li><strong>Hantar</strong> — Setelah selesai, hantar untuk kelulusan dari halaman edit</li>
-                <li><strong>Padam</strong> — Hanya timesheet draf boleh dipadamkan</li>
+                <li><strong>Create New</strong> — Select month and year, then click <strong>"+ Timesheet Baru"</strong></li>
+                <li><strong>Edit</strong> — Click <strong>"Edit"</strong> to fill in your daily hours and upload attendance PDF</li>
+                <li><strong>Submit</strong> — When completed, submit for approval from edit page using <strong>"Submit for Approval"</strong></li>
+                <li><strong>Delete</strong> — Only draft timesheets can be deleted</li>
             </ul>
             <h4 class="font-semibold text-gray-900 mb-1">Status</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Draf</strong> — Belum dihantar, masih boleh diedit</li>
-                <li><strong>Menantu</strong> — Menunggu kelulusan</li>
-                <li><strong>Diluluskan</strong> — Diluluskan oleh penyelia</li>
-                <li><strong>Ditolak</strong> — Dikembalikan untuk pembetulan</li>
+                <li><strong>Draft</strong> — Not submitted yet, still editable</li>
+                <li><strong>Pending</strong> — Waiting for approval</li>
+                <li><strong>Approved</strong> — Approved by supervisor</li>
+                <li><strong>Rejected</strong> — Returned for correction</li>
             </ul>
         </x-slot>
     </x-help-button>

@@ -121,15 +121,15 @@
             </div>
     </div>
 
-    <x-help-button title="Bantuan Pengurusan Pengguna">
+    <x-help-button title="User Management Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Pengurusan Pengguna</h3>
-            <p class="mb-3">Lihat dan urus semua pengguna sistem. Data pengguna disinkronkan dari Desknet.</p>
-            <h4 class="font-semibold text-gray-900 mb-1">Ciri-ciri</h4>
+            <h3 class="font-semibold text-gray-900 mb-2">User Management</h3>
+            <p class="mb-3">View and manage all system users. User data is synced from Desknet.</p>
+            <h4 class="font-semibold text-gray-900 mb-1">Features</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Cari/Tapis</strong> — Tapis pengguna mengikut nama, jabatan, atau status</li>
-                <li><strong>Edit</strong> — Tukar penyelia pelaporan pengguna atau status aktif</li>
-                <li><strong>Laporan Kepada</strong> — Menunjukkan penyelia yang ditugaskan kepada pengguna</li>
+                <li><strong>Search/Filter</strong> — Filter users by name, department, or status</li>
+                <li><strong>Edit</strong> — Change user reporting supervisor or active status</li>
+                <li><strong>Reports To</strong> — Shows supervisor assigned to the user</li>
             </ul>
         </x-slot>
     </x-help-button>

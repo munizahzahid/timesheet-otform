@@ -88,15 +88,15 @@
         }
     </script>
 
-    <x-help-button title="Bantuan Tetapan">
+    <x-help-button title="Settings Help">
         <x-slot name="content">
-            <h3 class="font-semibold text-gray-900 mb-2">Tetapan Sistem</h3>
-            <p class="mb-3">Konfigurasikan tetapan seluruh sistem seperti jam kerja, API Desknet, dan pilihan sinkronisasi.</p>
+            <h3 class="font-semibold text-gray-900 mb-2">System Settings</h3>
+            <p class="mb-3">Configure system-wide settings such as work hours, Desknet API, and sync options.</p>
             <h4 class="font-semibold text-gray-900 mb-1">Tips</h4>
             <ul class="list-disc pl-5 space-y-1">
-                <li><strong>Jam Kerja</strong> — Tetapkan masa mula kerja lalai, rehat makan tengah hari, dan jam harian</li>
-                <li><strong>API Desknet</strong> — Konfigurasikan kunci API dan URL asas untuk integrasi Desknet</li>
-                <li>Klik "Simpan Semua Tetapan" untuk mengaplikasi perubahan</li>
+                <li><strong>Work Hours</strong> — Set default work start time, lunch break, and daily hours</li>
+                <li><strong>Desknet API</strong> — Configure API key and base URL for Desknet integration</li>
+                <li>Click <strong>"Save All Settings"</strong> button to apply changes</li>
             </ul>
         </x-slot>
     </x-help-button>
