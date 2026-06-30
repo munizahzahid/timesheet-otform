@@ -242,16 +242,12 @@
             <td class="f7 b tr" style="padding: 2px 3px;">MONTH : {{ $monthYear }}</td>
         </tr>
     </table>
-    <table style="margin-bottom: 1mm;">
-        <col style="width: 10%;"/>
-        <col style="width: 30%;"/>
-        <col style="width: 10%;"/>
-        <col style="width: 15%;"/>
+    <table style="margin-bottom: 1mm; width: 100%; table-layout: auto;">
         <tr>
-            <td class="f7 b">NAME :</td>
-            <td class="f7">{{ $user->name ?? '-' }}</td>
-            <td class="f7 b">STAFF NO :</td>
-            <td class="f7">{{ $user->staff_no ?? '-' }}</td>
+            <td class="f7 b" style="text-align: left; white-space: nowrap; width: 1%;">NAME :</td>
+            <td class="f7" style="text-align: left;">{{ $user->name ?? '-' }}</td>
+            <td class="f7 b" style="text-align: left; white-space: nowrap; width: 1%; padding-left: 15px;">STAFF NO :</td>
+            <td class="f7" style="text-align: left;">{{ $user->staff_no ?? '-' }}</td>
         </tr>
     </table>
 
