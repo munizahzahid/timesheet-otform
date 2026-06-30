@@ -198,36 +198,6 @@
                         </div>
                     @else
                         {{-- Non-Executive Form - existing layout --}}
-                        {{-- Company Logos --}}
-                        <div class="flex items-center justify-between mb-2 text-xs">
-                            <div class="flex items-center gap-3">
-                                <label class="flex items-center gap-1 border px-2 py-1">
-                                    <img src="{{ asset('images/logo-ingress-corp.svg') }}" alt="INGRESS CORPORATION" class="h-4 w-auto" onerror="this.outerHTML='<span class=\'font-bold text-[9px]\'>INGRESS CORP</span>'">
-                                    <input type="checkbox" disabled class="rounded border-gray-300 h-3 w-3">
-                                </label>
-                                <label class="flex items-center gap-1 border px-2 py-1">
-                                    <img src="{{ asset('images/logo-ingress-kata.svg') }}" alt="INGRESS KATAYAMA" class="h-4 w-auto" onerror="this.outerHTML='<span class=\'font-bold text-[9px]\'>INGRESS KATAYAMA</span>'">
-                                    <input type="checkbox" disabled class="rounded border-gray-300 h-3 w-3">
-                                </label>
-                                <label class="flex items-center gap-1 border px-2 py-1">
-                                    <img src="{{ asset('images/logo-ingress-eng.svg') }}" alt="INGRESS ENGINEERING" class="h-4 w-auto" onerror="this.outerHTML='<span class=\'font-bold text-[9px]\'>INGRESS ENG</span>'">
-                                    <input type="checkbox" disabled class="rounded border-gray-300 h-3 w-3">
-                                </label>
-                                <label class="flex items-center gap-1 border px-2 py-1">
-                                    <img src="{{ asset('images/logo-ingress-prec.svg') }}" alt="INGRESS PRECISION" class="h-4 w-auto" onerror="this.outerHTML='<span class=\'font-bold text-[9px]\'>INGRESS PREC</span>'">
-                                    <input type="checkbox" disabled class="rounded border-gray-300 h-3 w-3">
-                                </label>
-                                <label class="flex items-center gap-1 border px-2 py-1">
-                                    <img src="{{ asset('images/logo-ingress-center.svg') }}" alt="INGRESS CENTER" class="h-4 w-auto" onerror="this.outerHTML='<span class=\'font-bold text-[9px]\'>INGRESS CENTER</span>'">
-                                    <input type="checkbox" disabled class="rounded border-gray-300 h-3 w-3">
-                                </label>
-                                <label class="flex items-center gap-1 border px-2 py-1">
-                                    <img src="{{ asset('images/logo-talent-synergy.svg') }}" alt="TALENT SYNERGY" class="h-4 w-auto" onerror="this.outerHTML='<span class=\'font-bold text-[9px]\'>TALENT SYNERGY</span>'">
-                                    <input type="checkbox" checked disabled class="rounded border-gray-300 h-3 w-3 text-indigo-600">
-                                </label>
-                            </div>
-                        </div>
-
                         {{-- Form Title --}}
                         <div class="text-center mb-2">
                             <h3 class="text-sm font-bold">KUMPULAN SYARIKAT INGRESS</h3>

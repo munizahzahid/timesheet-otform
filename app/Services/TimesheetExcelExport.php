@@ -141,25 +141,21 @@ class TimesheetExcelExport
         $this->mediumBorder($sheet, "B{$r}:AM{$r}", 'top');
         $r++;
 
-        // Rows 3-4: talent synergy logo
-        $sheet->mergeCells("C{$r}:C".($r+1));
+        // Rows 3-4: company logo
+        $sheet->mergeCells("C{$r}:D".($r+1));
         $drawing = new Drawing();
         $drawing->setName('Logo');
         $drawing->setDescription('Company Logo');
-        $drawing->setPath(public_path('images/ingress logo.png'));
-        $drawing->setHeight(60);
+        $drawing->setPath(public_path('images/Logo TSSB.jpeg'));
+        $drawing->setHeight(35);
         $drawing->setCoordinates("C{$r}");
         $drawing->setOffsetX(5);
-        $drawing->setOffsetY(-5);
+        $drawing->setOffsetY(2);
         $drawing->setWorksheet($sheet);
-        $sheet->mergeCells("D{$r}:D".($r+1));
-        $sheet->setCellValue("D{$r}", "TALENT SYNERGY\nSDN BHD");
-        $sheet->getStyle("D{$r}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle("D{$r}")->getFont()->setBold(true)->setSize(14);
         $sheet->getRowDimension($r)->setRowHeight(20);
         $this->borders($sheet, "C{$r}:AL{$r}", 'top');
         $r++;
-        $sheet->getRowDimension($r)->setRowHeight(-1);
+        $sheet->getRowDimension($r)->setRowHeight(20);
         $r++;
 
         // ══════════════════════════════════════════════════════════════════════

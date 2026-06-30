@@ -111,25 +111,22 @@ class OtFormExcelExport
         $sheet->getRowDimension($r)->setRowHeight(23.25);
         $r++;
 
-        // ── Rows 8-9: Company names ──────────────────────────────────────────────
-        $companies  = ['INGRESS CORPORATION', 'INGRESS INDUSTRIAL', 'INGRESS ENGINEERING', 'INGRESS PRECISION', 'INGRESS KATAYAMA', 'TALENT SYNERGY'];
-        $nameStarts = ['C', 'H', 'N', 'R', 'V', 'AA'];
-        $nameEnds   = ['F', 'L', 'P', 'T', 'Y', 'AE'];
-        foreach ($companies as $i => $co) {
-            $ns = $nameStarts[$i]; $ne = $nameEnds[$i];
-            $sheet->mergeCells("{$ns}{$r}:{$ne}" . ($r + 1));
-            $sheet->setCellValue("{$ns}{$r}", $co);
-            $sheet->getStyle("{$ns}{$r}")->getFont()->setSize(7)->setBold(true);
-            $this->c($sheet, "{$ns}{$r}");
-            $sheet->getStyle("{$ns}{$r}")->getAlignment()->setWrapText(true);
+        // ── Rows 8-9: Company logo ───────────────────────────────────────────────
+        $logoPath = public_path('images/Logo TSSB.jpeg');
+        if (file_exists($logoPath)) {
+            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+            $drawing->setName('Company Logo');
+            $drawing->setDescription('Talent Synergy Logo');
+            $drawing->setPath($logoPath);
+            $drawing->setHeight(35);
+            $drawing->setCoordinates("B{$r}");
+            $drawing->setOffsetX(5);
+            $drawing->setOffsetY(2);
+            $drawing->setWorksheet($sheet);
         }
-        $sheet->mergeCells("AF{$r}:AF" . ($r + 1));
-        $sheet->setCellValue("AF{$r}", '/');
-        $sheet->getStyle("AF{$r}")->getFont()->setSize(20)->setBold(true);
-        $sheet->getStyle("AF{$r}")->getAlignment()->setWrapText(true);
-        $this->borders($sheet, "AF{$r}:AF" . ($r + 1), 'all');
-        $sheet->getRowDimension($r)->setRowHeight(13.8);
-        $sheet->getRowDimension($r + 1)->setRowHeight(13.8);
+        $sheet->mergeCells("B{$r}:AF" . ($r + 1));
+        $sheet->getRowDimension($r)->setRowHeight(20);
+        $sheet->getRowDimension($r + 1)->setRowHeight(20);
         $r += 2;
 
         // ── Rows 10-11: spacers ───────────────────────────────────────────────────
@@ -657,25 +654,22 @@ class OtFormExcelExport
         $sheet->getRowDimension($r)->setRowHeight(10.5); 
         $r++;
 
-        // ── Rows 9-10: Company names ──────────────────────────────────────────────
-        $companies  = ['INGRESS CORPORATION', 'INGRESS ENGINEERING', 'INGRESS PRECISION', 'TALENT SYNERGY'];
-        $nameStarts = ['C', 'G', 'K', 'O', 'S'];
-        $nameEnds   = ['E', 'I', 'M', 'Q', 'T'];
-        foreach ($companies as $i => $co) {
-            $ns = $nameStarts[$i]; $ne = $nameEnds[$i];
-            $sheet->mergeCells("{$ns}{$r}:{$ne}" . ($r + 1));
-            $sheet->setCellValue("{$ns}{$r}", $co);
-            $sheet->getStyle("{$ns}{$r}")->getFont()->setSize(7)->setBold(true);
-            $this->c($sheet, "{$ns}{$r}");
-            $sheet->getStyle("{$ns}{$r}")->getAlignment()->setWrapText(true);
+        // ── Rows 9-10: Company logo ───────────────────────────────────────────────
+        $logoPath = public_path('images/Logo TSSB.jpeg');
+        if (file_exists($logoPath)) {
+            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+            $drawing->setName('Company Logo');
+            $drawing->setDescription('Talent Synergy Logo');
+            $drawing->setPath($logoPath);
+            $drawing->setHeight(35);
+            $drawing->setCoordinates("C{$r}");
+            $drawing->setOffsetX(5);
+            $drawing->setOffsetY(2);
+            $drawing->setWorksheet($sheet);
         }
-        $sheet->mergeCells("R{$r}:R" . ($r + 1));
-        $sheet->setCellValue("R{$r}", 'X');
-        $sheet->getStyle("R{$r}")->getFont()->setSize(20)->setBold(true);
-        $sheet->getStyle("R{$r}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        $this->borders($sheet, "R{$r}:R" . ($r + 1), 'all');
-        $sheet->getRowDimension($r)->setRowHeight(13.8);
-        $sheet->getRowDimension($r + 1)->setRowHeight(13.8);
+        $sheet->mergeCells("C{$r}:T" . ($r + 1));
+        $sheet->getRowDimension($r)->setRowHeight(20);
+        $sheet->getRowDimension($r + 1)->setRowHeight(20);
         $r += 2;
 
         // ── Row 11: spacer ──────────────────────────────────────────────────

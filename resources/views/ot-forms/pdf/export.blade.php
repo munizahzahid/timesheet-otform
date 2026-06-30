@@ -257,16 +257,12 @@
             </tr>
         </table>
 
-        {{-- ───── Company grid ───── --}}
-        <table class="bd" style="margin-top: 0.5mm;">
+        {{-- ───── Company logo row ───── --}}
+        <table style="margin-top: 0.5mm; width: 100%;">
             <tr>
-                <td class="f6 b tc" style="width: 16.5%;">INGRESS<br>CORPORATION</td>
-                <td class="f6 b tc" style="width: 16.5%;">INGRESS<br>INDUSTRIAL</td>
-                <td class="f6 b tc" style="width: 16.5%;">INGRESS<br>ENGINEERING</td>
-                <td class="f6 b tc" style="width: 16.5%;">INGRESS<br>PRECISION</td>
-                <td class="f6 b tc" style="width: 16.5%;">INGRESS<br>KATAYAMA</td>
-                <td class="f6 b tc" style="width: 14%;">TALENT<br>SYNERGY</td>
-                <td class="f14 b tc" style="width: 4%;">/</td>
+                <td style="padding: 2px 3px; text-align: left;">
+                    <img src="{{ public_path('images/Logo TSSB.jpeg') }}" alt="Talent Synergy" style="height: 28px; width: auto;">
+                </td>
             </tr>
         </table>
 
@@ -500,31 +496,25 @@
                     &nbsp;&nbsp;&nbsp;&nbsp;selewat-lewatnya pada atau sebelum <b style="text-decoration:underline;">5hb. setiap bulan</b> (bulan berikutnya).
                 </td>
                 <td style="vertical-align: middle; padding: 2px;">
-                    @if($staffStamp['show'])
-                        <div class="stamp">
-                            <div class="nm">{{ $staffStamp['name'] }}</div>
-                            <div class="ds">{{ $staffStamp['designation'] }}</div>
-                            <div class="dt">{{ $staffStamp['date'] }}</div>
-                        </div>
-                    @endif
+                    <div class="stamp" style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
+                        <div class="nm">{{ $staffStamp['name'] }}</div>
+                        <div class="ds">{{ $staffStamp['designation'] }}</div>
+                        <div class="dt">{{ $staffStamp['date'] }}</div>
+                    </div>
                 </td>
                 <td style="vertical-align: middle; padding: 2px;">
-                    @if($hodStamp['show'])
-                        <div class="stamp">
-                            <div class="nm">{{ $hodStamp['name'] }}</div>
-                            <div class="ds">{{ $hodStamp['designation'] }}</div>
-                            <div class="dt">{{ $hodStamp['date'] }}</div>
-                        </div>
-                    @endif
+                    <div class="stamp" style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
+                        <div class="nm">{{ $hodStamp['name'] }}</div>
+                        <div class="ds">{{ $hodStamp['designation'] }}</div>
+                        <div class="dt">{{ $hodStamp['date'] }}</div>
+                    </div>
                 </td>
                 <td style="vertical-align: middle; padding: 2px;">
-                    @if($gmStamp['show'])
-                        <div class="stamp">
-                            <div class="nm">{{ $gmStamp['name'] }}</div>
-                            <div class="ds">{{ $gmStamp['designation'] }}</div>
-                            <div class="dt">{{ $gmStamp['date'] }}</div>
-                        </div>
-                    @endif
+                    <div class="stamp" style="visibility: {{ $gmStamp['show'] ? 'visible' : 'hidden' }};">
+                        <div class="nm">{{ $gmStamp['name'] }}</div>
+                        <div class="ds">{{ $gmStamp['designation'] }}</div>
+                        <div class="dt">{{ $gmStamp['date'] }}</div>
+                    </div>
                 </td>
                 <td colspan="9" class="nb"></td>
             </tr>
@@ -576,18 +566,17 @@
             <tr>
                 <td class="f7 b" style="padding: 2px 3px; width: 8%;">TITLE :</td>
                 <td class="f8 b tl" style="padding: 2px 0;">OVERTIME CLAIM FORM (EXECUTIVE) ~ OCF</td>
-                <td class="f7 b tr" style="padding: 2px 3px; width: 12%;">SERIAL NO.</td>
+                <td class="f7 b" style="padding: 2px 3px; width: 8%; white-space: nowrap; text-align: left;">SERIAL NO.</td>
+                <td class="f7" style="padding: 2px 3px; width: 10%; text-align: left;">&nbsp;</td>
             </tr>
         </table>
 
-        {{-- ───── Company grid (4 companies) ───── --}}
-        <table class="bd" style="margin-top: 1mm;">
+        {{-- ───── Company logo row ───── --}}
+        <table style="margin-top: 1mm; width: 100%;">
             <tr>
-                <td class="f6 b tc" style="width: 25%;">INGRESS CORPORATION</td>
-                <td class="f6 b tc" style="width: 25%;">INGRESS ENGINEERING</td>
-                <td class="f6 b tc" style="width: 25%;">INGRESS PRECISION</td>
-                <td class="f6 b tc" style="width: 20%;">TALENT SYNERGY</td>
-                <td class="f14 b tc" style="width: 5%;">X</td>
+                <td style="padding: 2px 3px; text-align: left;">
+                    <img src="{{ public_path('images/Logo TSSB.jpeg') }}" alt="Talent Synergy" style="height: 28px; width: auto;">
+                </td>
             </tr>
         </table>
 
@@ -812,22 +801,18 @@
                         </tr>
                         <tr style="height: 70px;">
                             <td style="vertical-align: middle; padding: 2px;">
-                                @if($staffStamp['show'])
-                                    <div class="stamp">
-                                        <div class="nm">{{ $staffStamp['name'] }}</div>
-                                        <div class="ds">STAFF</div>
-                                        <div class="dt">{{ $staffStamp['date'] }}</div>
-                                    </div>
-                                @endif
+                                <div class="stamp" style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
+                                    <div class="nm">{{ $staffStamp['name'] }}</div>
+                                    <div class="ds">STAFF</div>
+                                    <div class="dt">{{ $staffStamp['date'] }}</div>
+                                </div>
                             </td>
                             <td style="vertical-align: middle; padding: 2px;">
-                                @if($hodStamp['show'])
-                                    <div class="stamp">
-                                        <div class="nm">{{ $hodStamp['name'] }}</div>
-                                        <div class="ds">MGR/HOD</div>
-                                        <div class="dt">{{ $hodStamp['date'] }}</div>
-                                    </div>
-                                @endif
+                                <div class="stamp" style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
+                                    <div class="nm">{{ $hodStamp['name'] }}</div>
+                                    <div class="ds">MGR/HOD</div>
+                                    <div class="dt">{{ $hodStamp['date'] }}</div>
+                                </div>
                             </td>
                         </tr>
                         <tr>

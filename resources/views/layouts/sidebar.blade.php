@@ -6,10 +6,9 @@
        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
     {{-- Logo / Brand --}}
-    <div class="flex items-center gap-3 px-6 py-5 border-b border-blue-800 bg-blue-900/50 backdrop-blur">
-        <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-            <img src="{{ asset('images/TALENT SYNERGY SDN BHD.png') }}" alt="Talent Synergy Sdn Bhd" class="h-8 w-auto rounded-full">
-            <span class="text-white font-bold text-xl tracking-tight">TSSB Portal</span>
+    <div class="flex items-center px-6 py-5 border-b border-blue-800 bg-blue-900/50 backdrop-blur">
+        <a href="{{ route('dashboard') }}">
+            <img src="{{ asset('images/Logo TSSB.jpeg') }}" alt="Talent Synergy Sdn Bhd" class="h-10 w-auto">
         </a>
     </div>
 
@@ -67,6 +66,18 @@
                 </a>
             </div>
         </div>
+
+        {{-- Project (Admin Only) --}}
+        @if(Auth::user()->isAdmin())
+            <a href="{{ route('admin.project.dashboard') }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
+                      {{ !$viewingOtherUser && request()->routeIs('admin.project.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
+                <svg class="w-5 h-5 flex-shrink-0 transition-colors {{ !$viewingOtherUser && request()->routeIs('admin.project.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                </svg>
+                Project
+            </a>
+        @endif
 
         {{-- Finance Dropdown (Placeholder) --}}
         <div>

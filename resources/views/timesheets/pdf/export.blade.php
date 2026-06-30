@@ -184,7 +184,7 @@
     <table style="margin-bottom: 1mm; width: 100%;">
         <tr>
             <td style="padding: 2mm 0; width: 78%;">
-                <div style="font-size: 14pt; font-weight: bold;">TALENT SYNERGY SDN BHD</div>
+                <img src="{{ public_path('images/Logo TSSB.jpeg') }}" alt="Talent Synergy" style="height: 28px; width: auto;">
             </td>
             <td style="vertical-align: top; width: 22%; padding: 0;">
                 <table class="bd" style="width: 100%; font-size: 3.5pt; border: 0.5pt solid #000;">
@@ -195,34 +195,28 @@
                     </tr>
                     <tr style="height: 55px;">
                         <td class="tc">
-                            @if($staffStamp['show'])
-                                <div class="stamp">
-                                    <div class="ds">PRPD</div>
-                                    <div class="nm">{{ $shortName($staffStamp['name']) }}</div>
-                                    <div class="ds">STAFF</div>
-                                    <div class="dt">{{ $staffStamp['date'] }}</div>
-                                </div>
-                            @endif
+                            <div class="stamp" style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
+                                <div class="ds">PRPD</div>
+                                <div class="nm">{{ $shortName($staffStamp['name']) }}</div>
+                                <div class="ds">STAFF</div>
+                                <div class="dt">{{ $staffStamp['date'] }}</div>
+                            </div>
                         </td>
                         <td class="tc">
-                            @if($hodStamp['show'])
-                                <div class="stamp">
-                                    <div class="ds">CHKD</div>
-                                    <div class="nm">{{ $shortName($hodStamp['name']) }}</div>
-                                    <div class="ds">HOD/EXEC</div>
-                                    <div class="dt">{{ $hodStamp['date'] }}</div>
-                                </div>
-                            @endif
+                            <div class="stamp" style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
+                                <div class="ds">CHKD</div>
+                                <div class="nm">{{ $shortName($hodStamp['name']) }}</div>
+                                <div class="ds">HOD/EXEC</div>
+                                <div class="dt">{{ $hodStamp['date'] }}</div>
+                            </div>
                         </td>
                         <td class="tc">
-                            @if($l1Stamp['show'])
-                                <div class="stamp">
-                                    <div class="ds">VRFD</div>
-                                    <div class="nm">{{ $shortName($l1Stamp['name']) }}</div>
-                                    <div class="ds">MNGR</div>
-                                    <div class="dt">{{ $l1Stamp['date'] }}</div>
-                                </div>
-                            @endif
+                            <div class="stamp" style="visibility: {{ $l1Stamp['show'] ? 'visible' : 'hidden' }};">
+                                <div class="ds">VRFD</div>
+                                <div class="nm">{{ $shortName($l1Stamp['name']) }}</div>
+                                <div class="ds">MNGR</div>
+                                <div class="dt">{{ $l1Stamp['date'] }}</div>
+                            </div>
                         </td>
                     </tr>
                     <tr>
