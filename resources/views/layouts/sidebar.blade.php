@@ -68,7 +68,7 @@
         </div>
 
         {{-- Project (Admin Only) --}}
-        @if(Auth::user()->isAdmin())
+        @if(Auth::user()->isAdmin() && Route::has('admin.project.dashboard'))
             <a href="{{ route('admin.project.dashboard') }}"
                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
                       {{ !$viewingOtherUser && request()->routeIs('admin.project.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">

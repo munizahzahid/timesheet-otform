@@ -13,7 +13,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month / Year</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted At</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 </tr>
@@ -30,7 +30,9 @@
                                                 {{ $ot->form_type === 'executive' ? 'Executive' : 'Non-Executive' }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-600">{{ $ot->company_name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            {{ $ot->plan_submitted_at ? $ot->plan_submitted_at->format('d/m/Y H:i') : '-' }}
+                                        </td>
                                         <td class="px-4 py-3 text-sm">
                                             @php
                                                 $badgeClass = match($ot->status) {
