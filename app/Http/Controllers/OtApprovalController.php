@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\ApprovalLog;
 use App\Models\Notification;
 use App\Models\OtForm;
+use App\Models\OtFormEntry;
+use App\Models\ProjectCode;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class OtApprovalController extends Controller
 {
@@ -50,17 +53,58 @@ class OtApprovalController extends Controller
     }
 
     /**
+     * List approved OT forms for the current user.
+     */
+    public function approved()
+    {
+        $user = Auth::user();
+
+        $query = OtForm::with('user')->where('status', 'approved');
+
+        // Non-admin/hr users only see approved forms of their subordinates
+        if (!in_array($user->role, ['admin', 'hr'])) {
+            $query->whereHas('user', function ($uq) use ($user) {
+                $uq->where('reports_to', $user->id);
+            });
+        }
+
+        $otForms = $query->orderByDesc('updated_at')->paginate(20);
+
+        // Load final approval dates for the paginated forms
+        $formIds = $otForms->pluck('id');
+        $approvalLogs = ApprovalLog::where('approvable_type', 'ot_form')
+            ->whereIn('approvable_id', $formIds)
+            ->where('action', 'approved')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('approvable_id');
+
+        $approvedAt = [];
+        foreach ($approvalLogs as $formId => $logs) {
+            $approvedAt[$formId] = $logs->last()->acted_at;
+        }
+
+        return view('approvals.ot-forms.approved', compact('otForms', 'approvedAt'));
+    }
+
+    /**
      * Show a single OT form for review.
      */
     public function show(OtForm $otForm)
     {
         $otForm->load('entries.projectCode', 'user.department');
 
+        $projectCodes = ProjectCode::where('is_active', true)
+            ->orderBy('code')
+            ->get();
+
         // Build approval stamps
         $approvalLogs = $otForm->approvalLogs()->get();
         $approvalStamps = $this->buildApprovalStamps($otForm, $approvalLogs);
 
-        return view('approvals.ot-forms.show', compact('otForm', 'approvalStamps'));
+        $hasHrCorrections = $otForm->entries->contains(fn ($e) => !empty($e->hr_corrections));
+
+        return view('approvals.ot-forms.show', compact('otForm', 'approvalStamps', 'projectCodes', 'hasHrCorrections'));
     }
 
     /**
@@ -154,6 +198,18 @@ class OtApprovalController extends Controller
         // Notify CEO / final approver
         $this->notifyCEOUsers($otForm, 'OT Form Pending CEO Approval', "{$otForm->user->name}'s OT Form has been forwarded by HR for your approval.");
 
+        // Notify staff that the form has been reviewed and forwarded to CEO
+        $editMessage = $otForm->hr_remarks
+            ? "Your OT Form has been reviewed and edited by HR before forwarding to CEO. Corrections:\n{$otForm->hr_remarks}"
+            : "Your OT Form has been reviewed by HR and forwarded to CEO for final approval.";
+
+        Notification::create([
+            'user_id' => $otForm->user_id,
+            'title' => 'OT Form Forwarded to CEO',
+            'message' => $editMessage,
+            'link' => route('ot-forms.edit', $otForm),
+        ]);
+
         return response()->json([
             'success' => true,
             'status' => $otForm->status,
@@ -204,6 +260,161 @@ class OtApprovalController extends Controller
             'status' => $otForm->status,
             'message' => 'OT form returned to employee for correction.',
         ]);
+    }
+
+    /**
+     * HR edits and saves corrections to an OT form.
+     */
+    public function hrEdit(Request $request, OtForm $otForm)
+    {
+        $user = Auth::user();
+
+        if (!$user->canReviewOTForm()) {
+            return response()->json(['error' => 'You are not authorized to review this OT form.'], 403);
+        }
+
+        if (!in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved'])) {
+            return response()->json(['error' => 'This OT form cannot be edited by HR in its current status.'], 400);
+        }
+
+        $request->validate([
+            'entries' => 'required|array',
+            'entries.*.id' => 'required|integer|exists:ot_form_entries,id',
+        ]);
+
+        $entries = $request->input('entries', []);
+        $summaryLines = [];
+        $now = now();
+
+        DB::transaction(function () use ($otForm, $entries, $user, $now, &$summaryLines) {
+            foreach ($entries as $entryData) {
+                $entryId = $entryData['id'] ?? null;
+                if (!$entryId) continue;
+
+                $entry = OtFormEntry::where('id', $entryId)
+                    ->where('ot_form_id', $otForm->id)
+                    ->first();
+                if (!$entry) continue;
+
+                // Original values: from hr_corrections if already edited, else current values
+                $original = $entry->hr_corrections ?? [
+                    'planned_start_time' => $entry->getOriginal('planned_start_time') ?? $entry->planned_start_time,
+                    'planned_end_time' => $entry->getOriginal('planned_end_time') ?? $entry->planned_end_time,
+                    'actual_start_time' => $entry->getOriginal('actual_start_time') ?? $entry->actual_start_time,
+                    'actual_end_time' => $entry->getOriginal('actual_end_time') ?? $entry->actual_end_time,
+                    'project_code_id' => $entry->project_code_id,
+                    'project_category' => $entry->project_category,
+                    'manual_project_code_name' => $entry->manual_project_code_name,
+                    'project_name' => $entry->project_name,
+                ];
+
+                // Build new values from request
+                $newValues = [
+                    'planned_start_time' => $entryData['planned_start_time'] ?? null,
+                    'planned_end_time' => $entryData['planned_end_time'] ?? null,
+                    'actual_start_time' => $entryData['actual_start_time'] ?? null,
+                    'actual_end_time' => $entryData['actual_end_time'] ?? null,
+                    'project_code_id' => !empty($entryData['project_code_id']) ? $entryData['project_code_id'] : null,
+                    'project_category' => $entryData['project_category'] ?? null,
+                    'manual_project_code_name' => $entryData['manual_project_code_name'] ?? null,
+                    'project_name' => $entryData['project_name'] ?? null,
+                ];
+
+                // Normalize time strings to H:i for comparison
+                $normalizeTime = function ($value) {
+                    if (!$value) return null;
+                    return \substr($value, 0, 5);
+                };
+
+                $compareValue = function ($field, $old, $new) use ($normalizeTime) {
+                    if (in_array($field, ['planned_start_time', 'planned_end_time', 'actual_start_time', 'actual_end_time'])) {
+                        return $normalizeTime($old) === $normalizeTime($new);
+                    }
+                    return $old == $new;
+                };
+
+                // Calculate hours from times
+                $newPlannedTotal = $this->calcHoursFromStrings($newValues['planned_start_time'], $newValues['planned_end_time']);
+                $newActualTotal = $this->calcHoursFromStrings($newValues['actual_start_time'], $newValues['actual_end_time']);
+
+                // Detect changes and record summary
+                $dateLabel = $entry->entry_date->format('j/n');
+                $changedFields = [];
+                $fieldLabels = [
+                    'planned_start_time' => 'Plan Start',
+                    'planned_end_time' => 'Plan End',
+                    'actual_start_time' => 'Actual Start',
+                    'actual_end_time' => 'Actual End',
+                    'project_code_id' => 'Project Code',
+                    'project_category' => 'Project Category',
+                    'manual_project_code_name' => 'Project Name',
+                    'project_name' => 'Project Name',
+                ];
+
+                $displayValue = function ($field, $value) use ($normalizeTime) {
+                    if (in_array($field, ['planned_start_time', 'planned_end_time', 'actual_start_time', 'actual_end_time'])) {
+                        return $normalizeTime($value) ?? '-';
+                    }
+                    if ($field === 'project_code_id') {
+                        return $value ? ProjectCode::find($value)?->code : '-';
+                    }
+                    return $value ?? '-';
+                };
+
+                foreach ($newValues as $field => $newValue) {
+                    $oldValue = $original[$field] ?? null;
+                    if (!$compareValue($field, $oldValue, $newValue)) {
+                        $changedFields[] = "- {$fieldLabels[$field]}: {$displayValue($field, $oldValue)} → {$displayValue($field, $newValue)}";
+                    }
+                }
+
+                if (!empty($changedFields)) {
+                    $summaryLines[] = $dateLabel . ":\n" . implode("\n", $changedFields);
+                }
+
+                // Update current values, preserving original snapshot only on first HR edit
+                $updateData = [
+                    'planned_start_time' => $newValues['planned_start_time'] ?: null,
+                    'planned_end_time' => $newValues['planned_end_time'] ?: null,
+                    'actual_start_time' => $newValues['actual_start_time'] ?: null,
+                    'actual_end_time' => $newValues['actual_end_time'] ?: null,
+                    'planned_total_hours' => $newPlannedTotal,
+                    'actual_total_hours' => $newActualTotal,
+                    'project_code_id' => $newValues['project_code_id'],
+                    'project_category' => $newValues['project_category'] ?: null,
+                    'manual_project_code_name' => $newValues['manual_project_code_name'] ?: null,
+                    'project_name' => $newValues['project_name'] ?: null,
+                ];
+
+                if (empty($entry->hr_corrections)) {
+                    $updateData['hr_corrections'] = $original;
+                }
+
+                $entry->update($updateData);
+            }
+
+            // Update OT form HR metadata
+            $otForm->update([
+                'hr_remarks' => !empty($summaryLines) ? implode("\n", $summaryLines) : null,
+                'hr_edited_at' => $now,
+                'hr_edited_by' => $user->id,
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OT form corrections saved.',
+            'hr_remarks' => $otForm->fresh()->hr_remarks,
+        ]);
+    }
+
+    private function calcHoursFromStrings(?string $start, ?string $end): float
+    {
+        if (!$start || !$end) return 0;
+        $s = \Carbon\Carbon::parse($start);
+        $e = \Carbon\Carbon::parse($end);
+        if ($e->lte($s)) $e->addDay();
+        return max(0, round($e->diffInMinutes($s, true) / 60, 2));
     }
 
     /**

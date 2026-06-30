@@ -50,4 +50,17 @@ class Timesheet extends Model
     {
         return $this->hasMany(TimesheetApprovalLog::class);
     }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'draft' => 'Draft',
+            'pending_hod' => 'Pending HOD/Exec/SPV Check',
+            'pending_l1' => 'Pending Manager Approval',
+            'approved' => 'Approved',
+            'rejected_hod' => 'Rejected by HOD',
+            'rejected_l1' => 'Rejected by Manager',
+            default => ucfirst(str_replace('_', ' ', $this->status)),
+        };
+    }
 }

@@ -8,6 +8,11 @@ use App\Http\Controllers\Admin\PublicHolidayController;
 use App\Http\Controllers\Admin\DesknetSyncController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\ProjectCodeController;
+use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\ProjectPhaseController;
+use App\Http\Controllers\Admin\ProjectTaskController;
+use App\Http\Controllers\Admin\ProjectTaskCommentController;
+use App\Http\Controllers\Admin\ProjectTaskAttachmentController;
 use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\ExcelUploadController;
 use App\Http\Controllers\AttendanceUploadController;
@@ -48,6 +53,7 @@ Route::middleware('auth')->group(function () {
     
     // Timesheet approval workflow
     Route::get('/approvals/timesheets', [TimesheetApprovalController::class, 'index'])->name('approvals.timesheets.index');
+    Route::get('/approvals/timesheets/approved', [TimesheetApprovalController::class, 'approved'])->name('approvals.timesheets.approved');
     Route::get('/approvals/timesheets/{timesheet}', [TimesheetApprovalController::class, 'show'])->name('approvals.timesheets.show');
     Route::post('/timesheets/{timesheet}/submit', [TimesheetApprovalController::class, 'submit'])->name('timesheets.submit');
     Route::post('/timesheets/{timesheet}/approve-hod', [TimesheetApprovalController::class, 'approveHOD'])->name('timesheets.approve-hod');
@@ -77,11 +83,13 @@ Route::middleware('auth')->group(function () {
 
     // OT Form Approvals
     Route::get('/approvals/ot-forms', [OtApprovalController::class, 'index'])->name('approvals.ot-forms.index');
+    Route::get('/approvals/ot-forms/approved', [OtApprovalController::class, 'approved'])->name('approvals.ot-forms.approved');
     Route::get('/approvals/ot-forms/{otForm}', [OtApprovalController::class, 'show'])->name('approvals.ot-forms.show');
     Route::post('/approvals/ot-forms/{otForm}/approve', [OtApprovalController::class, 'approve'])->name('approvals.ot-forms.approve');
     Route::post('/approvals/ot-forms/{otForm}/reject', [OtApprovalController::class, 'reject'])->name('approvals.ot-forms.reject');
     Route::post('/approvals/ot-forms/{otForm}/hr-forward', [OtApprovalController::class, 'hrForward'])->name('approvals.ot-forms.hr-forward');
     Route::post('/approvals/ot-forms/{otForm}/hr-return', [OtApprovalController::class, 'hrReturn'])->name('approvals.ot-forms.hr-return');
+    Route::post('/approvals/ot-forms/{otForm}/hr-edit', [OtApprovalController::class, 'hrEdit'])->name('approvals.ot-forms.hr-edit');
 });
 
 // Admin routes
@@ -111,6 +119,51 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Audit logs
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
+
+    // Project Management (Admin Only - Draft)
+    Route::prefix('project')->name('project.')->group(function () {
+        Route::get('/', [ProjectController::class, 'dashboard'])->name('dashboard');
+        Route::prefix('projects')->name('projects.')->group(function () {
+            Route::get('/', [ProjectController::class, 'index'])->name('index');
+            Route::get('/create', [ProjectController::class, 'create'])->name('create');
+            Route::post('/', [ProjectController::class, 'store'])->name('store');
+            Route::get('/{project}', [ProjectController::class, 'show'])->name('show');
+            Route::get('/{project}/edit', [ProjectController::class, 'edit'])->name('edit');
+            Route::put('/{project}', [ProjectController::class, 'update'])->name('update');
+
+            // Phases
+            Route::prefix('{project}/phases')->name('phases.')->group(function () {
+                Route::get('/', [ProjectPhaseController::class, 'index'])->name('index');
+                Route::get('/create', [ProjectPhaseController::class, 'create'])->name('create');
+                Route::post('/', [ProjectPhaseController::class, 'store'])->name('store');
+                Route::get('/{phase}', [ProjectPhaseController::class, 'show'])->name('show');
+                Route::get('/{phase}/edit', [ProjectPhaseController::class, 'edit'])->name('edit');
+                Route::put('/{phase}', [ProjectPhaseController::class, 'update'])->name('update');
+                Route::delete('/{phase}', [ProjectPhaseController::class, 'destroy'])->name('destroy');
+            });
+
+            // Tasks
+            Route::prefix('{project}/tasks')->name('tasks.')->group(function () {
+                Route::get('/', [ProjectTaskController::class, 'index'])->name('index');
+                Route::get('/create', [ProjectTaskController::class, 'create'])->name('create');
+                Route::post('/', [ProjectTaskController::class, 'store'])->name('store');
+                Route::get('/{task}', [ProjectTaskController::class, 'show'])->name('show');
+                Route::get('/{task}/edit', [ProjectTaskController::class, 'edit'])->name('edit');
+                Route::put('/{task}', [ProjectTaskController::class, 'update'])->name('update');
+                Route::delete('/{task}', [ProjectTaskController::class, 'destroy'])->name('destroy');
+                Route::post('/{task}/quick-update', [ProjectTaskController::class, 'quickUpdate'])->name('quick-update');
+
+                // Comments
+                Route::post('/{task}/comments', [ProjectTaskCommentController::class, 'store'])->name('comments.store');
+                Route::delete('/{task}/comments/{comment}', [ProjectTaskCommentController::class, 'destroy'])->name('comments.destroy');
+
+                // Attachments
+                Route::get('/{task}/attachments/{attachment}', [ProjectTaskAttachmentController::class, 'show'])->name('attachments.show');
+                Route::post('/{task}/attachments', [ProjectTaskAttachmentController::class, 'store'])->name('attachments.store');
+                Route::delete('/{task}/attachments/{attachment}', [ProjectTaskAttachmentController::class, 'destroy'])->name('attachments.destroy');
+            });
+        });
+    });
 });
 
 require __DIR__.'/auth.php';

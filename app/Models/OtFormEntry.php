@@ -15,7 +15,7 @@ class OtFormEntry extends Model
         'meal_break', 'over_3_hours', 'is_shift', 'is_public_holiday', 'ot_type',
         'jenis_ot_normal', 'jenis_ot_training', 'jenis_ot_kaizen', 'jenis_ot_5s',
         'ot_rate_1', 'ot_rate_2', 'ot_rate_3', 'ot_rate_4', 'ot_rate_5',
-        'remarks',
+        'remarks', 'hr_corrections',
     ];
 
     protected function casts(): array
@@ -42,6 +42,7 @@ class OtFormEntry extends Model
             'ot_rate_3' => 'decimal:2',
             'ot_rate_4' => 'decimal:2',
             'ot_rate_5' => 'decimal:2',
+            'hr_corrections' => 'array',
         ];
     }
 

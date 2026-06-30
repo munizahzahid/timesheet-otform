@@ -12,6 +12,7 @@ class OtForm extends Model
         'user_id', 'month', 'year', 'form_type', 'company_name',
         'section_line', 'status', 'plan_submitted_at',
         'actual_submitted_at', 'total_ot_hours',
+        'hr_remarks', 'hr_edited_at', 'hr_edited_by',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class OtForm extends Model
             'plan_submitted_at' => 'datetime',
             'actual_submitted_at' => 'datetime',
             'total_ot_hours' => 'decimal:2',
+            'hr_edited_at' => 'datetime',
         ];
     }
 
@@ -31,6 +33,11 @@ class OtForm extends Model
     public function entries(): HasMany
     {
         return $this->hasMany(OtFormEntry::class);
+    }
+
+    public function hrEditor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'hr_edited_by');
     }
 
     public function approvalLogs()

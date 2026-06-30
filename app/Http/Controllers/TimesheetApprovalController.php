@@ -35,6 +35,40 @@ class TimesheetApprovalController extends Controller
     }
 
     /**
+     * List approved timesheets for the current user.
+     */
+    public function approved()
+    {
+        $user = Auth::user();
+
+        $query = Timesheet::with('user')->where('status', 'approved');
+
+        // Non-admin users only see approved timesheets of their subordinates
+        if ($user->role !== 'admin') {
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('reports_to', $user->id);
+            });
+        }
+
+        $timesheets = $query->orderByDesc('updated_at')->paginate(20);
+
+        // Load final approval dates for the paginated timesheets
+        $timesheetIds = $timesheets->pluck('id');
+        $approvalLogs = TimesheetApprovalLog::whereIn('timesheet_id', $timesheetIds)
+            ->where('action', 'approved')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('timesheet_id');
+
+        $approvedAt = [];
+        foreach ($approvalLogs as $timesheetId => $logs) {
+            $approvedAt[$timesheetId] = $logs->last()->created_at;
+        }
+
+        return view('approvals.timesheets.approved', compact('timesheets', 'approvedAt'));
+    }
+
+    /**
      * Show a single timesheet for review.
      */
     public function show(Timesheet $timesheet)

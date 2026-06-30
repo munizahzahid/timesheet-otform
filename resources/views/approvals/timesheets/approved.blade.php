@@ -9,7 +9,7 @@
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">
                 <div class="overflow-x-auto">
-                    @include('approvals.timesheets._table', ['mode' => 'pending'])
+                    @include('approvals.timesheets._table', ['mode' => 'approved'])
                 </div>
                 <div class="mt-4">{{ $timesheets->links() }}</div>
             </div>

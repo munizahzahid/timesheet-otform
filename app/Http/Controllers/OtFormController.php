@@ -75,7 +75,7 @@ class OtFormController extends Controller
 
         $otForm->load(['entries' => function ($q) {
             $q->orderBy('entry_date')->orderBy('id');
-        }, 'entries.projectCode', 'user.department']);
+        }, 'entries.projectCode', 'user.department', 'hrEditor']);
         $projectCodes = ProjectCode::where('is_active', true)
             ->orderBy('code')
             ->get();
