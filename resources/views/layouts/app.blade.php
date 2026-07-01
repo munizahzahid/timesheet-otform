@@ -47,17 +47,6 @@
                                 </svg>
                             </button>
 
-                            {{-- Back button --}}
-                            @if(request()->header('Referer') && !request()->routeIs('dashboard'))
-                                <a href="{{ request()->header('Referer') }}" 
-                                   class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                                    </svg>
-                                    Back
-                                </a>
-                            @endif
-
                             {{-- Home button --}}
                             <a href="{{ route('dashboard') }}"
                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition">

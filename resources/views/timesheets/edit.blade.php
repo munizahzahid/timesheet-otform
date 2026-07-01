@@ -1,3 +1,7 @@
+@php
+session(['hr_last_seen' => now()]);
+session(['timesheets_last_seen' => now()]);
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
@@ -20,6 +24,10 @@
             </div>
         </div>
     </x-slot>
+
+    @push('sub-navbar')
+        @include('layouts._hr-sub-navbar')
+    @endpush
 
     <div class="max-w-full mx-auto"
              x-data="timesheetMatrix()"

@@ -1,9 +1,17 @@
+@php
+session(['hr_last_seen' => now()]);
+session(['ot_forms_last_seen' => now()]);
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('My OT Forms') }}</h2>
         </div>
     </x-slot>
+
+    @push('sub-navbar')
+        @include('layouts._hr-sub-navbar')
+    @endpush
 
     <div class="max-w-6xl mx-auto">
 

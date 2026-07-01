@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Support\WindowsFilesystem;
+use App\View\Composers\ApprovalCountsComposer;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,5 +31,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Timesheet::observe(\App\Observers\TimesheetObserver::class);
         \App\Models\OtForm::observe(\App\Observers\OtFormObserver::class);
         \App\Models\User::observe(\App\Observers\UserObserver::class);
+
+        View::composer(['layouts.sidebar', 'layouts._hr-sub-navbar'], ApprovalCountsComposer::class);
     }
 }
