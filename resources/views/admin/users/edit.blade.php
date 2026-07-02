@@ -25,6 +25,15 @@
                         @method('PUT')
 
                         <div class="mb-4">
+                            <label for="short_name" class="block text-sm font-medium text-gray-700">Shortform Name</label>
+                            <input type="text" name="short_name" id="short_name" value="{{ old('short_name', $user->short_name) }}"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                   placeholder="e.g. WAHAB">
+                            <p class="mt-1 text-xs text-gray-500">Used for signatures and stamps. Admin only.</p>
+                            @error('short_name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div class="mb-4">
                             <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
                             <select name="role" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="staff" {{ $user->role === 'staff' ? 'selected' : '' }}>Staff</option>
@@ -37,25 +46,26 @@
                             @error('role') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
 
-                        <div class="mb-4">
-                            <label for="reports_to" class="block text-sm font-medium text-gray-700">Reports To</label>
-                            <select name="reports_to" id="reports_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">-- None --</option>
-                                @foreach($supervisors as $sup)
-                                    <option value="{{ $sup->id }}" {{ $user->reports_to == $sup->id ? 'selected' : '' }}>
-                                        {{ $sup->name }} ({{ $sup->designation ?? '-' }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('reports_to') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                        </div>
-
                         {{-- Document Type Approvers --}}
                         <div class="mb-6 bg-blue-50 rounded-lg p-4">
                             <h3 class="text-sm font-medium text-gray-700 mb-3">Document Type Approvers</h3>
+                            <p class="text-xs text-gray-500 mb-4">These approvers are assigned per user by admin. If Level 1 is not set, the workflow skips to the next available level.</p>
 
                             <div class="mb-4">
-                                <label for="timesheet_approver_id" class="block text-sm font-medium text-gray-700">Timesheet Approver (Asst Mgr/Mngr)</label>
+                                <label for="timesheet_hod_approver_id" class="block text-sm font-medium text-gray-700">TS1 Approver</label>
+                                <select name="timesheet_hod_approver_id" id="timesheet_hod_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    <option value="">-- None / Skip to Level 2 --</option>
+                                    @foreach($approvers as $approver)
+                                        <option value="{{ $approver->id }}" {{ $user->timesheet_hod_approver_id == $approver->id ? 'selected' : '' }}>
+                                            {{ $approver->name }} ({{ $approver->designation ?? '-' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('timesheet_hod_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="timesheet_approver_id" class="block text-sm font-medium text-gray-700">Timesheet Level 2 Approver (Asst Mgr/Mngr)</label>
                                 <select name="timesheet_approver_id" id="timesheet_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="">-- None --</option>
                                     @foreach($approvers as $approver)
@@ -68,55 +78,29 @@
                             </div>
 
                             <div class="mb-4">
-                                <label for="ot_exec_approver_id" class="block text-sm font-medium text-gray-700">OT Form (Exec) Approver (HOD)</label>
-                                <select name="ot_exec_approver_id" id="ot_exec_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <label for="ot_approver_id" class="block text-sm font-medium text-gray-700">OT Form Level 1 Approver (HOD)</label>
+                                <select name="ot_approver_id" id="ot_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="">-- None --</option>
                                     @foreach($approvers as $approver)
-                                        <option value="{{ $approver->id }}" {{ $user->ot_exec_approver_id == $approver->id ? 'selected' : '' }}>
+                                        <option value="{{ $approver->id }}" {{ $user->ot_approver_id == $approver->id ? 'selected' : '' }}>
                                             {{ $approver->name }} ({{ $approver->designation ?? '-' }})
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('ot_exec_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                @error('ot_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="mb-4">
-                                <label for="ot_exec_final_approver_id" class="block text-sm font-medium text-gray-700">OT Form (Exec) Final Approver (DGM/CEO)</label>
-                                <select name="ot_exec_final_approver_id" id="ot_exec_final_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <label for="ot_final_approver_id" class="block text-sm font-medium text-gray-700">OT Form Level 3 Approver (CEO)</label>
+                                <select name="ot_final_approver_id" id="ot_final_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                     <option value="">-- None --</option>
                                     @foreach($approvers as $approver)
-                                        <option value="{{ $approver->id }}" {{ $user->ot_exec_final_approver_id == $approver->id ? 'selected' : '' }}>
+                                        <option value="{{ $approver->id }}" {{ $user->ot_final_approver_id == $approver->id ? 'selected' : '' }}>
                                             {{ $approver->name }} ({{ $approver->designation ?? '-' }})
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('ot_exec_final_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div class="mb-4">
-                                <label for="ot_non_exec_approver_id" class="block text-sm font-medium text-gray-700">OT Form (Non-Exec) Approver (Mgr/HOD)</label>
-                                <select name="ot_non_exec_approver_id" id="ot_non_exec_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">-- None --</option>
-                                    @foreach($approvers as $approver)
-                                        <option value="{{ $approver->id }}" {{ $user->ot_non_exec_approver_id == $approver->id ? 'selected' : '' }}>
-                                            {{ $approver->name }} ({{ $approver->designation ?? '-' }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('ot_non_exec_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div class="mb-4">
-                                <label for="ot_non_exec_final_approver_id" class="block text-sm font-medium text-gray-700">OT Form (Non-Exec) Final Approver (DGM/CEO)</label>
-                                <select name="ot_non_exec_final_approver_id" id="ot_non_exec_final_approver_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="">-- None --</option>
-                                    @foreach($approvers as $approver)
-                                        <option value="{{ $approver->id }}" {{ $user->ot_non_exec_final_approver_id == $approver->id ? 'selected' : '' }}>
-                                            {{ $approver->name }} ({{ $approver->designation ?? '-' }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('ot_non_exec_final_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                @error('ot_final_approver_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
 

@@ -141,7 +141,7 @@
                     </td>
                     {{-- APPROVAL BEFORE: HOD --}}
                     <td class="border border-gray-200 px-1 py-1 text-center align-middle">
-                        @if($isFilled && in_array($otForm->status, ['pending_gm', 'approved']))
+                        @if($isFilled && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved']))
                             <div class="flex flex-col items-center gap-0.5">
                                 <svg class="w-5 h-5 text-red-500" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="12" y="14" text-anchor="middle" fill="currentColor" font-size="6" font-weight="bold" font-family="Arial">TSSB</text></svg>
                                 <span class="text-[8px] text-red-500 font-medium truncate max-w-[60px]">{{ $managerApproverName ?? '' }}</span>

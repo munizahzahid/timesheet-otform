@@ -170,10 +170,11 @@
                 @if(in_array($otForm->status, ['pending_manager', 'pending_gm']))
                     @php
                         $user = auth()->user();
-                        $designationLower = strtolower($user->designation ?? '');
+                        $isOtApprover = $otForm->user->ot_approver_id === $user->id;
+                        $isOtFinalApprover = $otForm->user->ot_final_approver_id === $user->id;
                         $canApprove = $user->role === 'admin' ||
-                                      ($otForm->status === 'pending_manager' && (str_contains($designationLower, 'manager') || str_contains($designationLower, 'asst'))) ||
-                                      ($otForm->status === 'pending_gm' && (str_contains($designationLower, 'general manager') || str_contains($designationLower, 'gm') || str_contains($designationLower, 'ceo')));
+                                      ($otForm->status === 'pending_manager' && $isOtApprover) ||
+                                      ($otForm->status === 'pending_gm' && $isOtFinalApprover);
                     @endphp
                     @if($canApprove)
                     <div class="bg-white shadow-sm sm:rounded-lg">
@@ -193,7 +194,7 @@
                     </div>
                     @else
                     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <p class="text-yellow-800 text-sm">You are not authorized to approve this OT form based on your designation.</p>
+                        <p class="text-yellow-800 text-sm">You are not the designated approver for this OT form.</p>
                     </div>
                     @endif
                 @endif
@@ -317,8 +318,8 @@
         }
 
         async function approveForm() {
-            const signature = prompt('Type your full name to approve:');
-            if (!signature) return;
+            if (!confirm('Are you sure you want to approve this OT form?')) return;
+            const signature = '{{ Auth::user()->short_name ?? Auth::user()->name }}';
             try {
                 const res = await fetch('{{ route("approvals.ot-forms.approve", $otForm) }}', {
                     method: 'POST',

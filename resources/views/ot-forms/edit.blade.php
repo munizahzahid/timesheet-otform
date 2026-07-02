@@ -539,22 +539,14 @@ session(['ot_forms_last_seen' => now()]);
 
         // Approve
         async function approveForm() {
-            // Get user's full name
-            const fullName = '{{ Auth::user()->name }}';
-            // Extract suffix (everything after BIN/BINTI/B/BT)
-            const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
-            const suffix = suffixMatch ? ' ' + suffixMatch[0].trim() : '';
-            const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
+            if (!confirm('Are you sure you want to approve this OT form?')) return;
 
-            const signature = prompt(`Type your name to approve:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
-            if (!signature) return;
-            // Auto-complete if user only typed the prefix
-            const finalSignature = signature.trim() === prefix ? fullName : signature.trim();
+            const signature = '{{ Auth::user()->short_name ?? Auth::user()->name }}';
             try {
                 const res = await fetch('{{ route("approvals.ot-forms.approve", $otForm) }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                    body: JSON.stringify({ signature: finalSignature }),
+                    body: JSON.stringify({ signature: signature }),
                 });
                 const data = await res.json();
                 if (data.success) { alert('OT form approved!'); location.reload(); }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Models\Timesheet;
 use App\Models\TimesheetApprovalLog;
 use App\Models\User;
@@ -22,10 +23,17 @@ class TimesheetApprovalController extends Controller
         $query = Timesheet::with('user', 'user.department')
             ->whereIn('status', $pendingStatuses);
 
-        // Filter by reports_to if not admin
+        // Filter by designated approver if not admin
         if ($user->role !== 'admin') {
-            $query->whereHas('user', function ($q) use ($user) {
-                $q->where('reports_to', $user->id);
+            $query->whereHas('user', function ($q) use ($user, $pendingStatuses) {
+                $q->where(function ($sub) use ($user, $pendingStatuses) {
+                    if (in_array('pending_hod', $pendingStatuses)) {
+                        $sub->orWhere('timesheet_hod_approver_id', $user->id);
+                    }
+                    if (in_array('pending_l1', $pendingStatuses)) {
+                        $sub->orWhere('timesheet_approver_id', $user->id);
+                    }
+                });
             });
         }
 
@@ -43,10 +51,11 @@ class TimesheetApprovalController extends Controller
 
         $query = Timesheet::with('user')->where('status', 'approved');
 
-        // Non-admin users only see approved timesheets of their subordinates
+        // Non-admin users only see approved timesheets where they are a designated approver
         if ($user->role !== 'admin') {
             $query->whereHas('user', function ($q) use ($user) {
-                $q->where('reports_to', $user->id);
+                $q->where('timesheet_hod_approver_id', $user->id)
+                   ->orWhere('timesheet_approver_id', $user->id);
             });
         }
 
@@ -75,10 +84,13 @@ class TimesheetApprovalController extends Controller
     {
         $timesheet->load([
             'user.department',
+            'user.timesheetHodApprover',
+            'user.timesheetApprover',
             'dayMetadata',
             'adminHours',
             'projectRows.projectCode',
             'projectRows.hours',
+            'approvalLogs.user',
         ]);
 
         // Get days data for the month using TimesheetCalculationService
@@ -182,9 +194,11 @@ class TimesheetApprovalController extends Controller
         $approvalLogs = $timesheet->approvalLogs ? $timesheet->approvalLogs->sortBy('id') : collect();
         $approvalStamps = $this->buildApprovalStamps($timesheet, $approvalLogs);
 
-        return view('approvals.timesheets.show', compact(
+        return response()->view('approvals.timesheets.show', compact(
             'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows'
-        ));
+        ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 
     /**
@@ -213,13 +227,19 @@ class TimesheetApprovalController extends Controller
                 'signature' => 'required|string', // text signature
             ]);
 
+            // If no HOD approver is designated, skip HOD and go directly to L1
+            $initialStatus = $timesheet->user->timesheet_hod_approver_id ? 'pending_hod' : 'pending_l1';
+
             $timesheet->update([
-                'status' => 'pending_hod',
+                'status' => $initialStatus,
                 'submitted_at' => now(),
                 'staff_signature' => $request->signature,
                 'staff_signed_at' => now(),
                 'rejection_remarks' => null,
             ]);
+
+            // Notify designated approver(s)
+            $this->notifyTimesheetApprovers($timesheet, $initialStatus);
 
             // Log submission
             TimesheetApprovalLog::create([
@@ -249,14 +269,21 @@ class TimesheetApprovalController extends Controller
                 return response()->json(['error' => 'Timesheet is not pending HOD check'], 400);
             }
 
+            $user = Auth::user();
+            $hodApproverId = $timesheet->user->timesheet_hod_approver_id;
+            $l1ApproverId = $timesheet->user->timesheet_approver_id;
+
+            // Only the designated HOD approver or admin can approve
+            if ($user->role !== 'admin' && Auth::id() !== $hodApproverId) {
+                return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
+            }
+
             $request->validate([
                 'signature' => 'required|string',
             ]);
 
-            $user = Auth::user();
-
-            // Check if this user is also the Asst Mgr/Mngr for the timesheet
-            $isAlsoAsstMgr = $user->canApproveTimesheetL1();
+            // Check if the same user is also the designated L2 approver
+            $isAlsoL1Approver = Auth::id() === $l1ApproverId;
 
             $timesheet->update([
                 'hod_signature' => $request->signature,
@@ -270,10 +297,10 @@ class TimesheetApprovalController extends Controller
                 'action' => 'approved',
             ]);
 
-            // If the same person is also Asst Mgr/Mngr, sign both boxes and approve
-            if ($isAlsoAsstMgr) {
+            // If the same person is also the L2 approver, sign both boxes and approve
+            if ($isAlsoL1Approver) {
                 $timesheet->update([
-                    'status' => 'approved', // Final approval - no CEO/DGM level
+                    'status' => 'approved',
                     'l1_signature' => $request->signature,
                     'l1_signed_at' => now(),
                 ]);
@@ -288,6 +315,16 @@ class TimesheetApprovalController extends Controller
                 $timesheet->update([
                     'status' => 'pending_l1',
                 ]);
+
+                // Notify L2 approver
+                if ($l1ApproverId) {
+                    Notification::create([
+                        'user_id' => $l1ApproverId,
+                        'title' => 'Timesheet Pending L2 Approval',
+                        'message' => "A timesheet from {$timesheet->user->name} is pending your approval.",
+                        'link' => route('approvals.timesheets.show', $timesheet),
+                    ]);
+                }
             }
 
             return response()->json(['success' => true, 'status' => $timesheet->status]);
@@ -305,6 +342,13 @@ class TimesheetApprovalController extends Controller
     {
         if ($timesheet->status !== 'pending_hod') {
             return response()->json(['error' => 'Timesheet is not pending HOD check'], 400);
+        }
+
+        $user = Auth::user();
+        $hodApproverId = $timesheet->user->timesheet_hod_approver_id;
+
+        if ($user->role !== 'admin' && Auth::id() !== $hodApproverId) {
+            return response()->json(['error' => 'You are not authorized to reject this timesheet'], 403);
         }
 
         $request->validate([
@@ -328,35 +372,6 @@ class TimesheetApprovalController extends Controller
     }
 
     /**
-     * Asst Mgr/Mgr can skip HOD check and approve directly (final approval).
-     */
-    public function skipHOD(Request $request, Timesheet $timesheet)
-    {
-        if ($timesheet->status !== 'pending_hod') {
-            return response()->json(['error' => 'Timesheet is not pending HOD check'], 400);
-        }
-
-        $request->validate([
-            'signature' => 'required|string',
-        ]);
-
-        $timesheet->update([
-            'status' => 'approved', // Final approval - no CEO/DGM level
-            'l1_signature' => $request->signature,
-            'l1_signed_at' => now(),
-        ]);
-
-        TimesheetApprovalLog::create([
-            'timesheet_id' => $timesheet->id,
-            'user_id' => Auth::id(),
-            'level' => '1', // L1 approval (string to match enum)
-            'action' => 'approved',
-        ]);
-
-        return response()->json(['success' => true, 'status' => $timesheet->status]);
-    }
-
-    /**
      * L1 (Asst Mgr) approve with digital signature.
      */
     public function approveL1(Request $request, Timesheet $timesheet)
@@ -366,11 +381,11 @@ class TimesheetApprovalController extends Controller
                 return response()->json(['error' => 'Timesheet is not pending L1 approval'], 400);
             }
 
-            // Authorization: user must be the staff's reports_to (supervisor)
+            // Authorization: user must be the designated L2 approver or admin
             $currentUser = Auth::user();
-            $staffReportsTo = $timesheet->user->reports_to;
+            $l1ApproverId = $timesheet->user->timesheet_approver_id;
 
-            if (!$staffReportsTo || Auth::id() !== $staffReportsTo) {
+            if ($currentUser->role !== 'admin' && Auth::id() !== $l1ApproverId) {
                 return response()->json(['error' => 'You are not authorized to approve this timesheet'], 403);
             }
 
@@ -379,7 +394,7 @@ class TimesheetApprovalController extends Controller
             ]);
 
             $timesheet->update([
-                'status' => 'approved', // Final approval - no CEO/DGM level
+                'status' => 'approved',
                 'l1_signature' => $request->signature,
                 'l1_signed_at' => now(),
             ]);
@@ -407,6 +422,13 @@ class TimesheetApprovalController extends Controller
             return response()->json(['error' => 'Timesheet is not pending L1 approval'], 400);
         }
 
+        $user = Auth::user();
+        $l1ApproverId = $timesheet->user->timesheet_approver_id;
+
+        if ($user->role !== 'admin' && Auth::id() !== $l1ApproverId) {
+            return response()->json(['error' => 'You are not authorized to reject this timesheet'], 403);
+        }
+
         $request->validate([
             'remarks' => 'required|string',
         ]);
@@ -428,7 +450,7 @@ class TimesheetApprovalController extends Controller
     }
 
 /**
- * Get the statuses this user can act on based on reports_to relationship.
+ * Get the statuses this user can act on based on designated approver fields.
  */
 private function getPendingStatusesForUser($user): array
 {
@@ -438,18 +460,16 @@ private function getPendingStatusesForUser($user): array
 
     $statuses = [];
 
-    // Check if user is a supervisor (reports_to) for any staff
-    $isSupervisor = User::where('reports_to', $user->id)->exists();
+    // Check if user is a designated approver for any staff
+    $isHodApprover = User::where('timesheet_hod_approver_id', $user->id)->exists();
+    $isL1Approver = User::where('timesheet_approver_id', $user->id)->exists();
 
-    if ($isSupervisor) {
-        // Asst Mgr/Mgr can approve pending_l1 (final approval)
-        if ($user->canApproveTimesheetL1()) {
-            $statuses[] = 'pending_l1';
-        }
-        // HOD can approve pending_hod
-        if ($user->canApproveTimesheetHOD()) {
-            $statuses[] = 'pending_hod';
-        }
+    if ($isHodApprover) {
+        $statuses[] = 'pending_hod';
+    }
+
+    if ($isL1Approver) {
+        $statuses[] = 'pending_l1';
     }
 
     return $statuses;
@@ -469,13 +489,13 @@ private function buildApprovalStamps(Timesheet $timesheet, $approvalLogs): array
         'code' => 'PRPD',
         'status' => $submitted && $timesheet->status !== 'draft' ? 'approved' : 'empty',
         'date' => $timesheet->submitted_at ? $timesheet->submitted_at->format('m/d') : '',
-        'name' => $timesheet->user->name ?? '',
+        'name' => $timesheet->user->short_name ?? $timesheet->user->name ?? '',
         'role' => 'Staff',
     ];
 
-    // Stamp 2: Checked by (HOD)
-    $hodLog = $approvalLogs->where('level', 0.5)->where('action', 'approved')->first();
-    $hodReject = $approvalLogs->where('level', 0.5)->where('action', 'rejected')->first();
+    // Stamp 2: Checked by (TS1)
+    $hodLog = $approvalLogs->where('level', '2')->where('action', 'approved')->first();
+    $hodReject = $approvalLogs->where('level', '2')->where('action', 'rejected')->first();
     $hodStatus = 'empty';
     if ($hodLog) {
         $hodStatus = 'approved';
@@ -486,18 +506,23 @@ private function buildApprovalStamps(Timesheet $timesheet, $approvalLogs): array
     }
 
     $hodUser = $hodLog ? $hodLog->user : null;
+    if (!$hodUser && $hodStatus !== 'empty' && $timesheet->user->timesheet_hod_approver_id) {
+        $hodUser = $timesheet->user->timesheetHodApprover;
+    }
     $stamps[] = [
         'label' => 'Checked By',
         'code' => 'CHKD',
         'status' => $hodStatus,
-        'date' => $timesheet->hod_signed_at ? $timesheet->hod_signed_at->format('m/d') : '',
-        'name' => $hodUser ? $hodUser->name : '',
-        'role' => 'HOD/Exec/SPV',
+        'date' => $timesheet->hod_signed_at
+            ? $timesheet->hod_signed_at->format('m/d')
+            : ($hodLog && $hodLog->created_at ? $hodLog->created_at->format('m/d') : ''),
+        'name' => $hodUser ? ($hodUser->short_name ?? $hodUser->name) : '',
+        'role' => $hodUser ? ($hodUser->designation ?? 'TS1') : 'TS1',
     ];
 
-    // Stamp 3: Verified by (Asst Mgr/Mngr)
-    $l1Log = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-    $l1Reject = $approvalLogs->where('level', 1)->where('action', 'rejected')->first();
+    // Stamp 3: Verified by (TS2)
+    $l1Log = $approvalLogs->where('level', '1')->where('action', 'approved')->first();
+    $l1Reject = $approvalLogs->where('level', '1')->where('action', 'rejected')->first();
     $l1Status = 'empty';
     if ($l1Log) {
         $l1Status = 'approved';
@@ -508,15 +533,46 @@ private function buildApprovalStamps(Timesheet $timesheet, $approvalLogs): array
     }
 
     $l1User = $l1Log ? $l1Log->user : null;
+    if (!$l1User && $l1Status !== 'empty' && $timesheet->user->timesheet_approver_id) {
+        $l1User = $timesheet->user->timesheetApprover;
+    }
     $stamps[] = [
         'label' => 'Verified By',
         'code' => 'VRFD',
         'status' => $l1Status,
-        'date' => $timesheet->l1_signed_at ? $timesheet->l1_signed_at->format('m/d') : '',
-        'name' => $l1User ? $l1User->name : '',
-        'role' => 'Asst Mgr/Mngr',
+        'date' => $timesheet->l1_signed_at
+            ? $timesheet->l1_signed_at->format('m/d')
+            : ($l1Log && $l1Log->created_at ? $l1Log->created_at->format('m/d') : ''),
+        'name' => $l1User ? ($l1User->short_name ?? $l1User->name) : '',
+        'role' => $l1User ? ($l1User->designation ?? 'TS2') : 'TS2',
     ];
 
     return $stamps;
+}
+
+/**
+ * Notify designated approvers when a timesheet is submitted.
+ */
+private function notifyTimesheetApprovers(Timesheet $timesheet, string $status): void
+{
+    $formUser = $timesheet->user;
+    $recipientIds = [];
+
+    if ($status === 'pending_hod' && $formUser->timesheet_hod_approver_id) {
+        $recipientIds[] = $formUser->timesheet_hod_approver_id;
+    }
+
+    if ($status === 'pending_l1' && $formUser->timesheet_approver_id) {
+        $recipientIds[] = $formUser->timesheet_approver_id;
+    }
+
+    foreach (array_unique($recipientIds) as $recipientId) {
+        Notification::create([
+            'user_id' => $recipientId,
+            'title' => 'Timesheet Pending Approval',
+            'message' => "A timesheet from {$formUser->name} is pending your approval.",
+            'link' => route('approvals.timesheets.show', $timesheet),
+        ]);
+    }
 }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ApprovalLog;
 use App\Models\OtForm;
+use App\Models\User;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -238,42 +239,45 @@ class OtFormExcelExport
             ->with('approver')
             ->orderBy('level')
             ->get();
-        $staffSignerName = $this->shortName($user->name ?? '');
+        $staffSignerName = $this->shortName($user);
+        $staffDesignation = $user->designation ?? '';
         $hodLog = $logs->where('level', 2)->first();
-        $hodSignerName = ($hodLog && $hodLog->approver) ? $this->shortName($hodLog->approver->name) : '';
+        $hodSignerName = ($hodLog && $hodLog->approver) ? $this->shortName($hodLog->approver) : '';
+        $hodDesignation = ($hodLog && $hodLog->approver) ? ($hodLog->approver->designation ?? '') : '';
         $gmLog = $logs->where('level', 1)->first();
-        $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver->name) : '';
+        $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver) : '';
+        $gmDesignation = ($gmLog && $gmLog->approver) ? ($gmLog->approver->designation ?? '') : '';
 
         // Fallback: use designated approvers if no approval logs exist
         $formUser = $otForm->user;
-        if (!$hodSignerName && in_array($otForm->status, ['pending_gm', 'approved'])) {
-            if ($otForm->form_type === 'executive' && $formUser->ot_exec_approver_id) {
+        if (!$hodSignerName && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved'])) {
+            if ($formUser->ot_approver_id) {
+                $hodApprover = \App\Models\User::find($formUser->ot_approver_id);
+            }
+            // Legacy fallback for old fields
+            if (!isset($hodApprover) && $otForm->form_type === 'executive' && $formUser->ot_exec_approver_id) {
                 $hodApprover = \App\Models\User::find($formUser->ot_exec_approver_id);
-            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_approver_id) {
+            } elseif (!isset($hodApprover) && $otForm->form_type === 'non_executive' && $formUser->ot_non_exec_approver_id) {
                 $hodApprover = \App\Models\User::find($formUser->ot_non_exec_approver_id);
             }
-            // Final fallback: use reports_to supervisor
-            if (!isset($hodApprover) && $formUser->reports_to) {
-                $hodApprover = \App\Models\User::find($formUser->reports_to);
-            }
             if (isset($hodApprover)) {
-                $hodSignerName = $this->shortName($hodApprover->name);
-                $hodApproverFullName = $hodApprover->name;
+                $hodSignerName = $this->shortName($hodApprover);
+                $hodDesignation = $hodApprover->designation ?? '';
             }
         }
         if (!$gmSignerName && $otForm->status === 'approved') {
-            if ($otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
+            if ($formUser->ot_final_approver_id) {
+                $gmApprover = \App\Models\User::find($formUser->ot_final_approver_id);
+            }
+            // Legacy fallback for old fields
+            if (!isset($gmApprover) && $otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
                 $gmApprover = \App\Models\User::find($formUser->ot_exec_final_approver_id);
-            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
+            } elseif (!isset($gmApprover) && $otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
                 $gmApprover = \App\Models\User::find($formUser->ot_non_exec_final_approver_id);
             }
-            // Final fallback: follow reports_to chain (HOD's supervisor = GM/CEO)
-            if (!isset($gmApprover) && isset($hodApprover) && $hodApprover->reports_to) {
-                $gmApprover = \App\Models\User::find($hodApprover->reports_to);
-            }
             if (isset($gmApprover)) {
-                $gmSignerName = $this->shortName($gmApprover->name);
-                $gmApproverFullName = $gmApprover->name;
+                $gmSignerName = $this->shortName($gmApprover);
+                $gmDesignation = $gmApprover->designation ?? '';
             }
         }
         $blueFont = ['font' => ['size' => 8, 'bold' => true, 'color' => ['argb' => 'FF002060']]];
@@ -329,7 +333,7 @@ class OtFormExcelExport
                     $sheet->setCellValue("Q{$r}", $staffSignerName);
                     $sheet->getStyle("Q{$r}")->applyFromArray($blueFont);
                 }
-                if ($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName) {
+                if ($isFilled && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved']) && $hodSignerName) {
                     $sheet->setCellValue("S{$r}", $hodSignerName);
                     $sheet->getStyle("S{$r}")->applyFromArray($blueFont);
                 }
@@ -490,31 +494,33 @@ class OtFormExcelExport
         // Staff stamp (DISEDIAKAN)
         if (!in_array($otForm->status, ['draft'])) {
             $staffDate = $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('d/m/Y') : '';
-            $this->addStamp($sheet, "Q{$ss1}", $user->name ?? '', $staffDate, 'STAFF');
+            $this->addStamp($sheet, "Q{$ss1}", $this->shortName($user), $staffDate, 'STAFF', $staffDesignation);
         }
 
         // HOD stamp (DISOKONG) — level 2, with fallback
-        $hodStampName = null; $hodStampDate = '';
+        $hodStampName = null; $hodStampDate = ''; $hodStampDesignation = $hodDesignation;
         if ($hodLog && $hodLog->approver) {
-            $hodStampName = $hodLog->approver->name;
+            $hodStampName = $this->shortName($hodLog->approver);
             $hodStampDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
-        } elseif (in_array($otForm->status, ['pending_gm', 'approved']) && isset($hodApproverFullName)) {
-            $hodStampName = $hodApproverFullName;
+        } elseif (in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved']) && isset($hodApprover)) {
+            $hodStampName = $this->shortName($hodApprover);
+            $hodStampDesignation = $hodApprover->designation ?? '';
         }
         if ($hodStampName) {
-            $this->addStamp($sheet, "S{$ss1}", $hodStampName, $hodStampDate ?: '', 'MGR/HOD');
+            $this->addStamp($sheet, "S{$ss1}", $hodStampName, $hodStampDate ?: '', 'MGR/HOD', $hodStampDesignation);
         }
 
         // GM stamp (DILULUSKAN) — level 1, with fallback
-        $gmStampName = null; $gmStampDate = '';
+        $gmStampName = null; $gmStampDate = ''; $gmStampDesignation = $gmDesignation;
         if ($gmLog && $gmLog->approver) {
-            $gmStampName = $gmLog->approver->name;
+            $gmStampName = $this->shortName($gmLog->approver);
             $gmStampDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
-        } elseif ($otForm->status === 'approved' && isset($gmApproverFullName)) {
-            $gmStampName = $gmApproverFullName;
+        } elseif ($otForm->status === 'approved' && isset($gmApprover)) {
+            $gmStampName = $this->shortName($gmApprover);
+            $gmStampDesignation = $gmApprover->designation ?? '';
         }
         if ($gmStampName) {
-            $this->addStamp($sheet, "U{$ss1}", $gmStampName, $gmStampDate ?: '', 'DGM/CEO');
+            $this->addStamp($sheet, "U{$ss1}", $gmStampName, $gmStampDate ?: '', 'DGM/CEO', $gmStampDesignation);
         }
 
         $sheet->getRowDimension($ss1)->setRowHeight(70);
@@ -786,42 +792,45 @@ class OtFormExcelExport
             ->with('approver')
             ->orderBy('level')
             ->get();
-        $staffSignerName = $this->shortName($user->name ?? '');
+        $staffSignerName = $this->shortName($user);
+        $staffDesignation = $user->designation ?? '';
         $hodLog = $logs->where('level', 2)->first();
-        $hodSignerName = ($hodLog && $hodLog->approver) ? $this->shortName($hodLog->approver->name) : '';
+        $hodSignerName = ($hodLog && $hodLog->approver) ? $this->shortName($hodLog->approver) : '';
+        $hodDesignation = ($hodLog && $hodLog->approver) ? ($hodLog->approver->designation ?? '') : '';
         $gmLog = $logs->where('level', 1)->first();
-        $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver->name) : '';
+        $gmSignerName = ($gmLog && $gmLog->approver) ? $this->shortName($gmLog->approver) : '';
+        $gmDesignation = ($gmLog && $gmLog->approver) ? ($gmLog->approver->designation ?? '') : '';
 
         // Fallback: use designated approvers if no approval logs exist
         $formUser = $otForm->user;
-        if (!$hodSignerName && in_array($otForm->status, ['pending_gm', 'approved'])) {
-            if ($otForm->form_type === 'executive' && $formUser->ot_exec_approver_id) {
+        if (!$hodSignerName && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved'])) {
+            if ($formUser->ot_approver_id) {
+                $hodApprover = \App\Models\User::find($formUser->ot_approver_id);
+            }
+            // Legacy fallback for old fields
+            if (!isset($hodApprover) && $otForm->form_type === 'executive' && $formUser->ot_exec_approver_id) {
                 $hodApprover = \App\Models\User::find($formUser->ot_exec_approver_id);
-            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_approver_id) {
+            } elseif (!isset($hodApprover) && $otForm->form_type === 'non_executive' && $formUser->ot_non_exec_approver_id) {
                 $hodApprover = \App\Models\User::find($formUser->ot_non_exec_approver_id);
             }
-            // Final fallback: use reports_to supervisor
-            if (!isset($hodApprover) && $formUser->reports_to) {
-                $hodApprover = \App\Models\User::find($formUser->reports_to);
-            }
             if (isset($hodApprover)) {
-                $hodSignerName = $this->shortName($hodApprover->name);
-                $hodApproverFullName = $hodApprover->name;
+                $hodSignerName = $this->shortName($hodApprover);
+                $hodDesignation = $hodApprover->designation ?? '';
             }
         }
         if (!$gmSignerName && $otForm->status === 'approved') {
-            if ($otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
+            if ($formUser->ot_final_approver_id) {
+                $gmApprover = \App\Models\User::find($formUser->ot_final_approver_id);
+            }
+            // Legacy fallback for old fields
+            if (!isset($gmApprover) && $otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
                 $gmApprover = \App\Models\User::find($formUser->ot_exec_final_approver_id);
-            } elseif ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
+            } elseif (!isset($gmApprover) && $otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
                 $gmApprover = \App\Models\User::find($formUser->ot_non_exec_final_approver_id);
             }
-            // Final fallback: follow reports_to chain (HOD's supervisor = GM/CEO)
-            if (!isset($gmApprover) && isset($hodApprover) && $hodApprover->reports_to) {
-                $gmApprover = \App\Models\User::find($hodApprover->reports_to);
-            }
             if (isset($gmApprover)) {
-                $gmSignerName = $this->shortName($gmApprover->name);
-                $gmApproverFullName = $gmApprover->name;
+                $gmSignerName = $this->shortName($gmApprover);
+                $gmDesignation = $gmApprover->designation ?? '';
             }
         }
         $blueFont = ['font' => ['size' => 8, 'bold' => true, 'color' => ['argb' => 'FF002060']]];
@@ -855,7 +864,7 @@ class OtFormExcelExport
                     $sheet->setCellValue("K{$r}", $staffSignerName);
                     $sheet->getStyle("K{$r}")->applyFromArray($blueFont);
                 }
-                if ($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName) {
+                if ($isFilled && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved']) && $hodSignerName) {
                     $sheet->setCellValue("L{$r}", $hodSignerName);
                     $sheet->getStyle("L{$r}")->applyFromArray($blueFont);
                 }
@@ -1026,17 +1035,21 @@ class OtFormExcelExport
         // Staff stamp (Executive/Claimed by)
         if (!in_array($otForm->status, ['draft'])) {
             $staffDate = $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('d/m/Y') : '';
-            $this->addStamp($sheet, "C{$ss1}", $user->name ?? '', $staffDate, 'STAFF');
+            $this->addStamp($sheet, "C{$ss1}", $this->shortName($user), $staffDate, 'STAFF', $staffDesignation);
         }
 
-        // HOD stamp (Approved by) — use log or fallback to designated/reports_to approver
+        // HOD stamp (Approved by) — use log or fallback to designated approver
         if ($hodLog && $hodLog->approver) {
             $hodDate = $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '';
-            $this->addStamp($sheet, "E{$ss1}", $hodLog->approver->name, $hodDate, 'MGR/HOD');
-        } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
-            $hodFullName = $hodApproverFullName ?? $hodSignerName ?? '';
-            if ($hodFullName) {
-                $this->addStamp($sheet, "E{$ss1}", $hodFullName, '', 'MGR/HOD');
+            $this->addStamp($sheet, "E{$ss1}", $this->shortName($hodLog->approver), $hodDate, 'MGR/HOD', $hodDesignation);
+        } elseif (in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved'])) {
+            $hodStampName = $hodSignerName ?? '';
+            $hodStampDesignation = $hodDesignation;
+            if (isset($hodApprover)) {
+                $hodStampDesignation = $hodApprover->designation ?? '';
+            }
+            if ($hodStampName) {
+                $this->addStamp($sheet, "E{$ss1}", $hodStampName, '', 'MGR/HOD', $hodStampDesignation);
             }
         }
 
@@ -1167,7 +1180,7 @@ class OtFormExcelExport
         $sheet->getStyle($range)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_DOUBLE);
     }
 
-    private function addStamp(Worksheet $sheet, string $cell, string $name, string $date, string $role): void
+    private function addStamp(Worksheet $sheet, string $cell, string $name, string $date, string $role, ?string $designation = null): void
     {
         $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
         $drawing->setName('Stamp');
@@ -1177,9 +1190,12 @@ class OtFormExcelExport
         $code = strtoupper(substr($role, 0, 4));
         if (stripos($role, 'STAFF') !== false || stripos($role, 'EXEC') !== false) {
             $code = 'CLMD';
-        } elseif (stripos($role, 'MGR') !== false || stripos($role, 'HOD') !== false) {
+        } else {
             $code = 'APRV';
         }
+
+        // Display label uses designation if provided, otherwise role
+        $displayLabel = strtoupper(self::shortDesignation($designation ?: $role));
 
         // Create larger PNG stamp (120x120 to accommodate name/role below)
         $image = imagecreatetruecolor(120, 150);
@@ -1216,12 +1232,15 @@ class OtFormExcelExport
         // Bottom: 3 stars (using asterisk)
         imagestring($image, 3, $cx - 10, $cy + 25, '***', $red);
 
-        // Below circle: Name
-        $name = strtoupper(substr($name, 0, 25));
-        imagestring($image, 2, $cx - 55, $cy + 55, $name, $red);
+        // Below circle: Name (centered, font 2 = 6px per char)
+        $name = strtoupper(substr($name, 0, 18));
+        $nameWidth = strlen($name) * 6;
+        imagestring($image, 2, $cx - (int)($nameWidth / 2), $cy + 55, $name, $red);
 
-        // Below name: Role
-        imagestring($image, 2, $cx - 20, $cy + 70, strtoupper($role), $darkRed);
+        // Below name: designation/role (centered, font 2 = 6px per char)
+        $displayLabel = strtoupper(substr($displayLabel, 0, 18));
+        $labelWidth = strlen($displayLabel) * 6;
+        imagestring($image, 2, $cx - (int)($labelWidth / 2), $cy + 70, $displayLabel, $darkRed);
 
         ob_start();
         imagepng($image);
@@ -1239,7 +1258,18 @@ class OtFormExcelExport
         $drawing->setWorksheet($sheet);
     }
 
-    public static function shortName(string $fullName): string
+    public static function shortName(User|string $input): string
+    {
+        if ($input instanceof User) {
+            if ($input->short_name) {
+                return strtoupper(trim($input->short_name));
+            }
+            return self::shortNameFromString($input->name ?? '');
+        }
+        return self::shortNameFromString($input);
+    }
+
+    private static function shortNameFromString(string $fullName): string
     {
         $name = strtoupper(trim($fullName));
         if (preg_match('/^(.+?)\s+(?:BIN|BINTI|B|BT)\b/i', $name, $m)) {
@@ -1248,6 +1278,46 @@ class OtFormExcelExport
         }
         $parts = explode(' ', $name);
         return end($parts);
+    }
+
+    public static function shortDesignation(?string $designation): string
+    {
+        if (!$designation) return '';
+        $upper = strtoupper(trim($designation));
+        $fullMappings = [
+            'CHIEF EXECUTIVE OFFICER' => 'CEO',
+            'HEAD OF DEPARTMENT' => 'HOD',
+            'SENIOR MANAGER' => 'SNR MGR',
+            'ASSISTANT MANAGER' => 'AST MGR',
+            'SENIOR EXECUTIVE' => 'SNR EXEC',
+            'SENIOR CLERK' => 'SNR CLERK',
+            'MANAGER' => 'MGR',
+            'EXECUTIVE' => 'EXEC',
+            'SUPERVISOR' => 'SPV',
+            'TECHNICIAN' => 'TECH',
+            'MACHINIST' => 'MACH',
+            'CLERK' => 'CLERK',
+            'HOD' => 'HOD',
+        ];
+        foreach ($fullMappings as $full => $short) {
+            if ($upper === $full) return $short;
+        }
+        $replacements = [
+            'SENIOR' => 'SNR',
+            'ASSISTANT' => 'AST',
+            'MANAGER' => 'MGR',
+            'EXECUTIVE' => 'EXEC',
+            'OFFICER' => 'OFR',
+            'TECHNICIAN' => 'TECH',
+            'MACHINIST' => 'MACH',
+            'SUPERVISOR' => 'SPV',
+            'CLERK' => 'CLERK',
+        ];
+        $result = $upper;
+        foreach ($replacements as $word => $short) {
+            $result = preg_replace('/\b' . preg_quote($word, '/') . '\b/', $short, $result);
+        }
+        return $result;
     }
 
     public static function calcHours(?string $start, ?string $end): float

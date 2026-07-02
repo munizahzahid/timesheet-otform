@@ -13,10 +13,12 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'desknet_id', 'staff_no', 'name', 'password',
+        'desknet_id', 'staff_no', 'name', 'short_name', 'password',
         'role', 'department_id', 'reports_to', 'designation',
         'is_active', 'last_synced_at',
-        'timesheet_approver_id', 'ot_exec_approver_id', 'ot_exec_final_approver_id',
+        'timesheet_approver_id', 'timesheet_hod_approver_id',
+        'ot_approver_id', 'ot_final_approver_id',
+        'ot_exec_approver_id', 'ot_exec_final_approver_id',
         'ot_non_exec_approver_id', 'ot_non_exec_final_approver_id',
     ];
 
@@ -52,6 +54,21 @@ class User extends Authenticatable
     public function timesheetApprover(): BelongsTo
     {
         return $this->belongsTo(User::class, 'timesheet_approver_id');
+    }
+
+    public function timesheetHodApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'timesheet_hod_approver_id');
+    }
+
+    public function otApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ot_approver_id');
+    }
+
+    public function otFinalApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ot_final_approver_id');
     }
 
     public function otExecApprover(): BelongsTo

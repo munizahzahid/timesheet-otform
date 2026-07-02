@@ -86,6 +86,8 @@ class TimesheetController extends Controller
 
         $timesheet->load([
             'user.department',
+            'user.timesheetHodApprover',
+            'user.timesheetApprover',
             'dayMetadata',
             'adminHours',
             'projectRows.projectCode',
@@ -167,10 +169,12 @@ class TimesheetController extends Controller
         // Get uploaded file for this timesheet
         $excelUpload = \App\Models\ExcelUpload::where('timesheet_id', $timesheet->id)->first();
 
-        return view('timesheets.edit', compact(
+        return response()->view('timesheets.edit', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
             'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload'
-        ));
+        ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 
     /**
@@ -347,10 +351,13 @@ class TimesheetController extends Controller
 
         $timesheet->load([
             'user.department',
+            'user.timesheetHodApprover',
+            'user.timesheetApprover',
             'dayMetadata',
             'adminHours',
             'projectRows.projectCode',
             'projectRows.hours',
+            'approvalLogs.user',
         ]);
 
         $days = $this->calcService->generateDayMetadata($timesheet->month, $timesheet->year);
@@ -516,7 +523,7 @@ class TimesheetController extends Controller
 
     /**
      * Build stamp data array for the approval-stamps component on timesheets.
-     * Flow: Staff → HOD/EXEC/SPV (L1) → Asst. Mngr/Mngr (L2).
+     * Flow: Staff → TS1 (Checked By) → TS2 (Verified By).
      */
     private function buildTimesheetApprovalStamps(Timesheet $timesheet): array
     {
@@ -530,86 +537,80 @@ class TimesheetController extends Controller
             'code'   => 'PRPD',
             'status' => $staffSubmitted && $timesheet->status !== 'draft' ? 'approved' : 'empty',
             'date'   => $timesheet->staff_signed_at ? $timesheet->staff_signed_at->format('m/d') : '',
-            'name'   => $timesheet->staff_signature ?? ($timesheet->user->name ?? ''),
+            'name'   => $timesheet->staff_signature ?? ($timesheet->user->short_name ?? $timesheet->user->name ?? ''),
             'role'   => 'Staff',
         ];
 
-        // Stamp 2: Checked By (HOD / EXEC / SPV — L1)
-        $l1Status = 'empty';
-        $l1Date = '';
-        $l1Name = '';
-        $l1Role = 'HOD';
+        // Stamp 2: Checked By (TS1)
+        $ts1Status = 'empty';
+        $ts1Date = '';
+        $ts1Name = '';
+        $ts1Role = 'TS1';
+        $ts1Approver = $timesheet->user->timesheetHodApprover;
+        $ts1Log = $approvalLogs->where('level', '2')->where('action', 'approved')->first();
+        $ts1RejectLog = $approvalLogs->where('level', '2')->where('action', 'rejected')->sortByDesc('id')->first();
 
-        if ($timesheet->l1_signature) {
-            $l1Status = 'approved';
-            $l1Date = $timesheet->l1_signed_at ? $timesheet->l1_signed_at->format('m/d') : '';
-            $l1Name = $timesheet->l1_signature;
-            $l1Log = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-            $l1Role = $l1Log && $l1Log->user ? ($l1Log->user->designation ?? 'HOD') : 'HOD';
+        if ($ts1Log || $timesheet->hod_signature) {
+            $ts1Status = 'approved';
+            $ts1Date = $timesheet->hod_signed_at
+                ? $timesheet->hod_signed_at->format('m/d')
+                : ($ts1Log && $ts1Log->created_at ? $ts1Log->created_at->format('m/d') : '');
+            $ts1Name = $timesheet->hod_signature ?: ($ts1Log && $ts1Log->user ? ($ts1Log->user->short_name ?? $ts1Log->user->name) : '');
+            $ts1Role = $ts1Log && $ts1Log->user ? ($ts1Log->user->designation ?? 'TS1') : 'TS1';
+        } elseif ($ts1RejectLog) {
+            $ts1Status = 'rejected';
+            $ts1Name = $ts1RejectLog->user->short_name ?? $ts1RejectLog->user->name ?? '';
+            $ts1Date = $ts1RejectLog->created_at ? $ts1RejectLog->created_at->format('m/d') : '';
+            $ts1Role = $ts1RejectLog->user->designation ?? 'TS1';
         } elseif (in_array($timesheet->status, ['pending_hod', 'pending_l1'])) {
-            $l1Status = 'pending';
-        } elseif (in_array($timesheet->status, ['pending_l2', 'pending_l3', 'approved'])) {
-            $l1Status = 'approved';
-            $l1Log = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-            if ($l1Log && $l1Log->user) {
-                $l1Name = $l1Log->user->name;
-                $l1Role = $l1Log->user->designation ?? 'HOD';
-            }
-        } elseif ($timesheet->status === 'rejected_l1') {
-            $l1Status = 'rejected';
-            $rejectLog = $approvalLogs->where('level', 1)->where('action', 'rejected')->sortByDesc('id')->first();
-            if ($rejectLog && $rejectLog->user) {
-                $l1Name = $rejectLog->user->name;
-                $l1Role = $rejectLog->user->designation ?? 'HOD';
-            }
+            $ts1Status = 'pending';
+            $ts1Name = $ts1Approver ? ($ts1Approver->short_name ?? $ts1Approver->name) : '';
+            $ts1Role = $ts1Approver && $ts1Approver->designation ? $ts1Approver->designation : 'TS1';
         }
 
         $stamps[] = [
             'label'  => 'Checked By',
             'code'   => 'CHKD',
-            'status' => $l1Status,
-            'date'   => $l1Date,
-            'name'   => $l1Name,
-            'role'   => $l1Role,
+            'status' => $ts1Status,
+            'date'   => $ts1Date,
+            'name'   => $ts1Name,
+            'role'   => $ts1Role,
         ];
 
-        // Stamp 3: Verified By (Asst. Manager / Manager — L2)
-        $l2Status = 'empty';
-        $l2Date = '';
-        $l2Name = '';
-        $l2Role = 'Asst. Manager';
+        // Stamp 3: Verified By (TS2)
+        $ts2Status = 'empty';
+        $ts2Date = '';
+        $ts2Name = '';
+        $ts2Role = 'TS2';
+        $ts2Approver = $timesheet->user->timesheetApprover;
+        $ts2Log = $approvalLogs->where('level', '1')->where('action', 'approved')->first();
+        $ts2RejectLog = $approvalLogs->where('level', '1')->where('action', 'rejected')->sortByDesc('id')->first();
 
-        if ($timesheet->l2_signature) {
-            $l2Status = 'approved';
-            $l2Date = $timesheet->l2_signed_at ? $timesheet->l2_signed_at->format('m/d') : '';
-            $l2Name = $timesheet->l2_signature;
-            $l2Log = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
-            $l2Role = $l2Log && $l2Log->user ? ($l2Log->user->designation ?? 'Manager') : 'Manager';
-        } elseif ($timesheet->status === 'pending_l2') {
-            $l2Status = 'pending';
-        } elseif (in_array($timesheet->status, ['pending_l3', 'approved'])) {
-            $l2Status = 'approved';
-            $l2Log = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
-            if ($l2Log && $l2Log->user) {
-                $l2Name = $l2Log->user->name;
-                $l2Role = $l2Log->user->designation ?? 'Manager';
-            }
-        } elseif ($timesheet->status === 'rejected_l2') {
-            $l2Status = 'rejected';
-            $rejectLog = $approvalLogs->where('level', 2)->where('action', 'rejected')->sortByDesc('id')->first();
-            if ($rejectLog && $rejectLog->user) {
-                $l2Name = $rejectLog->user->name;
-                $l2Role = $rejectLog->user->designation ?? 'Manager';
-            }
+        if ($ts2Log || $timesheet->l1_signature) {
+            $ts2Status = 'approved';
+            $ts2Date = $timesheet->l1_signed_at
+                ? $timesheet->l1_signed_at->format('m/d')
+                : ($ts2Log && $ts2Log->created_at ? $ts2Log->created_at->format('m/d') : '');
+            $ts2Name = $timesheet->l1_signature ?: ($ts2Log && $ts2Log->user ? ($ts2Log->user->short_name ?? $ts2Log->user->name) : '');
+            $ts2Role = $ts2Log && $ts2Log->user ? ($ts2Log->user->designation ?? 'TS2') : 'TS2';
+        } elseif ($ts2RejectLog) {
+            $ts2Status = 'rejected';
+            $ts2Name = $ts2RejectLog->user->short_name ?? $ts2RejectLog->user->name ?? '';
+            $ts2Date = $ts2RejectLog->created_at ? $ts2RejectLog->created_at->format('m/d') : '';
+            $ts2Role = $ts2RejectLog->user->designation ?? 'TS2';
+        } elseif ($timesheet->status === 'pending_l1') {
+            $ts2Status = 'pending';
+            $ts2Name = $ts2Approver ? ($ts2Approver->short_name ?? $ts2Approver->name) : '';
+            $ts2Role = $ts2Approver && $ts2Approver->designation ? $ts2Approver->designation : 'TS2';
         }
 
         $stamps[] = [
             'label'  => 'Verified By',
             'code'   => 'VRFD',
-            'status' => $l2Status,
-            'date'   => $l2Date,
-            'name'   => $l2Name,
-            'role'   => $l2Role,
+            'status' => $ts2Status,
+            'date'   => $ts2Date,
+            'name'   => $ts2Name,
+            'role'   => $ts2Role,
         ];
 
         return $stamps;

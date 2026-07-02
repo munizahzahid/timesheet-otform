@@ -301,9 +301,11 @@
             @if(in_array($timesheet->status, ['pending_hod', 'pending_l1']))
                 @php
                     $user = auth()->user();
+                    $isHodApprover = $timesheet->user->timesheet_hod_approver_id === $user->id;
+                    $isL1Approver = $timesheet->user->timesheet_approver_id === $user->id;
                     $canApprove = $user->role === 'admin' ||
-                                  ($timesheet->status === 'pending_hod' && $user->canApproveTimesheetHOD()) ||
-                                  ($timesheet->status === 'pending_l1' && $user->canApproveTimesheetL1());
+                                  ($timesheet->status === 'pending_hod' && $isHodApprover) ||
+                                  ($timesheet->status === 'pending_l1' && $isL1Approver);
                 @endphp
                 @if($canApprove)
                 <div class="bg-white shadow-sm sm:rounded-lg mb-6">
@@ -313,20 +315,20 @@
                             @if($timesheet->status === 'pending_hod')
                                 <button type="button" onclick="approveHOD()"
                                         class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
-                                    Approve (HOD)
+                                    Approve
                                 </button>
                                 <button type="button" onclick="rejectHOD()"
                                         class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
-                                    Reject (HOD)
+                                    Reject
                                 </button>
                             @elseif($timesheet->status === 'pending_l1')
                                 <button type="button" onclick="approveL1()"
                                         class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
-                                    Approve (Asst Mgr/Mngr)
+                                    Approve
                                 </button>
                                 <button type="button" onclick="rejectL1()"
                                         class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #dc2626 !important; color: white !important;">
-                                    Reject (Asst Mgr/Mngr)
+                                    Reject
                                 </button>
                             @endif
                         </div>
@@ -334,7 +336,7 @@
                 </div>
                 @else
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p class="text-yellow-800 text-sm">You are not authorized to approve this timesheet based on your role.</p>
+                    <p class="text-yellow-800 text-sm">You are not the designated approver for this timesheet.</p>
                 </div>
                 @endif
             @endif
@@ -377,17 +379,10 @@
 
     @push('scripts')
     <script>
-        // Helper function to get signature with auto-completion
+        // Helper function to get signature automatically using short name if available
         function getSignature() {
-            const fullName = '{{ Auth::user()->name }}';
-            // Extract suffix (everything after BIN/BINTI/B/BT)
-            const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
-            const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
-
-            const signature = prompt(`Type your name to approve:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
-            if (!signature) return null;
-            // Auto-complete if user only typed the prefix
-            return signature.trim() === prefix ? fullName : signature.trim();
+            if (!confirm('Are you sure you want to approve this timesheet?')) return null;
+            return '{{ Auth::user()->short_name ?? Auth::user()->name }}';
         }
 
         async function approveHOD() {

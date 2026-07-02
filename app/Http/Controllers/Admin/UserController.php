@@ -11,7 +11,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::with('department', 'supervisor', 'timesheetApprover', 'otExecApprover', 'otExecFinalApprover', 'otNonExecApprover', 'otNonExecFinalApprover');
+        $query = User::with('department', 'timesheetHodApprover', 'timesheetApprover', 'otApprover', 'otFinalApprover');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -45,30 +45,24 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $departments = Department::where('is_active', true)->orderBy('name')->get();
-        $supervisors = User::where('is_active', true)
-            ->where('id', '!=', $user->id)
-            ->whereIn('role', ['assistant_manager', 'manager_hod', 'ceo'])
-            ->orderBy('name')
-            ->get();
         $approvers = User::where('is_active', true)
             ->where('id', '!=', $user->id)
             ->orderBy('name')
             ->get();
 
-        return view('admin.users.edit', compact('user', 'departments', 'supervisors', 'approvers'));
+        return view('admin.users.edit', compact('user', 'departments', 'approvers'));
     }
 
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
             'role' => 'required|in:staff,admin,assistant_manager,manager_hod,ceo,hr',
-            'reports_to' => 'nullable|exists:users,id',
             'is_active' => 'required|boolean',
+            'short_name' => 'nullable|string|max:100',
             'timesheet_approver_id' => 'nullable|exists:users,id',
-            'ot_exec_approver_id' => 'nullable|exists:users,id',
-            'ot_exec_final_approver_id' => 'nullable|exists:users,id',
-            'ot_non_exec_approver_id' => 'nullable|exists:users,id',
-            'ot_non_exec_final_approver_id' => 'nullable|exists:users,id',
+            'timesheet_hod_approver_id' => 'nullable|exists:users,id',
+            'ot_approver_id' => 'nullable|exists:users,id',
+            'ot_final_approver_id' => 'nullable|exists:users,id',
         ]);
 
         $user->update($validated);

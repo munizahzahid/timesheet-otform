@@ -58,7 +58,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/timesheets/{timesheet}/submit', [TimesheetApprovalController::class, 'submit'])->name('timesheets.submit');
     Route::post('/timesheets/{timesheet}/approve-hod', [TimesheetApprovalController::class, 'approveHOD'])->name('timesheets.approve-hod');
     Route::post('/timesheets/{timesheet}/reject-hod', [TimesheetApprovalController::class, 'rejectHOD'])->name('timesheets.reject-hod');
-    Route::post('/timesheets/{timesheet}/skip-hod', [TimesheetApprovalController::class, 'skipHOD'])->name('timesheets.skip-hod');
     Route::post('/timesheets/{timesheet}/approve-l1', [TimesheetApprovalController::class, 'approveL1'])->name('timesheets.approve-l1');
     Route::post('/timesheets/{timesheet}/reject-l1', [TimesheetApprovalController::class, 'rejectL1'])->name('timesheets.reject-l1');
 

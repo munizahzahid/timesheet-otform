@@ -79,13 +79,19 @@
             History
         </a>
 
-        {{-- Approvals (for managers/admin/hr) --}}
-        @if(Auth::user()->role === 'admin' || Auth::user()->role === 'hr' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1() || Auth::user()->canApproveTimesheetHOD() || Auth::user()->canApproveTimesheetL1())
+        {{-- Approvals (for designated approvers, admin, and hr) --}}
+        @php
+            $user = Auth::user();
+            $isOtApprover = \App\Models\User::where('ot_approver_id', $user->id)->orWhere('ot_final_approver_id', $user->id)->exists();
+            $isTimesheetApprover = \App\Models\User::where('timesheet_hod_approver_id', $user->id)->orWhere('timesheet_approver_id', $user->id)->exists();
+            $showApprovals = $user->role === 'admin' || $user->role === 'hr' || $isOtApprover || $isTimesheetApprover;
+        @endphp
+        @if($showApprovals)
             <div class="pt-4 pb-2">
                 <p class="px-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Approvals</p>
             </div>
 
-            @if(Auth::user()->role === 'admin' || Auth::user()->role === 'hr' || str_contains(strtolower(Auth::user()->designation ?? ''), 'manager') || str_contains(strtolower(Auth::user()->designation ?? ''), 'gm') || str_contains(strtolower(Auth::user()->designation ?? ''), 'ceo') || Auth::user()->canApproveOTFormLevel1())
+            @if($user->role === 'admin' || $user->role === 'hr' || $isOtApprover)
                 <a href="{{ route('approvals.ot-forms.index') }}"
                    class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
                           {{ !$viewingOtherUser && request()->routeIs('approvals.ot-forms.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
@@ -101,7 +107,7 @@
                 </a>
             @endif
 
-            @if(Auth::user()->canApproveTimesheetHOD() || Auth::user()->canApproveTimesheetL1() || Auth::user()->role === 'ceo' || Auth::user()->role === 'admin')
+            @if($user->role === 'admin' || $isTimesheetApprover)
                 <a href="{{ route('approvals.timesheets.index') }}"
                    class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
                           {{ !$viewingOtherUser && request()->routeIs('approvals.timesheets.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">

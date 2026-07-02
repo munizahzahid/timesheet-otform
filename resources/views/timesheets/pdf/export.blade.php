@@ -48,19 +48,33 @@
 
         /* Circular signature stamp */
         .stamp {
-            width: 48px;
-            height: 48px;
-            border: 1pt solid #002060;
+            width: 52px;
+            height: 52px;
+            border: 1.2pt solid #c00;
             border-radius: 50%;
-            margin: 1px auto;
-            padding: 4px 2px;
+            margin: 0 auto;
+            padding: 2px;
             text-align: center;
-            color: #002060;
-            line-height: 1.2;
+            color: #c00;
+            line-height: 1.1;
+            overflow: hidden;
         }
-        .stamp .nm  { font-size: 5.5pt; font-weight: bold; }
-        .stamp .ds  { font-size: 4.5pt; }
-        .stamp .dt  { font-size: 4.5pt; margin-top: 1px; }
+        .stamp .st { font-size: 5pt; font-weight: bold; margin-top: 7px; }
+        .stamp .cd { font-size: 6.5pt; font-weight: bold; margin-top: 1px; }
+        .stamp .dt { font-size: 4.5pt; margin-top: 1px; }
+        .stamp .stars { font-size: 5pt; margin-top: 1px; }
+        .stamp-label {
+            text-align: center;
+            color: #c00;
+            font-size: 5pt;
+            font-weight: bold;
+            margin-top: 1px;
+        }
+        .stamp-role {
+            text-align: center;
+            color: #c00;
+            font-size: 4.5pt;
+        }
 
         /* Background colors */
         .bg-yellow { background-color: #FFFF00; }
@@ -71,6 +85,8 @@
 @php
     $timesheet->load([
         'user.department',
+        'user.timesheetHodApprover',
+        'user.timesheetApprover',
         'dayMetadata',
         'adminHours',
         'projectRows.projectCode',
@@ -154,26 +170,71 @@
         ];
     }
 
-    // Approval stamps
+    // Approval stamps: TS1 -> Checked By (level 2), TS2 -> Verified By (level 1)
     $approvalLogs = $timesheet->approvalLogs ? $timesheet->approvalLogs->sortBy('id') : collect();
-    $staffStamp = ['show' => !in_array($timesheet->status, ['draft']), 'name' => $timesheet->staff_signature ?? ($user->name ?? ''), 'date' => $timesheet->staff_signed_at ? $timesheet->staff_signed_at->format('d/m/Y') : ''];
-    $hodLog = $approvalLogs->where('level', 0.5)->where('action', 'approved')->first();
-    $hodStamp = ['show' => $hodLog && $hodLog->user, 'name' => $hodLog && $hodLog->user ? $hodLog->user->name : '', 'date' => $timesheet->hod_signed_at ? $timesheet->hod_signed_at->format('d/m/Y') : ''];
-    $l1Log = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-    $l1Stamp = ['show' => $l1Log && $l1Log->user, 'name' => $l1Log && $l1Log->user ? $l1Log->user->name : '', 'date' => $timesheet->l1_signed_at ? $timesheet->l1_signed_at->format('d/m/Y') : ''];
+
+    // Designation short form helper
+    $shortDesignation = function($designation) {
+        if (!$designation) return '';
+        $upper = strtoupper(trim($designation));
+        $fullMappings = [
+            'CHIEF EXECUTIVE OFFICER' => 'CEO',
+            'HEAD OF DEPARTMENT' => 'HOD',
+            'SENIOR MANAGER' => 'SNR MGR',
+            'ASSISTANT MANAGER' => 'AST MGR',
+            'SENIOR EXECUTIVE' => 'SNR EXEC',
+            'SENIOR CLERK' => 'SNR CLERK',
+            'MANAGER' => 'MGR',
+            'EXECUTIVE' => 'EXEC',
+            'SUPERVISOR' => 'SPV',
+            'TECHNICIAN' => 'TECH',
+            'MACHINIST' => 'MACH',
+            'CLERK' => 'CLERK',
+            'HOD' => 'HOD',
+        ];
+        foreach ($fullMappings as $full => $short) {
+            if ($upper === $full) return $short;
+        }
+        $replacements = [
+            'SENIOR' => 'SNR',
+            'ASSISTANT' => 'AST',
+            'MANAGER' => 'MGR',
+            'EXECUTIVE' => 'EXEC',
+            'OFFICER' => 'OFR',
+            'TECHNICIAN' => 'TECH',
+            'MACHINIST' => 'MACH',
+            'SUPERVISOR' => 'SPV',
+            'CLERK' => 'CLERK',
+        ];
+        $result = $upper;
+        foreach ($replacements as $word => $short) {
+            $result = preg_replace('/\b' . preg_quote($word, '/') . '\b/', $short, $result);
+        }
+        return $result;
+    };
+
+    $staffStamp = ['show' => !in_array($timesheet->status, ['draft']), 'name' => $timesheet->staff_signature ?? ($user->short_name ?? $user->name ?? ''), 'date' => $timesheet->staff_signed_at ? $timesheet->staff_signed_at->format('d/m/Y') : '', 'role' => $shortDesignation($user->designation ?? 'STAFF')];
+    $ts1Log = $approvalLogs->where('level', '2')->where('action', 'approved')->first();
+    $ts1Name = $ts1Log && $ts1Log->user ? ($ts1Log->user->short_name ?? $ts1Log->user->name) : ($timesheet->user->timesheetHodApprover ? ($timesheet->user->timesheetHodApprover->short_name ?? $timesheet->user->timesheetHodApprover->name) : '');
+    $ts1Role = $ts1Log && $ts1Log->user ? $shortDesignation($ts1Log->user->designation ?? '') : ($timesheet->user->timesheetHodApprover ? $shortDesignation($timesheet->user->timesheetHodApprover->designation ?? '') : 'HOD/EXEC/SPV');
+    $hodStamp = ['show' => ($ts1Log && $ts1Log->user) || $timesheet->hod_signature, 'name' => $ts1Name, 'date' => $timesheet->hod_signed_at ? $timesheet->hod_signed_at->format('d/m/Y') : '', 'role' => $ts1Role];
+    $ts2Log = $approvalLogs->where('level', '1')->where('action', 'approved')->first();
+    $ts2Name = $ts2Log && $ts2Log->user ? ($ts2Log->user->short_name ?? $ts2Log->user->name) : ($timesheet->user->timesheetApprover ? ($timesheet->user->timesheetApprover->short_name ?? $timesheet->user->timesheetApprover->name) : '');
+    $ts2Role = $ts2Log && $ts2Log->user ? $shortDesignation($ts2Log->user->designation ?? '') : ($timesheet->user->timesheetApprover ? $shortDesignation($timesheet->user->timesheetApprover->designation ?? '') : 'ASST MGR/MGR');
+    $l1Stamp = ['show' => ($ts2Log && $ts2Log->user) || $timesheet->l1_signature, 'name' => $ts2Name, 'date' => $timesheet->l1_signed_at ? $timesheet->l1_signed_at->format('d/m/Y') : '', 'role' => $ts2Role];
 
     // Short name helper - skips common prefixes
     $shortName = function($name) {
         $prefixes = ['MOHAMAD', 'MUHAMMAD', 'MUHAMAD', 'MUHD', 'MOHD', 'NUR', 'NURUL', 'SITI'];
         $parts = explode(' ', strtoupper($name));
-        
+
         // Skip common prefixes
         foreach ($parts as $part) {
             if (!in_array($part, $prefixes)) {
                 return $part;
             }
         }
-        
+
         // If all parts are prefixes, return the last part
         return end($parts);
     };
@@ -193,36 +254,48 @@
                         <td class="f4 b tc" style="padding: 1px;">Checked By</td>
                         <td class="f4 b tc" style="padding: 1px;">Verified By</td>
                     </tr>
-                    <tr style="height: 55px;">
-                        <td class="tc">
-                            <div class="stamp" style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
-                                <div class="ds">PRPD</div>
-                                <div class="nm">{{ $shortName($staffStamp['name']) }}</div>
-                                <div class="ds">STAFF</div>
-                                <div class="dt">{{ $staffStamp['date'] }}</div>
+                    <tr style="height: 75px;">
+                        <td class="tc" style="vertical-align: top; padding: 2px 0;">
+                            <div style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
+                                <div class="stamp">
+                                    <div class="st">TSSB</div>
+                                    <div class="cd">PRPD</div>
+                                    <div class="dt">{{ $staffStamp['date'] }}</div>
+                                    <div class="stars">***</div>
+                                </div>
+                                <div class="stamp-label">{{ $shortName($staffStamp['name']) }}</div>
+                                <div class="stamp-role">{{ $staffStamp['role'] ?: 'STAFF' }}</div>
                             </div>
                         </td>
-                        <td class="tc">
-                            <div class="stamp" style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
-                                <div class="ds">CHKD</div>
-                                <div class="nm">{{ $shortName($hodStamp['name']) }}</div>
-                                <div class="ds">HOD/EXEC</div>
-                                <div class="dt">{{ $hodStamp['date'] }}</div>
+                        <td class="tc" style="vertical-align: top; padding: 2px 0;">
+                            <div style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
+                                <div class="stamp">
+                                    <div class="st">TSSB</div>
+                                    <div class="cd">CHKD</div>
+                                    <div class="dt">{{ $hodStamp['date'] }}</div>
+                                    <div class="stars">***</div>
+                                </div>
+                                <div class="stamp-label">{{ $shortName($hodStamp['name']) }}</div>
+                                <div class="stamp-role">{{ $hodStamp['role'] ?: 'HOD/EXEC/SPV' }}</div>
                             </div>
                         </td>
-                        <td class="tc">
-                            <div class="stamp" style="visibility: {{ $l1Stamp['show'] ? 'visible' : 'hidden' }};">
-                                <div class="ds">VRFD</div>
-                                <div class="nm">{{ $shortName($l1Stamp['name']) }}</div>
-                                <div class="ds">MNGR</div>
-                                <div class="dt">{{ $l1Stamp['date'] }}</div>
+                        <td class="tc" style="vertical-align: top; padding: 2px 0;">
+                            <div style="visibility: {{ $l1Stamp['show'] ? 'visible' : 'hidden' }};">
+                                <div class="stamp">
+                                    <div class="st">TSSB</div>
+                                    <div class="cd">VRFD</div>
+                                    <div class="dt">{{ $l1Stamp['date'] }}</div>
+                                    <div class="stars">***</div>
+                                </div>
+                                <div class="stamp-label">{{ $shortName($l1Stamp['name']) }}</div>
+                                <div class="stamp-role">{{ $l1Stamp['role'] ?: 'ASST MGR/MGR' }}</div>
                             </div>
                         </td>
                     </tr>
                     <tr>
-                        <td class="f3 b tc">{{ $shortName($staffStamp['name']) }}</td>
-                        <td class="f3 b tc">HOD/EXEC</td>
-                        <td class="f3 b tc">MNGR</td>
+                        <td class="f3 b tc">STAFF</td>
+                        <td class="f3 b tc">HOD/EXEC/SPV</td>
+                        <td class="f3 b tc">ASST MGR/MGR</td>
                     </tr>
                 </table>
             </td>

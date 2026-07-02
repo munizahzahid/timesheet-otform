@@ -10,8 +10,8 @@ class Timesheet extends Model
 {
     protected $fillable = [
         'user_id', 'month', 'year', 'status', 'current_level', 'submitted_at',
-        'staff_signature', 'l1_signature', 'l2_signature', 'l3_signature',
-        'staff_signed_at', 'l1_signed_at', 'l2_signed_at', 'l3_signed_at',
+        'staff_signature', 'hod_signature', 'l1_signature', 'l2_signature', 'l3_signature',
+        'staff_signed_at', 'hod_signed_at', 'l1_signed_at', 'l2_signed_at', 'l3_signed_at',
         'rejection_remarks',
     ];
 
@@ -20,6 +20,7 @@ class Timesheet extends Model
         return [
             'submitted_at' => 'datetime',
             'staff_signed_at' => 'datetime',
+            'hod_signed_at' => 'datetime',
             'l1_signed_at' => 'datetime',
             'l2_signed_at' => 'datetime',
             'l3_signed_at' => 'datetime',

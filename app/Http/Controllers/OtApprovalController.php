@@ -30,19 +30,22 @@ class OtApprovalController extends Controller
         $query = OtForm::with('user')
             ->whereIn('status', $pendingStatuses);
 
-        // Filter by reports_to for pending_manager (level 1) — not for admin/hr
-        if (in_array('pending_manager', $pendingStatuses) && !in_array($user->role, ['admin', 'hr'])) {
+        // Filter by designated approver if not admin/hr
+        if (!in_array($user->role, ['admin', 'hr'])) {
             $query->where(function ($q) use ($user, $pendingStatuses) {
-                $q->where(function ($sub) use ($user) {
-                    $sub->where('status', 'pending_manager')
-                        ->whereHas('user', function ($uq) use ($user) {
-                            $uq->where('reports_to', $user->id);
-                        });
-                });
-                // Also include other statuses the user can see
-                $otherStatuses = array_diff($pendingStatuses, ['pending_manager']);
-                if (!empty($otherStatuses)) {
-                    $q->orWhereIn('status', $otherStatuses);
+                if (in_array('pending_manager', $pendingStatuses)) {
+                    $q->whereHas('user', function ($uq) use ($user) {
+                        $uq->where('ot_approver_id', $user->id);
+                    });
+                }
+                if (in_array('pending_gm', $pendingStatuses)) {
+                    $q->orWhereHas('user', function ($uq) use ($user) {
+                        $uq->where('ot_final_approver_id', $user->id);
+                    });
+                }
+                // HR review is role-based
+                if (in_array('pending_hr', $pendingStatuses)) {
+                    $q->orWhere('status', 'pending_hr');
                 }
             });
         }
@@ -61,10 +64,11 @@ class OtApprovalController extends Controller
 
         $query = OtForm::with('user')->where('status', 'approved');
 
-        // Non-admin/hr users only see approved forms of their subordinates
+        // Non-admin/hr users only see approved forms where they are a designated approver
         if (!in_array($user->role, ['admin', 'hr'])) {
             $query->whereHas('user', function ($uq) use ($user) {
-                $uq->where('reports_to', $user->id);
+                $uq->where('ot_approver_id', $user->id)
+                   ->orWhere('ot_final_approver_id', $user->id);
             });
         }
 
@@ -120,7 +124,7 @@ class OtApprovalController extends Controller
             return response()->json(['error' => 'You are not authorized to approve this OT form.'], 403);
         }
 
-        $nextStatus = $this->getNextStatus($otForm->status, $user);
+        $nextStatus = $this->getNextStatus($otForm->status);
         if (!$nextStatus) {
             return response()->json(['error' => 'This OT form is not pending your approval.'], 403);
         }
@@ -428,14 +432,14 @@ class OtApprovalController extends Controller
             return response()->json(['error' => 'This OT form is not pending approval.'], 403);
         }
 
-        $canApprove = $this->canUserApprove($otForm, $user);
+        $canApprove = $this->canUserApproveByDesignation($otForm, $user);
         if (!$canApprove) {
             return response()->json(['error' => 'You are not authorized to reject this OT form.'], 403);
         }
 
         $request->validate(['remarks' => 'required|string']);
 
-        $level = $otForm->status === 'pending_gm' ? 2 : 1;
+        $level = $otForm->status === 'pending_gm' ? 1 : 2;
 
         $otForm->update(['status' => 'rejected']);
 
@@ -458,7 +462,7 @@ class OtApprovalController extends Controller
     }
 
     /**
-     * Determine if user can approve based on reports_to relationship.
+     * Determine if user is the designated OT approver for this form.
      */
     private function canUserApproveByDesignation(OtForm $otForm, $user): bool
     {
@@ -467,91 +471,34 @@ class OtApprovalController extends Controller
         }
 
         $formUser = $otForm->user;
-        $staffReportsTo = $formUser->reports_to;
 
-        // Level 1 (pending_manager): user must be the staff's reports_to
+        // Level 1 (pending_manager): user must be the designated OT approver
         if ($otForm->status === 'pending_manager') {
-            if ($staffReportsTo && Auth::id() === $staffReportsTo) {
-                return $user->canApproveOTFormLevel1();
-            }
-            return false;
+            return $formUser->ot_approver_id && Auth::id() === $formUser->ot_approver_id;
         }
 
-        // Level 2 (pending_gm): CEO or designated final approver
+        // Level 3 (pending_gm): user must be the designated final approver
         if ($otForm->status === 'pending_gm') {
-            // Check if user is designated final approver
-            if ($otForm->form_type === 'executive' && $formUser->ot_exec_final_approver_id) {
-                return Auth::id() === $formUser->ot_exec_final_approver_id;
-            }
-            if ($otForm->form_type === 'non_executive' && $formUser->ot_non_exec_final_approver_id) {
-                return Auth::id() === $formUser->ot_non_exec_final_approver_id;
-            }
-            // Fallback to role-based routing for CEO
-            return $user->canApproveOTFormLevel2();
+            return $formUser->ot_final_approver_id && Auth::id() === $formUser->ot_final_approver_id;
         }
 
         return false;
     }
 
     /**
-     * Determine if user can approve based on designation hierarchy (legacy/fallback).
+     * Get next status based on current status.
      */
-    private function canUserApprove(OtForm $otForm, $user): bool
+    private function getNextStatus(string $currentStatus): ?string
     {
-        if ($user->role === 'admin') {
-            return true;
-        }
-
-        $designationLower = strtolower($user->designation ?? '');
-
-        // GM can approve pending_gm
-        if ($otForm->status === 'pending_gm') {
-            $isGM = str_contains($designationLower, 'general manager') ||
-                    str_contains($designationLower, 'gm') ||
-                    str_contains($designationLower, 'ceo');
-            return $isGM;
-        }
-
-        // Manager/Asst Manager can approve pending_manager
-        if ($otForm->status === 'pending_manager') {
-            $isManager = str_contains($designationLower, 'manager') ||
-                         str_contains($designationLower, 'asst');
-            return $isManager;
-        }
-
-        return false;
+        return match ($currentStatus) {
+            'pending_manager' => 'pending_hr',
+            'pending_gm' => 'approved',
+            default => null,
+        };
     }
 
     /**
-     * Get next status based on current status and user designation.
-     */
-    private function getNextStatus(string $currentStatus, $user): ?string
-    {
-        $designationLower = strtolower($user->designation ?? '');
-
-        if ($currentStatus === 'pending_manager') {
-            // Manager/Asst Manager approves → send to HR review (not directly to CEO)
-            $isManager = str_contains($designationLower, 'manager') || str_contains($designationLower, 'asst');
-            if ($isManager) {
-                return 'pending_hr';
-            }
-        }
-
-        if ($currentStatus === 'pending_gm') {
-            // CEO approves → final approval
-            $isGM = str_contains($designationLower, 'general manager') ||
-                    str_contains($designationLower, 'gm') ||
-                    str_contains($designationLower, 'ceo');
-            if ($isGM) {
-                return 'approved';
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the statuses this user can act on based on reports_to relationship.
+     * Get the statuses this user can act on as a designated OT approver.
      */
     private function getPendingStatusesForUser($user): array
     {
@@ -566,21 +513,15 @@ class OtApprovalController extends Controller
             $statuses[] = 'pending_hr';
         }
 
-        // Check if user is a supervisor (reports_to) for any staff
-        $isSupervisor = User::where('reports_to', $user->id)->exists();
+        // Check if user is a designated approver for any staff
+        $isOtApprover = User::where('ot_approver_id', $user->id)->exists();
+        $isOtFinalApprover = User::where('ot_final_approver_id', $user->id)->exists();
 
-        if ($isSupervisor) {
-            // Manager/HOD can approve pending_manager (level 1)
-            if ($user->canApproveOTFormLevel1()) {
-                $statuses[] = 'pending_manager';
-            }
+        if ($isOtApprover) {
+            $statuses[] = 'pending_manager';
         }
 
-        // CEO or designated final approver can approve pending_gm (level 2)
-        $isDesignatedFinalApprover = User::where('ot_exec_final_approver_id', $user->id)
-            ->orWhere('ot_non_exec_final_approver_id', $user->id)
-            ->exists();
-        if ($user->canApproveOTFormLevel2() || $isDesignatedFinalApprover) {
+        if ($isOtFinalApprover) {
             $statuses[] = 'pending_gm';
         }
 
@@ -602,7 +543,7 @@ class OtApprovalController extends Controller
             'code'   => 'CLMD',
             'status' => $submitted && $otForm->status !== 'draft' ? 'approved' : 'empty',
             'date'   => $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('m/d') : '',
-            'name'   => $otForm->user->name ?? '',
+            'name'   => $otForm->user->short_name ?? $otForm->user->name ?? '',
             'role'   => $otForm->user->designation ?? 'Staff',
         ];
 
@@ -622,10 +563,11 @@ class OtApprovalController extends Controller
 
         $managerUser = $managerLog ? $managerLog->approver : null;
         if (!$managerUser && $managerStatus === 'approved') {
-            if ($otForm->isExecutive() && $otForm->user->ot_exec_approver_id) {
-                $managerUser = User::find($otForm->user->ot_exec_approver_id);
-            } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_approver_id) {
-                $managerUser = User::find($otForm->user->ot_non_exec_approver_id);
+            $managerUser = $otForm->user->ot_approver;
+            if (!$managerUser && $otForm->isExecutive()) {
+                $managerUser = $otForm->user->ot_exec_approver;
+            } elseif (!$managerUser) {
+                $managerUser = $otForm->user->ot_non_exec_approver;
             }
         }
         $stamps[] = [
@@ -633,36 +575,37 @@ class OtApprovalController extends Controller
             'code'   => 'APRV',
             'status' => $managerStatus,
             'date'   => $managerLog && $managerLog->acted_at ? $managerLog->acted_at->format('m/d') : '',
-            'name'   => $managerUser ? $managerUser->name : '',
+            'name'   => $managerUser ? ($managerUser->short_name ?? $managerUser->name) : '',
             'role'   => $managerUser ? ($managerUser->designation ?? 'MGR / HOD') : 'MGR / HOD',
         ];
 
-        // Non-executive: add 3rd stamp for DGM/CEO
-        if ($otForm->isNonExecutive()) {
-            $gmStatus = 'empty';
-            if ($gmLog) {
-                $gmStatus = 'approved';
-            } elseif (in_array($otForm->status, ['pending_gm'])) {
-                $gmStatus = 'pending';
-            } elseif ($otForm->status === 'approved') {
-                $gmStatus = 'approved';
-            }
-
-            $gmUser = $gmLog ? $gmLog->approver : null;
-            if (!$gmUser && $gmStatus === 'approved') {
-                if ($otForm->user->ot_non_exec_final_approver_id) {
-                    $gmUser = User::find($otForm->user->ot_non_exec_final_approver_id);
-                }
-            }
-            $stamps[] = [
-                'label'  => 'Diluluskan Oleh',
-                'code'   => 'APRV',
-                'status' => $gmStatus,
-                'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
-                'name'   => $gmUser ? $gmUser->name : '',
-                'role'   => $gmUser ? ($gmUser->designation ?? 'DGM / CEO') : 'DGM / CEO',
-            ];
+        // Add 3rd stamp for CEO final approval
+        $gmStatus = 'empty';
+        if ($gmLog) {
+            $gmStatus = 'approved';
+        } elseif (in_array($otForm->status, ['pending_gm'])) {
+            $gmStatus = 'pending';
+        } elseif ($otForm->status === 'approved') {
+            $gmStatus = 'approved';
         }
+
+        $gmUser = $gmLog ? $gmLog->approver : null;
+        if (!$gmUser && $gmStatus === 'approved') {
+            $gmUser = $otForm->user->ot_final_approver;
+            if (!$gmUser && $otForm->isExecutive()) {
+                $gmUser = $otForm->user->ot_exec_final_approver;
+            } elseif (!$gmUser) {
+                $gmUser = $otForm->user->ot_non_exec_final_approver;
+            }
+        }
+        $stamps[] = [
+            'label'  => $otForm->isNonExecutive() ? 'Diluluskan Oleh' : 'Approved by',
+            'code'   => 'APRV',
+            'status' => $gmStatus,
+            'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
+            'name'   => $gmUser ? ($gmUser->short_name ?? $gmUser->name) : '',
+            'role'   => $gmUser ? ($gmUser->designation ?? 'CEO') : 'CEO',
+        ];
 
         return $stamps;
     }
@@ -691,13 +634,9 @@ class OtApprovalController extends Controller
         $formUser = $otForm->user;
 
         // Try designated final approver first
-        $finalApproverId = $otForm->form_type === 'executive'
-            ? $formUser->ot_exec_final_approver_id
-            : $formUser->ot_non_exec_final_approver_id;
-
-        if ($finalApproverId) {
+        if ($formUser->ot_final_approver_id) {
             Notification::create([
-                'user_id' => $finalApproverId,
+                'user_id' => $formUser->ot_final_approver_id,
                 'title' => $title,
                 'message' => $message,
                 'link' => route('approvals.ot-forms.show', $otForm),

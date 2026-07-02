@@ -97,19 +97,33 @@
 
         /* Circular signature stamp */
         .stamp {
-            width: 60px;
-            height: 60px;
-            border: 1pt solid #002060;
+            width: 52px;
+            height: 52px;
+            border: 1.2pt solid #c00;
             border-radius: 50%;
-            margin: 1px auto;
-            padding: 4px 3px;
+            margin: 0 auto;
+            padding: 2px;
             text-align: center;
-            color: #002060;
-            line-height: 1;
+            color: #c00;
+            line-height: 1.1;
+            overflow: hidden;
         }
-        .stamp .nm  { font-size: 5pt; font-weight: bold; }
-        .stamp .ds  { font-size: 4.5pt; }
-        .stamp .dt  { font-size: 4.5pt; margin-top: 1px; }
+        .stamp .st { font-size: 5pt; font-weight: bold; margin-top: 7px; }
+        .stamp .cd { font-size: 6.5pt; font-weight: bold; margin-top: 1px; }
+        .stamp .dt { font-size: 4.5pt; margin-top: 1px; }
+        .stamp .stars { font-size: 5pt; margin-top: 1px; }
+        .stamp-label {
+            text-align: center;
+            color: #c00;
+            font-size: 5pt;
+            font-weight: bold;
+            margin-top: 1px;
+        }
+        .stamp-role {
+            text-align: center;
+            color: #c00;
+            font-size: 4.5pt;
+        }
 
         /* Non-executive scale down to fit A4 */
         .non-executive-scale {
@@ -142,67 +156,75 @@
             ->orderBy('level')
             ->get();
 
-        $staffShortName = \App\Services\OtFormExcelExport::shortName($user->name ?? '');
+        $staffShortName = \App\Services\OtFormExcelExport::shortName($user);
         $hodLog = $logs->where('level', 2)->first();
-        $hodSignerName = ($hodLog && $hodLog->approver) ? \App\Services\OtFormExcelExport::shortName($hodLog->approver->name) : '';
+        $hodSignerName = ($hodLog && $hodLog->approver) ? \App\Services\OtFormExcelExport::shortName($hodLog->approver) : '';
         $gmLog  = $logs->where('level', 1)->first();
-        $gmSignerName  = ($gmLog && $gmLog->approver) ? \App\Services\OtFormExcelExport::shortName($gmLog->approver->name) : '';
+        $gmSignerName  = ($gmLog && $gmLog->approver) ? \App\Services\OtFormExcelExport::shortName($gmLog->approver) : '';
 
-        // Fallback designated approvers
+        // Fallback designated approvers (current assigned OT approver fields only)
         $hodApp = null; $gmApp = null;
-        if (!$hodSignerName && in_array($otForm->status, ['pending_gm','approved'])) {
-            if ($otForm->form_type === 'executive' && $user->ot_exec_approver_id) {
+        if (!$hodSignerName && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved'])) {
+            if ($user->ot_approver_id) {
+                $hodApp = \App\Models\User::find($user->ot_approver_id);
+            } elseif ($otForm->form_type === 'executive' && $user->ot_exec_approver_id) {
                 $hodApp = \App\Models\User::find($user->ot_exec_approver_id);
             } elseif ($otForm->form_type === 'non_executive' && $user->ot_non_exec_approver_id) {
                 $hodApp = \App\Models\User::find($user->ot_non_exec_approver_id);
             }
-            if (!$hodApp && $user->reports_to) $hodApp = \App\Models\User::find($user->reports_to);
-            if ($hodApp) $hodSignerName = \App\Services\OtFormExcelExport::shortName($hodApp->name);
+            if ($hodApp) $hodSignerName = \App\Services\OtFormExcelExport::shortName($hodApp);
         }
         if (!$gmSignerName && $otForm->status === 'approved') {
-            if ($otForm->form_type === 'executive' && $user->ot_exec_final_approver_id) {
+            if ($user->ot_final_approver_id) {
+                $gmApp = \App\Models\User::find($user->ot_final_approver_id);
+            } elseif ($otForm->form_type === 'executive' && $user->ot_exec_final_approver_id) {
                 $gmApp = \App\Models\User::find($user->ot_exec_final_approver_id);
             } elseif ($otForm->form_type === 'non_executive' && $user->ot_non_exec_final_approver_id) {
                 $gmApp = \App\Models\User::find($user->ot_non_exec_final_approver_id);
             }
-            if ($gmApp) $gmSignerName = \App\Services\OtFormExcelExport::shortName($gmApp->name);
+            if ($gmApp) $gmSignerName = \App\Services\OtFormExcelExport::shortName($gmApp);
         }
 
         // Stamp full info
         $staffStamp = [
-            'name'        => strtoupper($user->name ?? ''),
-            'designation' => strtoupper($user->designation ?? ''),
+            'name'        => strtoupper($user->short_name ?? $user->name ?? ''),
+            'shortName'   => \App\Services\OtFormExcelExport::shortName($user),
+            'designation' => \App\Services\OtFormExcelExport::shortDesignation($user->designation ?? ''),
             'date'        => $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('d/m/Y') : '',
             'show'        => !in_array($otForm->status, ['draft']),
         ];
-        $hodStamp = ['name' => '', 'designation' => '', 'date' => '', 'show' => false];
+        $hodStamp = ['name' => '', 'shortName' => '', 'designation' => '', 'date' => '', 'show' => false];
         if ($hodLog && $hodLog->approver) {
             $hodStamp = [
-                'name'        => strtoupper($hodLog->approver->name),
-                'designation' => strtoupper($hodLog->approver->designation ?? ''),
+                'name'        => strtoupper($hodLog->approver->short_name ?? $hodLog->approver->name),
+                'shortName'   => \App\Services\OtFormExcelExport::shortName($hodLog->approver),
+                'designation' => \App\Services\OtFormExcelExport::shortDesignation($hodLog->approver->designation ?? ''),
                 'date'        => $hodLog->acted_at ? $hodLog->acted_at->format('d/m/Y') : '',
                 'show'        => true,
             ];
         } elseif ($hodApp) {
             $hodStamp = [
-                'name'        => strtoupper($hodApp->name),
-                'designation' => strtoupper($hodApp->designation ?? ''),
+                'name'        => strtoupper($hodApp->short_name ?? $hodApp->name),
+                'shortName'   => \App\Services\OtFormExcelExport::shortName($hodApp),
+                'designation' => \App\Services\OtFormExcelExport::shortDesignation($hodApp->designation ?? ''),
                 'date'        => '',
                 'show'        => true,
             ];
         }
-        $gmStamp = ['name' => '', 'designation' => '', 'date' => '', 'show' => false];
+        $gmStamp = ['name' => '', 'shortName' => '', 'designation' => '', 'date' => '', 'show' => false];
         if ($gmLog && $gmLog->approver) {
             $gmStamp = [
-                'name'        => strtoupper($gmLog->approver->name),
-                'designation' => strtoupper($gmLog->approver->designation ?? ''),
+                'name'        => strtoupper($gmLog->approver->short_name ?? $gmLog->approver->name),
+                'shortName'   => \App\Services\OtFormExcelExport::shortName($gmLog->approver),
+                'designation' => \App\Services\OtFormExcelExport::shortDesignation($gmLog->approver->designation ?? ''),
                 'date'        => $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '',
                 'show'        => true,
             ];
         } elseif ($gmApp) {
             $gmStamp = [
-                'name'        => strtoupper($gmApp->name),
-                'designation' => strtoupper($gmApp->designation ?? ''),
+                'name'        => strtoupper($gmApp->short_name ?? $gmApp->name),
+                'shortName'   => \App\Services\OtFormExcelExport::shortName($gmApp),
+                'designation' => \App\Services\OtFormExcelExport::shortDesignation($gmApp->designation ?? ''),
                 'date'        => '',
                 'show'        => true,
             ];
@@ -439,7 +461,7 @@
                         $totalOt1 += $ot1; $totalOt2 += $ot2; $totalOt3 += $ot3; $totalOt4 += $ot4; $totalOt5 += $ot5;
                     }
                     $showStaff = $isFilled && !in_array($otForm->status, ['draft']);
-                    $showHod   = $isFilled && in_array($otForm->status, ['pending_gm','approved']) && $hodSignerName;
+                    $showHod   = $isFilled && in_array($otForm->status, ['pending_hr','pending_gm','approved']) && $hodSignerName;
                     $showGm    = $isFilled && $otForm->status === 'approved' && $gmSignerName;
                 @endphp
                 <tr class="f6 tc">
@@ -490,30 +512,45 @@
             </tr>
 
             {{-- NOTA + circular stamps row --}}
-            <tr>
-                <td colspan="10" class="f6 tl nb" rowspan="2" style="vertical-align: top; padding: 2px 3px;">
+            <tr style="height: 75px;">
+                <td colspan="10" class="f6 tl nb" style="vertical-align: top; padding: 2px 3px;">
                     1)&nbsp; Borang OT mesti sampai ke Jabatan Sumber Manusia (Unit Payroll)<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;selewat-lewatnya pada atau sebelum <b style="text-decoration:underline;">5hb. setiap bulan</b> (bulan berikutnya).
                 </td>
-                <td style="vertical-align: middle; padding: 2px;">
-                    <div class="stamp" style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
-                        <div class="nm">{{ $staffStamp['name'] }}</div>
-                        <div class="ds">{{ $staffStamp['designation'] }}</div>
-                        <div class="dt">{{ $staffStamp['date'] }}</div>
+                <td style="vertical-align: top; padding: 2px 0;">
+                    <div style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
+                        <div class="stamp">
+                            <div class="st">TSSB</div>
+                            <div class="cd">PRPD</div>
+                            <div class="dt">{{ $staffStamp['date'] }}</div>
+                            <div class="stars">***</div>
+                        </div>
+                        <div class="stamp-label">{{ $staffStamp['shortName'] }}</div>
+                        <div class="stamp-role">{{ $staffStamp['designation'] ?: 'STAFF' }}</div>
                     </div>
                 </td>
-                <td style="vertical-align: middle; padding: 2px;">
-                    <div class="stamp" style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
-                        <div class="nm">{{ $hodStamp['name'] }}</div>
-                        <div class="ds">{{ $hodStamp['designation'] }}</div>
-                        <div class="dt">{{ $hodStamp['date'] }}</div>
+                <td style="vertical-align: top; padding: 2px 0;">
+                    <div style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
+                        <div class="stamp">
+                            <div class="st">TSSB</div>
+                            <div class="cd">CHKD</div>
+                            <div class="dt">{{ $hodStamp['date'] }}</div>
+                            <div class="stars">***</div>
+                        </div>
+                        <div class="stamp-label">{{ $hodStamp['shortName'] }}</div>
+                        <div class="stamp-role">{{ $hodStamp['designation'] ?: 'MGR/HOD' }}</div>
                     </div>
                 </td>
-                <td style="vertical-align: middle; padding: 2px;">
-                    <div class="stamp" style="visibility: {{ $gmStamp['show'] ? 'visible' : 'hidden' }};">
-                        <div class="nm">{{ $gmStamp['name'] }}</div>
-                        <div class="ds">{{ $gmStamp['designation'] }}</div>
-                        <div class="dt">{{ $gmStamp['date'] }}</div>
+                <td style="vertical-align: top; padding: 2px 0;">
+                    <div style="visibility: {{ $gmStamp['show'] ? 'visible' : 'hidden' }};">
+                        <div class="stamp">
+                            <div class="st">TSSB</div>
+                            <div class="cd">VRFD</div>
+                            <div class="dt">{{ $gmStamp['date'] }}</div>
+                            <div class="stars">***</div>
+                        </div>
+                        <div class="stamp-label">{{ $gmStamp['shortName'] }}</div>
+                        <div class="stamp-role">{{ $gmStamp['designation'] ?: 'DGM/CEO' }}</div>
                     </div>
                 </td>
                 <td colspan="9" class="nb"></td>
@@ -521,6 +558,7 @@
 
             {{-- Role labels row --}}
             <tr class="f6 b tc">
+                <td colspan="10" class="nb"></td>
                 <td>STAFF</td>
                 <td>MGR / HOD</td>
                 <td>DGM / CEO</td>
@@ -726,7 +764,7 @@
                     @else
                         <td></td>
                     @endif
-                    @if($isFilled && in_array($otForm->status, ['pending_gm', 'approved']) && $hodSignerName)
+                    @if($isFilled && in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved']) && $hodSignerName)
                         <td class="blue f6">{{ $hodSignerName }}</td>
                     @else
                         <td></td>
@@ -799,19 +837,29 @@
                             <td class="f7 b tc" style="width: 50%; padding: 2px;">Claimed by</td>
                             <td class="f7 b tc" style="width: 50%; padding: 2px;">Approved by</td>
                         </tr>
-                        <tr style="height: 70px;">
-                            <td style="vertical-align: middle; padding: 2px;">
-                                <div class="stamp" style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
-                                    <div class="nm">{{ $staffStamp['name'] }}</div>
-                                    <div class="ds">STAFF</div>
-                                    <div class="dt">{{ $staffStamp['date'] }}</div>
+                        <tr style="height: 75px;">
+                            <td style="vertical-align: top; padding: 2px 0;">
+                                <div style="visibility: {{ $staffStamp['show'] ? 'visible' : 'hidden' }};">
+                                    <div class="stamp">
+                                        <div class="st">TSSB</div>
+                                        <div class="cd">PRPD</div>
+                                        <div class="dt">{{ $staffStamp['date'] }}</div>
+                                        <div class="stars">***</div>
+                                    </div>
+                                    <div class="stamp-label">{{ $staffStamp['shortName'] }}</div>
+                                    <div class="stamp-role">{{ $staffStamp['designation'] ?: 'EXECUTIVE' }}</div>
                                 </div>
                             </td>
-                            <td style="vertical-align: middle; padding: 2px;">
-                                <div class="stamp" style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
-                                    <div class="nm">{{ $hodStamp['name'] }}</div>
-                                    <div class="ds">MGR/HOD</div>
-                                    <div class="dt">{{ $hodStamp['date'] }}</div>
+                            <td style="vertical-align: top; padding: 2px 0;">
+                                <div style="visibility: {{ $hodStamp['show'] ? 'visible' : 'hidden' }};">
+                                    <div class="stamp">
+                                        <div class="st">TSSB</div>
+                                        <div class="cd">CHKD</div>
+                                        <div class="dt">{{ $hodStamp['date'] }}</div>
+                                        <div class="stars">***</div>
+                                    </div>
+                                    <div class="stamp-label">{{ $hodStamp['shortName'] }}</div>
+                                    <div class="stamp-role">{{ $hodStamp['designation'] ?: 'HOD' }}</div>
                                 </div>
                             </td>
                         </tr>

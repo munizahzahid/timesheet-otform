@@ -659,26 +659,11 @@ session(['timesheets_last_seen' => now()]);
             },
 
             async submitWithSignature(action) {
-                // Get user's full name
-                const fullName = '{{ Auth::user()->name }}';
-                // Extract suffix (everything after BIN/BINTI/B/BT)
-                const suffixMatch = fullName.match(/\s+(BIN|BINTI|B|BT)\s+.+/i);
-                const prefix = suffixMatch ? fullName.substring(0, suffixMatch.index).trim() : fullName;
+                const actionLabel = action === 'submit' ? 'submit' : 'approve';
+                if (!confirm(`Are you sure you want to ${actionLabel} this timesheet?`)) return;
 
-                const signature = prompt(`Please enter your name to ${action === 'submit' ? 'submit' : 'approve'} this timesheet:\n\nYour full name: ${fullName}\n\nYou only need to type: ${prefix}\n\nType your name:`);
-                if (!signature || !signature.trim()) {
-                    alert('Please enter your signature');
-                    return;
-                }
-                // Auto-complete if user only typed the prefix
-                const finalSignature = signature.trim() === prefix ? fullName : signature.trim();
-                // Validate signature matches staff name
-                if (finalSignature.toLowerCase() !== this.staffName.toLowerCase()) {
-                    alert('Signature must match your name: ' + this.staffName);
-                    return;
-                }
-                // Execute the action
-                await this.executeSignatureAction(action, finalSignature);
+                const signature = '{{ Auth::user()->short_name ?? Auth::user()->name }}';
+                await this.executeSignatureAction(action, signature);
             },
 
             async confirmSignature() {

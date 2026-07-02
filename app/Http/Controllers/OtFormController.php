@@ -86,7 +86,7 @@ class OtFormController extends Controller
 
         // Approver names for mini stamps in table columns
         // Level 2 = Manager/HOD, Level 1 = GM/CEO (as set in OtApprovalController)
-        $staffApproverName = $otForm->user->name ?? '';
+        $staffApproverName = $otForm->user->short_name ?? $otForm->user->name ?? '';
         $managerLog = $approvalLogs->where('level', 2)->where('action', 'approved')->first();
         $gmLog = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
 
@@ -95,16 +95,20 @@ class OtFormController extends Controller
         $managerApproverDesignation = '';
         $managerApprovedDate = '';
         if ($managerLog && $managerLog->approver) {
-            $managerApproverName = $managerLog->approver->name;
+            $managerApproverName = $managerLog->approver->short_name ?? $managerLog->approver->name;
             $managerApproverDesignation = $managerLog->approver->designation ?? 'Manager';
             $managerApprovedDate = $managerLog->acted_at ? $managerLog->acted_at->format('d/m/Y') : '';
+        } elseif ($otForm->user->ot_approver_id) {
+            $mgrUser = User::find($otForm->user->ot_approver_id);
+            $managerApproverName = $mgrUser->short_name ?? $mgrUser->name ?? '';
+            $managerApproverDesignation = $mgrUser->designation ?? 'Manager';
         } elseif ($otForm->isExecutive() && $otForm->user->ot_exec_approver_id) {
             $mgrUser = User::find($otForm->user->ot_exec_approver_id);
-            $managerApproverName = $mgrUser->name ?? '';
+            $managerApproverName = $mgrUser->short_name ?? $mgrUser->name ?? '';
             $managerApproverDesignation = $mgrUser->designation ?? 'Manager';
         } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_approver_id) {
             $mgrUser = User::find($otForm->user->ot_non_exec_approver_id);
-            $managerApproverName = $mgrUser->name ?? '';
+            $managerApproverName = $mgrUser->short_name ?? $mgrUser->name ?? '';
             $managerApproverDesignation = $mgrUser->designation ?? 'Manager';
         }
 
@@ -112,17 +116,21 @@ class OtFormController extends Controller
         $gmApproverDesignation = '';
         $gmApprovedDate = '';
         if ($gmLog && $gmLog->approver) {
-            $gmApproverName = $gmLog->approver->name;
-            $gmApproverDesignation = $gmLog->approver->designation ?? 'DGM/CEO';
+            $gmApproverName = $gmLog->approver->short_name ?? $gmLog->approver->name;
+            $gmApproverDesignation = $gmLog->approver->designation ?? 'CEO';
             $gmApprovedDate = $gmLog->acted_at ? $gmLog->acted_at->format('d/m/Y') : '';
+        } elseif ($otForm->user->ot_final_approver_id) {
+            $gmUser = User::find($otForm->user->ot_final_approver_id);
+            $gmApproverName = $gmUser->short_name ?? $gmUser->name ?? '';
+            $gmApproverDesignation = $gmUser->designation ?? 'CEO';
         } elseif ($otForm->isExecutive() && $otForm->user->ot_exec_final_approver_id) {
             $gmUser = User::find($otForm->user->ot_exec_final_approver_id);
-            $gmApproverName = $gmUser->name ?? '';
-            $gmApproverDesignation = $gmUser->designation ?? 'DGM/CEO';
+            $gmApproverName = $gmUser->short_name ?? $gmUser->name ?? '';
+            $gmApproverDesignation = $gmUser->designation ?? 'CEO';
         } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_final_approver_id) {
             $gmUser = User::find($otForm->user->ot_non_exec_final_approver_id);
-            $gmApproverName = $gmUser->name ?? '';
-            $gmApproverDesignation = $gmUser->designation ?? 'DGM/CEO';
+            $gmApproverName = $gmUser->short_name ?? $gmUser->name ?? '';
+            $gmApproverDesignation = $gmUser->designation ?? 'CEO';
         }
 
         return view('ot-forms.edit', compact(
@@ -474,6 +482,16 @@ class OtFormController extends Controller
             $this->notifyHRUsers($otForm, 'OT Form Resubmitted', "{$otForm->user->name}'s OT Form has been resubmitted after correction.");
         }
 
+        // Notify designated L1 approver on first submission
+        if (!$isResubmitFromHR && $otForm->user->ot_approver_id) {
+            Notification::create([
+                'user_id' => $otForm->user->ot_approver_id,
+                'title' => 'OT Form Pending Approval',
+                'message' => "An OT Form from {$otForm->user->name} is pending your approval.",
+                'link' => route('approvals.ot-forms.show', $otForm),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'status' => $otForm->status,
@@ -496,7 +514,7 @@ class OtFormController extends Controller
             'code'   => 'CLMD',
             'status' => $submitted && $otForm->status !== 'draft' ? 'approved' : 'empty',
             'date'   => $otForm->plan_submitted_at ? $otForm->plan_submitted_at->format('m/d') : '',
-            'name'   => $otForm->user->name ?? '',
+            'name'   => $otForm->user->short_name ?? $otForm->user->name ?? '',
             'role'   => $otForm->user->designation ?? 'Staff',
         ];
 
@@ -510,16 +528,17 @@ class OtFormController extends Controller
             $managerStatus = 'approved';
         } elseif (in_array($otForm->status, ['pending_manager'])) {
             $managerStatus = 'pending';
-        } elseif (in_array($otForm->status, ['pending_gm', 'approved'])) {
+        } elseif (in_array($otForm->status, ['pending_hr', 'pending_gm', 'approved', 'returned_hr'])) {
             $managerStatus = 'approved';
         }
 
         $managerUser = $managerLog ? $managerLog->approver : null;
         if (!$managerUser && $managerStatus === 'approved') {
-            if ($otForm->isExecutive() && $otForm->user->ot_exec_approver_id) {
-                $managerUser = User::find($otForm->user->ot_exec_approver_id);
-            } elseif (!$otForm->isExecutive() && $otForm->user->ot_non_exec_approver_id) {
-                $managerUser = User::find($otForm->user->ot_non_exec_approver_id);
+            $managerUser = $otForm->user->ot_approver;
+            if (!$managerUser && $otForm->isExecutive()) {
+                $managerUser = $otForm->user->ot_exec_approver;
+            } elseif (!$managerUser) {
+                $managerUser = $otForm->user->ot_non_exec_approver;
             }
         }
         $stamps[] = [
@@ -527,36 +546,37 @@ class OtFormController extends Controller
             'code'   => 'APRV',
             'status' => $managerStatus,
             'date'   => $managerLog && $managerLog->acted_at ? $managerLog->acted_at->format('m/d') : '',
-            'name'   => $managerUser ? $managerUser->name : '',
+            'name'   => $managerUser ? ($managerUser->short_name ?? $managerUser->name) : '',
             'role'   => $managerUser ? ($managerUser->designation ?? 'MGR / HOD') : 'MGR / HOD',
         ];
 
-        // Non-executive: add 3rd stamp for DGM/CEO
-        if ($otForm->isNonExecutive()) {
-            $gmStatus = 'empty';
-            if ($gmLog) {
-                $gmStatus = 'approved';
-            } elseif (in_array($otForm->status, ['pending_gm'])) {
-                $gmStatus = 'pending';
-            } elseif ($otForm->status === 'approved') {
-                $gmStatus = 'approved';
-            }
-
-            $gmUser = $gmLog ? $gmLog->approver : null;
-            if (!$gmUser && $gmStatus === 'approved') {
-                if ($otForm->user->ot_non_exec_final_approver_id) {
-                    $gmUser = User::find($otForm->user->ot_non_exec_final_approver_id);
-                }
-            }
-            $stamps[] = [
-                'label'  => 'Diluluskan Oleh',
-                'code'   => 'APRV',
-                'status' => $gmStatus,
-                'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
-                'name'   => $gmUser ? $gmUser->name : '',
-                'role'   => $gmUser ? ($gmUser->designation ?? 'DGM / CEO') : 'DGM / CEO',
-            ];
+        // Add 3rd stamp for CEO final approval
+        $gmStatus = 'empty';
+        if ($gmLog) {
+            $gmStatus = 'approved';
+        } elseif (in_array($otForm->status, ['pending_gm'])) {
+            $gmStatus = 'pending';
+        } elseif ($otForm->status === 'approved') {
+            $gmStatus = 'approved';
         }
+
+        $gmUser = $gmLog ? $gmLog->approver : null;
+        if (!$gmUser && $gmStatus === 'approved') {
+            $gmUser = $otForm->user->ot_final_approver;
+            if (!$gmUser && $otForm->isExecutive()) {
+                $gmUser = $otForm->user->ot_exec_final_approver;
+            } elseif (!$gmUser) {
+                $gmUser = $otForm->user->ot_non_exec_final_approver;
+            }
+        }
+        $stamps[] = [
+            'label'  => $otForm->isNonExecutive() ? 'Diluluskan Oleh' : 'Approved by',
+            'code'   => 'APRV',
+            'status' => $gmStatus,
+            'date'   => $gmLog && $gmLog->acted_at ? $gmLog->acted_at->format('m/d') : '',
+            'name'   => $gmUser ? ($gmUser->short_name ?? $gmUser->name) : '',
+            'role'   => $gmUser ? ($gmUser->designation ?? 'CEO') : 'CEO',
+        ];
 
         return $stamps;
     }

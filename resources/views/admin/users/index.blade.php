@@ -51,12 +51,13 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff No</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shortform Name</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reports To</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TS Approver</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">OT Exec</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">OT Non-Exec</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TS1</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TS L2</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">OT HOD</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">OT CEO</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 </tr>
@@ -68,29 +69,20 @@
                                         <td class="px-4 py-3 text-sm">
                                             <div class="font-medium text-gray-900">{{ $user->name }}</div>
                                         </td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $user->short_name ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->department?->name ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->designation ?? '-' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-500">{{ $user->supervisor?->name ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">
-                                            @if($user->timesheet_approver_id)
-                                                {{ $user->timesheetApprover?->name ?? '-' }}
-                                            @else
-                                                <span class="text-xs text-gray-400">Role-based</span>
-                                            @endif
+                                            {{ $user->timesheetHodApprover?->name ?? '-' }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">
-                                            @if($user->ot_exec_approver_id)
-                                                {{ $user->otExecApprover?->name ?? '-' }}
-                                            @else
-                                                <span class="text-xs text-gray-400">Role-based</span>
-                                            @endif
+                                            {{ $user->timesheetApprover?->name ?? '-' }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">
-                                            @if($user->ot_non_exec_approver_id)
-                                                {{ $user->otNonExecApprover?->name ?? '-' }}
-                                            @else
-                                                <span class="text-xs text-gray-400">Role-based</span>
-                                            @endif
+                                            {{ $user->otApprover?->name ?? '-' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-500">
+                                            {{ $user->otFinalApprover?->name ?? '-' }}
                                         </td>
                                         <td class="px-4 py-3 text-sm">
                                             @if($user->is_active)
@@ -107,7 +99,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="px-4 py-8 text-center text-gray-500">No users found.</td>
+                                        <td colspan="11" class="px-4 py-8 text-center text-gray-500">No users found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

@@ -149,7 +149,7 @@
                 </span>
             </div>
             <div class="header-right">
-                <div><strong>Name:</strong> {{ $timesheet->user->name ?? '—' }}</div>
+                <div><strong>Name:</strong> {{ $timesheet->user->short_name ?? $timesheet->user->name ?? '—' }}</div>
                 <div><strong>Dept:</strong> {{ $timesheet->user->department->name ?? '—' }}</div>
                 <div><strong>Emp Code:</strong> {{ $timesheet->user->employee_code ?? '—' }}</div>
             </div>
@@ -359,15 +359,15 @@
         <div class="signatures">
             <div class="sig-block">
                 <div class="sig-line">PREPARED BY (Staff)</div>
-                <div class="sig-label">{{ $timesheet->user->name ?? '' }}</div>
+                <div class="sig-label">{{ $timesheet->user->short_name ?? $timesheet->user->name ?? '' }}</div>
             </div>
             <div class="sig-block">
-                <div class="sig-line">CHECKED BY (Asst. Manager)</div>
-                <div class="sig-label">&nbsp;</div>
+                <div class="sig-line">CHECKED BY (TS1)</div>
+                <div class="sig-label">{!! $timesheet->user->timesheetHodApprover->short_name ?? $timesheet->user->timesheetHodApprover->name ?? '&nbsp;' !!}</div>
             </div>
             <div class="sig-block">
-                <div class="sig-line">APPROVED BY (Manager / HOD)</div>
-                <div class="sig-label">&nbsp;</div>
+                <div class="sig-line">VERIFIED BY (TS2)</div>
+                <div class="sig-label">{!! $timesheet->user->timesheetApprover->short_name ?? $timesheet->user->timesheetApprover->name ?? '&nbsp;' !!}</div>
             </div>
         </div>
     </div>

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Timesheet;
+use App\Models\User;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -28,6 +29,8 @@ class TimesheetExcelExport
     {
         $timesheet->load([
             'user.department',
+            'user.timesheetHodApprover',
+            'user.timesheetApprover',
             'dayMetadata',
             'adminHours',
             'projectRows.projectCode',
@@ -236,16 +239,15 @@ class TimesheetExcelExport
 
         // Row 10: Stamp boxes bottom row + approval stamps
         $stampEndRow = $r;
-        // Row 10: Static labels (staff short name, HOD/EXEC/SPV, ASST MNGR/MNGR)
+        // Row 10: Static labels (STAFF, HOD/EXEC/SPV, ASST MGR/MGR)
         // Prepared By: 3 columns (AE:AG), Checked By: 3 columns (AH:AJ), Verified By: 2 columns (AK:AL)
         $sheet->mergeCells("AE{$r}:AG{$r}");
         $sheet->mergeCells("AH{$r}:AJ{$r}");
         $sheet->mergeCells("AK{$r}:AL{$r}");
         // Set static labels at row 10
-        $staffShortName = $user->name ? $this->shortName($user->name) : '';
-        $sheet->setCellValue("AE{$r}", $staffShortName);
+        $sheet->setCellValue("AE{$r}", 'STAFF');
         $sheet->setCellValue("AH{$r}", 'HOD/EXEC/SPV');
-        $sheet->setCellValue("AK{$r}", 'ASST MNGR/MNGR');
+        $sheet->setCellValue("AK{$r}", 'ASST MGR/MGR');
         $sheet->getStyle("AE{$r}")->getFont()->setSize(8)->setBold(true);
         $sheet->getStyle("AH{$r}")->getFont()->setSize(8)->setBold(true);
         $sheet->getStyle("AK{$r}")->getFont()->setSize(8)->setBold(true);
@@ -864,41 +866,51 @@ class TimesheetExcelExport
 
         // Prepared By (staff)
         if (!in_array($timesheet->status, ['draft'])) {
-            $staffName = $timesheet->staff_signature ?? ($timesheet->user->name ?? '');
+            $staffName = $timesheet->staff_signature ?: $this->shortName($timesheet->user);
             $staffDate = $timesheet->staff_signed_at ? $timesheet->staff_signed_at->format('d/m/Y') : '';
-            $this->addStamp($sheet, "AE{$innerRow}", $staffName, $staffDate, 'STAFF');
+            $staffRole = $this->shortDesignation($timesheet->user->designation ?? '') ?: 'STAFF';
+            $this->addStamp($sheet, "AE{$innerRow}", $staffName, $staffDate, $staffRole, 'PRPD');
         }
 
-        // Checked By (HOD/Exec/SPV)
-        $hodLog = $approvalLogs->where('level', 0.5)->where('action', 'approved')->first();
-        if ($hodLog && $hodLog->user) {
-            $hodName = $hodLog->user->name;
-            $hodDate = $timesheet->hod_signed_at ? $timesheet->hod_signed_at->format('d/m/Y') : '';
-            $this->addStamp($sheet, "AH{$innerRow}", $hodName, $hodDate, 'HOD/EXEC');
+        // Checked By (TS1 - level 2)
+        $ts1Log = $approvalLogs->where('level', '2')->where('action', 'approved')->first();
+        $ts1Approver = $timesheet->user->timesheetHodApprover;
+        if (($ts1Log && $ts1Log->user) || $timesheet->hod_signature) {
+            $ts1Name = $ts1Log && $ts1Log->user ? $this->shortName($ts1Log->user) : ($ts1Approver ? $this->shortName($ts1Approver) : '');
+            $ts1Date = $timesheet->hod_signed_at
+                ? $timesheet->hod_signed_at->format('d/m/Y')
+                : ($ts1Log && $ts1Log->created_at ? $ts1Log->created_at->format('d/m/Y') : '');
+            $ts1Role = $ts1Log && $ts1Log->user
+                ? $this->shortDesignation($ts1Log->user->designation ?? '')
+                : ($ts1Approver ? $this->shortDesignation($ts1Approver->designation ?? '') : '');
+            $ts1Role = $ts1Role ?: 'HOD/EXEC/SPV';
+            $this->addStamp($sheet, "AH{$innerRow}", $ts1Name, $ts1Date, $ts1Role, 'CHKD');
         }
 
-        // Verified By (Asst Mgr/Mngr)
-        $l1Log = $approvalLogs->where('level', 1)->where('action', 'approved')->first();
-        if ($l1Log && $l1Log->user) {
-            $l1Name = $l1Log->user->name;
-            $l1Date = $timesheet->l1_signed_at ? $timesheet->l1_signed_at->format('d/m/Y') : '';
-            $this->addStamp($sheet, "AK{$innerRow}", $l1Name, $l1Date, 'MNGR');
+        // Verified By (TS2 - level 1)
+        $ts2Log = $approvalLogs->where('level', '1')->where('action', 'approved')->first();
+        $ts2Approver = $timesheet->user->timesheetApprover;
+        if (($ts2Log && $ts2Log->user) || $timesheet->l1_signature) {
+            $ts2Name = $ts2Log && $ts2Log->user ? $this->shortName($ts2Log->user) : ($ts2Approver ? $this->shortName($ts2Approver) : '');
+            $ts2Date = $timesheet->l1_signed_at
+                ? $timesheet->l1_signed_at->format('d/m/Y')
+                : ($ts2Log && $ts2Log->created_at ? $ts2Log->created_at->format('d/m/Y') : '');
+            $ts2Role = $ts2Log && $ts2Log->user
+                ? $this->shortDesignation($ts2Log->user->designation ?? '')
+                : ($ts2Approver ? $this->shortDesignation($ts2Approver->designation ?? '') : '');
+            $ts2Role = $ts2Role ?: 'ASST MGR/MGR';
+            $this->addStamp($sheet, "AK{$innerRow}", $ts2Name, $ts2Date, $ts2Role, 'VRFD');
         }
     }
 
-    private function addStamp(Worksheet $sheet, string $cell, string $name, string $date, string $role): void
+    private function addStamp(Worksheet $sheet, string $cell, string $name, string $date, string $role, ?string $stampCode = null): void
     {
         $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
         $drawing->setName('Stamp');
         $drawing->setDescription('Approval Stamp');
 
-        // Determine stamp code based on role
-        $code = strtoupper(substr($role, 0, 4));
-        if (stripos($role, 'STAFF') !== false || stripos($role, 'EXEC') !== false) {
-            $code = 'CLMD';
-        } elseif (stripos($role, 'MGR') !== false || stripos($role, 'HOD') !== false) {
-            $code = 'APRV';
-        }
+        // Determine stamp code
+        $code = $stampCode ? strtoupper($stampCode) : strtoupper(substr($role, 0, 4));
 
         // Create larger PNG stamp (120x120 to accommodate name/role below)
         $image = imagecreatetruecolor(120, 150);
@@ -935,12 +947,15 @@ class TimesheetExcelExport
         // Bottom: 3 stars (using asterisk)
         imagestring($image, 3, $cx - 10, $cy + 25, '***', $red);
 
-        // Below circle: Name
-        $name = strtoupper(substr($name, 0, 25));
-        imagestring($image, 2, $cx - 55, $cy + 55, $name, $red);
+        // Below circle: Name (centered, font 2 = 6px per char)
+        $name = strtoupper(substr($name, 0, 18));
+        $nameWidth = strlen($name) * 6;
+        imagestring($image, 2, $cx - (int)($nameWidth / 2), $cy + 55, $name, $red);
 
-        // Below name: Role
-        imagestring($image, 2, $cx - 20, $cy + 70, strtoupper($role), $darkRed);
+        // Below name: Role (centered, font 2 = 6px per char)
+        $role = strtoupper(substr($role, 0, 18));
+        $roleWidth = strlen($role) * 6;
+        imagestring($image, 2, $cx - (int)($roleWidth / 2), $cy + 70, $role, $darkRed);
 
         ob_start();
         imagepng($image);
@@ -960,7 +975,18 @@ class TimesheetExcelExport
 
     // ─── Style helpers ───────────────────────────────────────────────────────
 
-    private function shortName(string $fullName): string
+    private function shortName(User|string $input): string
+    {
+        if ($input instanceof User) {
+            if ($input->short_name) {
+                return strtoupper(trim($input->short_name));
+            }
+            return $this->shortNameFromString($input->name ?? '');
+        }
+        return $this->shortNameFromString($input);
+    }
+
+    private function shortNameFromString(string $fullName): string
     {
         $name = strtoupper(trim($fullName));
         if (preg_match('/^(.+?)\s+(?:BIN|BINTI)\b/i', $name, $m)) {
@@ -969,6 +995,46 @@ class TimesheetExcelExport
         }
         $parts = explode(' ', $name);
         return end($parts);
+    }
+
+    private function shortDesignation(?string $designation): string
+    {
+        if (!$designation) return '';
+        $upper = strtoupper(trim($designation));
+        $fullMappings = [
+            'CHIEF EXECUTIVE OFFICER' => 'CEO',
+            'HEAD OF DEPARTMENT' => 'HOD',
+            'SENIOR MANAGER' => 'SNR MGR',
+            'ASSISTANT MANAGER' => 'AST MGR',
+            'SENIOR EXECUTIVE' => 'SNR EXEC',
+            'SENIOR CLERK' => 'SNR CLERK',
+            'MANAGER' => 'MGR',
+            'EXECUTIVE' => 'EXEC',
+            'SUPERVISOR' => 'SPV',
+            'TECHNICIAN' => 'TECH',
+            'MACHINIST' => 'MACH',
+            'CLERK' => 'CLERK',
+            'HOD' => 'HOD',
+        ];
+        foreach ($fullMappings as $full => $short) {
+            if ($upper === $full) return $short;
+        }
+        $replacements = [
+            'SENIOR' => 'SNR',
+            'ASSISTANT' => 'AST',
+            'MANAGER' => 'MGR',
+            'EXECUTIVE' => 'EXEC',
+            'OFFICER' => 'OFR',
+            'TECHNICIAN' => 'TECH',
+            'MACHINIST' => 'MACH',
+            'SUPERVISOR' => 'SPV',
+            'CLERK' => 'CLERK',
+        ];
+        $result = $upper;
+        foreach ($replacements as $word => $short) {
+            $result = preg_replace('/\b' . preg_quote($word, '/') . '\b/', $short, $result);
+        }
+        return $result;
     }
 
     private function b(Worksheet $sheet, string $range): void
