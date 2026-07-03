@@ -161,10 +161,14 @@
                     {{-- ACTUAL START --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
                         @if($otForm->isEditable())
-                            <input type="time" name="entries[{{ $entry->id }}][actual_start_time]"
-                                   value="{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}"
-                                   onchange="calcTotal({{ $entry->id }}, 'actual')"
-                                   class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                            <div class="relative w-full pr-4">
+                                <input type="time" name="entries[{{ $entry->id }}][actual_start_time]"
+                                       value="{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}"
+                                       onchange="calcTotal({{ $entry->id }}, 'actual')"
+                                       class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                                <button type="button" onclick="clearActualTime({{ $entry->id }}, 'start')" title="Clear actual start time"
+                                        class="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] leading-none flex items-center justify-center hover:bg-red-600 z-10 shadow-sm">×</button>
+                            </div>
                         @else
                             <span class="text-xs">{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}</span>
                         @endif
@@ -173,10 +177,14 @@
                     {{-- ACTUAL END --}}
                     <td class="border border-gray-200 px-0.5 py-0.5 text-center">
                         @if($otForm->isEditable())
-                            <input type="time" name="entries[{{ $entry->id }}][actual_end_time]"
-                                   value="{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}"
-                                   onchange="calcTotal({{ $entry->id }}, 'actual')"
-                                   class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                            <div class="relative w-full pr-4">
+                                <input type="time" name="entries[{{ $entry->id }}][actual_end_time]"
+                                       value="{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}"
+                                       onchange="calcTotal({{ $entry->id }}, 'actual')"
+                                       class="w-full border-0 text-xs py-1 px-0.5 text-center focus:ring-0 bg-transparent">
+                                <button type="button" onclick="clearActualTime({{ $entry->id }}, 'end')" title="Clear actual end time"
+                                        class="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] leading-none flex items-center justify-center hover:bg-red-600 z-10 shadow-sm">×</button>
+                            </div>
                         @else
                             <span class="text-xs">{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}</span>
                         @endif

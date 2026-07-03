@@ -400,6 +400,16 @@ session(['ot_forms_last_seen' => now()]);
             nameInput.value = opt ? (opt.getAttribute('data-name') || '') : '';
         }
 
+        // Clear a single actual time field (start or end) and recalculate totals
+        function clearActualTime(entryId, field) {
+            const input = document.querySelector('[name="entries[' + entryId + '][actual_' + field + '_time]"]');
+            if (input) {
+                input.value = '';
+                calcTotal(entryId, 'actual');
+                if (typeof calcOT === 'function') calcOT(entryId);
+            }
+        }
+
         // Calculate total hours for a row (planned or actual)
         function calcTotal(entryId, type) {
             const prefix = 'entries[' + entryId + ']';
