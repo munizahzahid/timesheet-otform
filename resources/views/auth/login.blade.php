@@ -27,8 +27,7 @@
         <div class="relative z-10 text-white max-w-lg">
             <!-- Logo -->
             <div class="flex items-center gap-3 mb-8">
-                <img src="{{ asset('images/TALENT SYNERGY SDN BHD.png') }}" alt="Talent Synergy Sdn Bhd" class="h-14 w-auto rounded-full">
-                <span class="text-2xl font-bold">TSSB Portal</span>
+                <img src="{{ asset('images/Logo TSSB.jpeg') }}" alt="Logo TSSB" class="h-14 w-auto rounded-full">
             </div>
 
             <!-- Welcome Message -->
@@ -91,8 +90,7 @@
         <div class="w-full max-w-md">
             <!-- Mobile Logo -->
             <div class="lg:hidden flex items-center justify-center gap-3 mb-6">
-                <img src="{{ asset('images/TALENT SYNERGY SDN BHD.png') }}" alt="Talent Synergy Sdn Bhd" class="h-12 w-auto rounded-full">
-                <span class="text-xl font-bold text-gray-900">TSSB Portal</span>
+                <img src="{{ asset('images/Logo TSSB.jpeg') }}" alt="Logo TSSB" class="h-12 w-auto rounded-full">
             </div>
 
             <!-- Login Card -->
@@ -184,7 +182,7 @@
                 <!-- Help Text -->
                 <div class="mt-6 pt-6 border-t border-gray-100 text-center">
                     <p class="text-sm text-gray-500">
-                        Need help? Contact <a href="#" class="text-blue-700 hover:text-blue-800 font-medium">IT Support</a>
+                        Need help? Contact <a href="https://wa.me/0178254072" target="_blank" class="text-blue-700 hover:text-blue-800 font-medium">IT Support</a>
                     </p>
                 </div>
             </div>
