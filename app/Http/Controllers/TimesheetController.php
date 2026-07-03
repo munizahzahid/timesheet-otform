@@ -461,11 +461,12 @@ class TimesheetController extends Controller
     {
         $user = $request->user();
 
-        // Allow: timesheet owner, admin, or users who can approve this timesheet
+        // Allow: timesheet owner, admin, approvers, or users with All Records permission for approved timesheets
         $canDownload = $timesheet->user_id === $user->id
             || $user->isAdmin()
             || $user->canApproveTimesheetHOD()
-            || $user->canApproveTimesheetL1();
+            || $user->canApproveTimesheetL1()
+            || ($timesheet->status === 'approved' && $user->canViewAllRecords());
 
         if (!$canDownload) {
             abort(403);
@@ -675,11 +676,12 @@ class TimesheetController extends Controller
     {
         $user = $request->user();
 
-        // Allow: timesheet owner, admin, or users who can approve this timesheet
+        // Allow: timesheet owner, admin, approvers, or users with All Records permission for approved timesheets
         $canDownload = $timesheet->user_id === $user->id
             || $user->isAdmin()
             || $user->canApproveTimesheetHOD()
-            || $user->canApproveTimesheetL1();
+            || $user->canApproveTimesheetL1()
+            || ($timesheet->status === 'approved' && $user->canViewAllRecords());
 
         if (!$canDownload) {
             abort(403);

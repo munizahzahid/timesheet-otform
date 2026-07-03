@@ -145,4 +145,9 @@ class User extends Authenticatable
     {
         return in_array($this->role, ['hr', 'admin']);
     }
+
+    public function canViewAllRecords(): bool
+    {
+        return in_array($this->role, ['admin', 'manager_hod', 'assistant_manager', 'ceo', 'hr', 'finance']);
+    }
 }

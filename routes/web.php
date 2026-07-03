@@ -21,6 +21,7 @@ use App\Http\Controllers\OtFormController;
 use App\Http\Controllers\OtApprovalController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\ProjectCodeSearchController;
+use App\Http\Controllers\AllRecordController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -78,6 +79,12 @@ Route::middleware('auth')->group(function () {
 
     // History
     Route::get('/history', [HistoryController::class, 'index'])->name('history.index');
+
+    // All Records (view-only)
+    Route::get('/records/timesheets', [AllRecordController::class, 'timesheets'])->name('records.timesheets');
+    Route::get('/records/timesheets/{timesheet}', [AllRecordController::class, 'showTimesheet'])->name('records.timesheets.show');
+    Route::get('/records/ot-forms', [AllRecordController::class, 'otForms'])->name('records.ot-forms');
+    Route::get('/records/ot-forms/{otForm}', [AllRecordController::class, 'showOtForm'])->name('records.ot-forms.show');
 
     // Project code search API
     Route::get('/api/project-codes/search', [ProjectCodeSearchController::class, 'search'])->name('api.project-codes.search');

@@ -220,8 +220,8 @@ class OtFormController extends Controller
     {
         $user = Auth::user();
 
-        // Allow: OT form owner or admin
-        $canDownload = $otForm->user_id === $user->id || $user->isAdmin();
+        // Allow: OT form owner, admin, or users with All Records permission for approved forms
+        $canDownload = $otForm->user_id === $user->id || $user->isAdmin() || ($otForm->status === 'approved' && $user->canViewAllRecords());
 
         if (!$canDownload) {
             abort(403);
@@ -249,8 +249,8 @@ class OtFormController extends Controller
     {
         $user = Auth::user();
 
-        // Allow: OT form owner or admin
-        $canDownload = $otForm->user_id === $user->id || $user->isAdmin();
+        // Allow: OT form owner, admin, or users with All Records permission for approved forms
+        $canDownload = $otForm->user_id === $user->id || $user->isAdmin() || ($otForm->status === 'approved' && $user->canViewAllRecords());
 
         if (!$canDownload) {
             abort(403);
