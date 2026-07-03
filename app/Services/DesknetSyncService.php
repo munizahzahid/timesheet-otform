@@ -375,17 +375,13 @@ class DesknetSyncService
                     ->first();
 
                 if ($existingUser) {
-                    // Auto-assign role based on designation (only if not admin)
-                    $role = $existingUser->role === 'admin' ? 'admin' : $this->mapDesignationToRole($designation);
-
-                    // Only update department and designation — preserve reports_to and other manually set fields
+                    // Preserve role and other manually set fields; only update basic info from Desknet
                     $updateData = [
                         'desknet_id' => $desknetId,
                         'staff_no' => $staffNo,
                         'name' => $name,
                         'department_id' => $departmentModel?->id,
                         'designation' => $designation,
-                        'role' => $role,
                         'is_active' => $isActive,
                         'last_synced_at' => now(),
                     ];
