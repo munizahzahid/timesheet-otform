@@ -299,6 +299,15 @@ session(['timesheets_last_seen' => now()]);
                         @endif
                     </div>
                 @endif
+
+                @if($canUnsubmit)
+                    <div class="mt-4 flex items-center gap-3">
+                        <button @click="unsubmitTimesheet()" class="px-6 py-2 rounded-md text-sm hover:shadow-md transition-all bg-gray-200 text-gray-700">
+                            Unsubmit
+                        </button>
+                        <span class="text-xs text-gray-500">Return to draft for corrections</span>
+                    </div>
+                @endif
             </div>
 
             {{-- Save Button --}}
@@ -664,6 +673,31 @@ session(['timesheets_last_seen' => now()]);
 
                 const signature = '{{ Auth::user()->short_name ?? Auth::user()->name }}';
                 await this.executeSignatureAction(action, signature);
+            },
+
+            async unsubmitTimesheet() {
+                if (!confirm('Are you sure you want to unsubmit this timesheet? This will return it to draft for corrections and approvers will not see it anymore.')) return;
+
+                try {
+                    const resp = await fetch('{{ route("timesheets.unsubmit", $timesheet) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({}),
+                    });
+                    const data = await resp.json();
+                    if (data.success) {
+                        alert('Timesheet unsubmitted. You can now edit it.');
+                        location.reload();
+                    } else {
+                        alert(data.error || 'Failed to unsubmit.');
+                    }
+                } catch (e) {
+                    alert('Error: ' + e.message);
+                }
             },
 
             async confirmSignature() {

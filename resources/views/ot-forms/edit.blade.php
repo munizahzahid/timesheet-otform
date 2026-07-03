@@ -306,6 +306,15 @@ session(['ot_forms_last_seen' => now()]);
                             Submit for Approval
                         </button>
                     @endif
+                    @if($canUnsubmit)
+                        <button type="button" onclick="unsubmitOtForm()"
+                                class="inline-flex items-center px-6 py-2.5 text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 bg-gray-200 text-gray-700">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                            </svg>
+                            Unsubmit
+                        </button>
+                    @endif
                     <a href="{{ route('ot-forms.index') }}"
                        class="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,6 +543,22 @@ session(['ot_forms_last_seen' => now()]);
                 const data = await res.json();
                 if (data.success) { alert('Submitted for HOD/MGR approval!'); location.reload(); }
                 else { alert(data.error || 'Failed to submit.'); }
+            } catch (err) { alert('Error: ' + err.message); }
+        }
+
+        // Unsubmit OT form (return to draft for corrections)
+        async function unsubmitOtForm() {
+            if (!confirm('Are you sure you want to unsubmit this OT form? This will return it to draft for corrections and approvers will not see it anymore.')) return;
+
+            try {
+                const res = await fetch('{{ route("ot-forms.unsubmit", $otForm) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                if (data.success) { alert('OT form unsubmitted. You can now edit it.'); location.reload(); }
+                else { alert(data.error || 'Failed to unsubmit.'); }
             } catch (err) { alert('Error: ' + err.message); }
         }
 

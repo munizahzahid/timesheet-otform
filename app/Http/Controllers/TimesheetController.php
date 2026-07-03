@@ -166,12 +166,26 @@ class TimesheetController extends Controller
         // Build approval stamps for timesheet
         $approvalStamps = $this->buildTimesheetApprovalStamps($timesheet);
 
+        // Determine if the timesheet can be unsubmitted
+        $canUnsubmit = false;
+        if ($timesheet->user_id === $request->user()->id) {
+            if ($timesheet->status === 'pending_hod') {
+                $canUnsubmit = true;
+            } elseif ($timesheet->status === 'pending_l1') {
+                $hasHodApproval = $timesheet->approvalLogs()
+                    ->where('level', '2')
+                    ->where('action', 'approved')
+                    ->exists();
+                $canUnsubmit = !$hasHodApproval;
+            }
+        }
+
         // Get uploaded file for this timesheet
         $excelUpload = \App\Models\ExcelUpload::where('timesheet_id', $timesheet->id)->first();
 
         return response()->view('timesheets.edit', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload'
+            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit'
         ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');

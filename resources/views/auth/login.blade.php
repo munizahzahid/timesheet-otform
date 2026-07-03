@@ -182,14 +182,14 @@
                 <!-- Help Text -->
                 <div class="mt-6 pt-6 border-t border-gray-100 text-center">
                     <p class="text-sm text-gray-500">
-                        Need help? Contact <a href="https://wa.me/0178254072" target="_blank" class="text-blue-700 hover:text-blue-800 font-medium">IT Support</a>
+                        Need help? Contact <a href="https://wa.me/60178254072" target="_blank" class="text-blue-700 hover:text-blue-800 font-medium">IT Support</a>
                     </p>
                 </div>
             </div>
 
             <!-- Footer -->
             <p class="text-center text-sm text-gray-500 mt-6">
-                © {{ date('Y') }} TSSB Portal. All rights reserved.
+                © {{ date('Y') }} Talent Synergy SDN BHD. All rights reserved.
             </p>
         </div>
     </div>

@@ -449,6 +449,43 @@ class TimesheetApprovalController extends Controller
         return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
 
+    /**
+     * Staff can unsubmit their timesheet if no approval has been made yet.
+     */
+    public function unsubmit(Request $request, Timesheet $timesheet)
+    {
+        try {
+            if ($timesheet->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            if ($timesheet->status === 'pending_hod') {
+                // ok
+            } elseif ($timesheet->status === 'pending_l1') {
+                $hasHodApproval = $timesheet->approvalLogs()
+                    ->where('level', '2')
+                    ->where('action', 'approved')
+                    ->exists();
+                if ($hasHodApproval) {
+                    return response()->json(['error' => 'Cannot unsubmit after HOD approval.'], 400);
+                }
+            } else {
+                return response()->json(['error' => 'Timesheet cannot be unsubmitted in its current status.'], 400);
+            }
+
+            $timesheet->update(['status' => 'draft']);
+
+            return response()->json([
+                'success' => true,
+                'status' => $timesheet->status,
+                'message' => 'Timesheet unsubmitted. You can now edit it.',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Timesheet unsubmit error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
 /**
  * Get the statuses this user can act on based on designated approver fields.
  */

@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/timesheets/{timesheet}/reject-hod', [TimesheetApprovalController::class, 'rejectHOD'])->name('timesheets.reject-hod');
     Route::post('/timesheets/{timesheet}/approve-l1', [TimesheetApprovalController::class, 'approveL1'])->name('timesheets.approve-l1');
     Route::post('/timesheets/{timesheet}/reject-l1', [TimesheetApprovalController::class, 'rejectL1'])->name('timesheets.reject-l1');
+    Route::post('/timesheets/{timesheet}/unsubmit', [TimesheetApprovalController::class, 'unsubmit'])->name('timesheets.unsubmit');
 
     // OT Forms
     Route::get('/ot-forms', [OtFormController::class, 'index'])->name('ot-forms.index');
@@ -68,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/ot-forms/{otForm}', [OtFormController::class, 'save'])->name('ot-forms.save');
     Route::delete('/ot-forms/{otForm}', [OtFormController::class, 'destroy'])->name('ot-forms.destroy');
     Route::post('/ot-forms/{otForm}/submit-plan', [OtFormController::class, 'submitPlan'])->name('ot-forms.submit-plan');
+    Route::post('/ot-forms/{otForm}/unsubmit', [OtFormController::class, 'unsubmit'])->name('ot-forms.unsubmit');
     Route::post('/ot-forms/{otForm}/auto-fill', [OtFormController::class, 'autoFillFromAttendance'])->name('ot-forms.auto-fill');
     Route::post('/ot-forms/{otForm}/add-entry', [OtFormController::class, 'addEntry'])->name('ot-forms.add-entry');
     Route::delete('/ot-forms/{otForm}/entries/{entry}', [OtFormController::class, 'deleteEntry'])->name('ot-forms.delete-entry');

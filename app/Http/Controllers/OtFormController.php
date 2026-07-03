@@ -84,6 +84,12 @@ class OtFormController extends Controller
         $approvalLogs = $otForm->approvalLogs()->get();
         $approvalStamps = $this->buildOtApprovalStamps($otForm, $approvalLogs);
 
+        // Determine if the OT form can be unsubmitted
+        $hasApproval = $approvalLogs->where('action', 'approved')->isNotEmpty();
+        $canUnsubmit = $otForm->user_id === Auth::id()
+            && $otForm->status === 'pending_manager'
+            && !$hasApproval;
+
         // Approver names for mini stamps in table columns
         // Level 2 = Manager/HOD, Level 1 = GM/CEO (as set in OtApprovalController)
         $staffApproverName = $otForm->user->short_name ?? $otForm->user->name ?? '';
@@ -137,7 +143,7 @@ class OtFormController extends Controller
             'otForm', 'projectCodes', 'approvalStamps',
             'staffApproverName', 'managerApproverName', 'gmApproverName',
             'managerApproverDesignation', 'gmApproverDesignation',
-            'managerApprovedDate', 'gmApprovedDate'
+            'managerApprovedDate', 'gmApprovedDate', 'canUnsubmit'
         ));
     }
 
@@ -439,6 +445,36 @@ class OtFormController extends Controller
         $entry->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Staff can unsubmit their OT form if no approval has been made yet.
+     */
+    public function unsubmit(Request $request, OtForm $otForm)
+    {
+        if ($otForm->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($otForm->status !== 'pending_manager') {
+            return response()->json(['error' => 'OT form cannot be unsubmitted in its current status.'], 400);
+        }
+
+        $hasApproval = $otForm->approvalLogs()
+            ->where('action', 'approved')
+            ->exists();
+
+        if ($hasApproval) {
+            return response()->json(['error' => 'Cannot unsubmit after approval.'], 400);
+        }
+
+        $otForm->update(['status' => 'draft']);
+
+        return response()->json([
+            'success' => true,
+            'status' => $otForm->status,
+            'message' => 'OT form unsubmitted. You can now edit it.',
+        ]);
     }
 
     public function submitPlan(Request $request, OtForm $otForm)
