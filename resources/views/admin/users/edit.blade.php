@@ -47,6 +47,17 @@
                             @error('role') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
 
+                        <div class="mb-4">
+                            <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                            <select name="category" id="category" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">-- Not Set --</option>
+                                @foreach(\App\Models\User::CATEGORIES as $key => $label)
+                                    <option value="{{ $key }}" {{ old('category', $user->category) === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('category') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
                         {{-- Document Type Approvers --}}
                         <div class="mb-6 bg-blue-50 rounded-lg p-4">
                             <h3 class="text-sm font-medium text-gray-700 mb-3">Document Type Approvers</h3>

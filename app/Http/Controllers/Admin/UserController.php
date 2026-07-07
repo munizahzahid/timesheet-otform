@@ -29,6 +29,10 @@ class UserController extends Controller
             $query->where('role', $request->input('role'));
         }
 
+        if ($request->filled('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
         if ($request->filled('status')) {
             $query->where('is_active', $request->input('status') === 'active');
         } else {
@@ -57,6 +61,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'role' => 'required|in:staff,admin,assistant_manager,manager_hod,ceo,hr,finance',
+            'category' => 'nullable|in:DL,IDLO,IDLF',
             'is_active' => 'required|boolean',
             'short_name' => 'nullable|string|max:100',
             'timesheet_approver_id' => 'nullable|exists:users,id',

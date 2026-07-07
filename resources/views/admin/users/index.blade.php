@@ -31,6 +31,15 @@
                             </select>
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-gray-700">Category</label>
+                            <select name="category" class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="">All</option>
+                                @foreach(\App\Models\User::CATEGORIES as $key => $label)
+                                    <option value="{{ $key }}" {{ request('category') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700">Status</label>
                             <select name="status" class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                 <option value="">All</option>
@@ -54,6 +63,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shortform Name</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Designation</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TS1</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TS L2</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">OT HOD</th>
@@ -72,6 +82,18 @@
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->short_name ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->department?->name ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500">{{ $user->designation ?? '-' }}</td>
+                                        <td class="px-4 py-3 text-sm">
+                                            @if($user->category)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                                    {{ $user->category === 'DL' ? 'bg-blue-100 text-blue-800' : '' }}
+                                                    {{ $user->category === 'IDLO' ? 'bg-purple-100 text-purple-800' : '' }}
+                                                    {{ $user->category === 'IDLF' ? 'bg-amber-100 text-amber-800' : '' }}">
+                                                    {{ $user->category }}
+                                                </span>
+                                            @else
+                                                <span class="text-gray-400">-</span>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">
                                             {{ $user->timesheetHodApprover?->name ?? '-' }}
                                         </td>
@@ -99,7 +121,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="px-4 py-8 text-center text-gray-500">No users found.</td>
+                                        <td colspan="12" class="px-4 py-8 text-center text-gray-500">No users found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

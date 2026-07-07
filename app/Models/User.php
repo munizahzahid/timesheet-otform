@@ -12,9 +12,19 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    const CATEGORY_DL = 'DL';
+    const CATEGORY_IDLO = 'IDLO';
+    const CATEGORY_IDLF = 'IDLF';
+
+    const CATEGORIES = [
+        self::CATEGORY_DL => 'Direct Labour (DL)',
+        self::CATEGORY_IDLO => 'Indirect Labour Office (IDLO)',
+        self::CATEGORY_IDLF => 'Indirect Labour Factory (IDLF)',
+    ];
+
     protected $fillable = [
         'desknet_id', 'staff_no', 'name', 'short_name', 'password',
-        'role', 'department_id', 'reports_to', 'designation',
+        'role', 'category', 'department_id', 'reports_to', 'designation',
         'is_active', 'last_synced_at',
         'timesheet_approver_id', 'timesheet_hod_approver_id',
         'ot_approver_id', 'ot_final_approver_id',
