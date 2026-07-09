@@ -6,6 +6,7 @@ use App\Models\ApprovalLog;
 use App\Models\OtForm;
 use App\Models\Timesheet;
 use App\Models\TimesheetApprovalLog;
+use App\Models\User;
 use App\Services\TimesheetCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,204 @@ class AllRecordController extends Controller
         $approvedAt = $this->getTimesheetApprovedDates($timesheets);
 
         return view('records.timesheets', compact('timesheets', 'approvedAt', 'month', 'year'));
+    }
+
+    public function timesheetSummary(Request $request)
+    {
+        if (!Auth::user()->canViewAllRecords()) {
+            abort(403);
+        }
+
+        $month = $request->input('month', (int) date('n'));
+        $year = $request->input('year', (int) date('Y'));
+        $category = $request->input('category', User::CATEGORY_DL);
+
+        // Build the list of staff in the selected category
+        $staff = User::where('category', $category)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Load approved timesheets for the selected month/year across all staff
+        // so the project code list is the same for every category. Hours/summary
+        // are still scoped to the selected category inside buildSummaryData.
+        $timesheets = Timesheet::with(['user', 'adminHours', 'projectRows.projectCode', 'projectRows.hours', 'dayMetadata'])
+            ->where('status', 'approved')
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $data = $this->buildSummaryData($staff, $timesheets);
+
+        return view('records.timesheet-summary', array_merge(
+            $data,
+            compact('staff', 'month', 'year', 'category')
+        ));
+    }
+
+    public function exportSummaryExcel(Request $request, \App\Services\TimesheetSummaryExcelExport $exporter)
+    {
+        if (!Auth::user()->canViewAllRecords()) {
+            abort(403);
+        }
+
+        $month = $request->input('month', (int) date('n'));
+        $year = $request->input('year', (int) date('Y'));
+        $category = $request->input('category', User::CATEGORY_DL);
+
+        $staff = User::where('category', $category)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $timesheets = Timesheet::with(['user', 'adminHours', 'projectRows.projectCode', 'projectRows.hours', 'dayMetadata'])
+            ->where('status', 'approved')
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $data = $this->buildSummaryData($staff, $timesheets);
+
+        $spreadsheet = $exporter->generate($month, $year, $category, $staff, $data['adminTypes'], $data['adminHours'], $data['projects'], $data['summary']);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        $monthName = \DateTime::createFromFormat('!m', $month)->format('F');
+        $filename = "Timesheet_Summary_{$category}_{$monthName}_{$year}.xlsx";
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
+    }
+
+    public function exportSummaryPdf(Request $request)
+    {
+        if (!Auth::user()->canViewAllRecords()) {
+            abort(403);
+        }
+
+        $month = $request->input('month', (int) date('n'));
+        $year = $request->input('year', (int) date('Y'));
+        $category = $request->input('category', User::CATEGORY_DL);
+
+        $staff = User::where('category', $category)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $timesheets = Timesheet::with(['user', 'adminHours', 'projectRows.projectCode', 'projectRows.hours', 'dayMetadata'])
+            ->where('status', 'approved')
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $data = $this->buildSummaryData($staff, $timesheets);
+
+        $monthName = \DateTime::createFromFormat('!m', $month)->format('F');
+        $filename = "Timesheet_Summary_{$category}_{$monthName}_{$year}.pdf";
+
+        $pdf = \Pdf::loadView('records.timesheet-summary-pdf', array_merge(
+            $data,
+            ['month' => $month, 'year' => $year, 'category' => $category, 'staff' => $staff]
+        ))
+            ->setPaper('a4', 'landscape')
+            ->setOption(['dpi' => 150, 'defaultFont' => 'Arial']);
+
+        return $pdf->download($filename);
+    }
+
+    private function buildSummaryData($staff, $timesheets): array
+    {
+        $adminTypes = TimesheetCalculationService::ADMIN_TYPES;
+
+        $adminHours = [];
+        foreach ($adminTypes as $type => $label) {
+            $adminHours[$type] = array_fill_keys($staff->pluck('id')->toArray(), 0);
+        }
+
+        $projects = [];
+        $projectKey = fn($row) => $row->projectCode
+            ? $row->projectCode->code . '|' . $row->projectCode->name
+            : ($row->project_category ?? 'N/A') . '|' . ($row->manual_project_code_name ?? '');
+
+        foreach ($timesheets as $timesheet) {
+            foreach ($timesheet->adminHours as $ah) {
+                if (!isset($adminHours[$ah->admin_type][$timesheet->user_id])) {
+                    continue;
+                }
+                $adminHours[$ah->admin_type][$timesheet->user_id] += (float) $ah->hours;
+            }
+
+            foreach ($timesheet->projectRows as $row) {
+                $key = $projectKey($row);
+                if (!isset($projects[$key])) {
+                    $projects[$key] = [
+                        'code' => $row->projectCode ? $row->projectCode->code : ($row->project_category ?? 'N/A'),
+                        'name' => $row->projectCode ? $row->projectCode->name : ($row->manual_project_code_name ?? ''),
+                        'hours' => array_fill_keys($staff->pluck('id')->toArray(), [
+                            'normal_nc' => 0, 'normal_cobq' => 0,
+                            'ot_nc' => 0, 'ot_cobq' => 0,
+                        ]),
+                    ];
+                }
+                if (!isset($projects[$key]['hours'][$timesheet->user_id])) {
+                    continue;
+                }
+                foreach ($row->hours as $h) {
+                    $projects[$key]['hours'][$timesheet->user_id]['normal_nc'] += (float) $h->normal_nc_hours;
+                    $projects[$key]['hours'][$timesheet->user_id]['normal_cobq'] += (float) $h->normal_cobq_hours;
+                    $projects[$key]['hours'][$timesheet->user_id]['ot_nc'] += (float) $h->ot_nc_hours;
+                    $projects[$key]['hours'][$timesheet->user_id]['ot_cobq'] += (float) $h->ot_cobq_hours;
+                }
+            }
+        }
+
+        uksort($projects, function ($a, $b) use ($projects) {
+            return strcmp($projects[$a]['code'] . $projects[$a]['name'], $projects[$b]['code'] . $projects[$b]['name']);
+        });
+
+        $summary = [];
+        foreach ($staff as $user) {
+            $summary[$user->id] = [
+                'total_external_project' => 0,
+                'total_working_hours' => 0,
+                'hours_available' => 0,
+                'overtime' => 0,
+            ];
+        }
+
+        foreach ($timesheets as $timesheet) {
+            if (!isset($summary[$timesheet->user_id])) {
+                continue;
+            }
+
+            $external = 0;
+            foreach ($timesheet->projectRows as $row) {
+                foreach ($row->hours as $h) {
+                    $external += (float) $h->normal_nc_hours
+                        + (float) $h->normal_cobq_hours
+                        + (float) $h->ot_nc_hours
+                        + (float) $h->ot_cobq_hours;
+                }
+            }
+
+            $adminTotal = 0;
+            foreach ($timesheet->adminHours as $ah) {
+                $adminTotal += (float) $ah->hours;
+            }
+
+            $available = $timesheet->dayMetadata->sum('available_hours');
+            $working = $adminTotal + $external;
+
+            $summary[$timesheet->user_id]['total_external_project'] += $external;
+            $summary[$timesheet->user_id]['total_working_hours'] += $working;
+            $summary[$timesheet->user_id]['hours_available'] += $available;
+            $summary[$timesheet->user_id]['overtime'] += $working - $available;
+        }
+
+        return compact('adminTypes', 'adminHours', 'projects', 'summary');
     }
 
     public function showTimesheet(Timesheet $timesheet)
