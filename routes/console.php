@@ -13,3 +13,9 @@ Schedule::command('desknet:sync --type=all')
     ->dailyAt('01:00')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/desknet-sync.log'));
+
+// Daily timesheet reminder at 9:00 AM
+Schedule::command('timesheet:send-reminders')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/timesheet-reminders.log'));

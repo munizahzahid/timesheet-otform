@@ -23,7 +23,7 @@ class User extends Authenticatable
     ];
 
     protected $fillable = [
-        'desknet_id', 'staff_no', 'name', 'short_name', 'password',
+        'desknet_id', 'staff_no', 'name', 'short_name', 'email', 'password',
         'role', 'category', 'department_id', 'reports_to', 'designation',
         'is_active', 'last_synced_at',
         'timesheet_approver_id', 'timesheet_hod_approver_id',
