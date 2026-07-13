@@ -74,7 +74,7 @@ class DashboardHRSummaryService
                 ]);
         }
 
-        return $timesheetLogs
+        return collect($timesheetLogs)
             ->merge($otFormLogs)
             ->sortByDesc('time')
             ->take($limit)
