@@ -9,6 +9,7 @@ use App\Models\ProjectCode;
 use App\Models\ApprovalLog;
 use App\Models\User;
 use App\Services\OtAutoFillService;
+use App\Services\OtEmailNotificationService;
 use App\Services\OtFormExcelExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -19,6 +20,13 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class OtFormController extends Controller
 {
+    protected OtEmailNotificationService $emailService;
+
+    public function __construct(OtEmailNotificationService $emailService)
+    {
+        $this->emailService = $emailService;
+    }
+
     public function index()
     {
         $otForms = OtForm::where('user_id', Auth::id())
@@ -516,6 +524,12 @@ class OtFormController extends Controller
         // Notify HR users when resubmitting
         if ($isResubmitFromHR) {
             $this->notifyHRUsers($otForm, 'OT Form Resubmitted', "{$otForm->user->name}'s OT Form has been resubmitted after correction.");
+
+            // Send email notifications to HR users
+            $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
+            foreach ($hrUsers as $hrUser) {
+                $this->emailService->sendSubmissionNotification($otForm, $hrUser);
+            }
         }
 
         // Notify designated L1 approver on first submission
@@ -526,6 +540,12 @@ class OtFormController extends Controller
                 'message' => "An OT Form from {$otForm->user->name} is pending your approval.",
                 'link' => route('approvals.ot-forms.show', $otForm),
             ]);
+
+            // Send email notification to L1 approver
+            $l1Approver = User::find($otForm->user->ot_approver_id);
+            if ($l1Approver) {
+                $this->emailService->sendSubmissionNotification($otForm, $l1Approver);
+            }
         }
 
         return response()->json([

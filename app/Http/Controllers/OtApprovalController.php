@@ -8,12 +8,20 @@ use App\Models\OtForm;
 use App\Models\OtFormEntry;
 use App\Models\ProjectCode;
 use App\Models\User;
+use App\Services\OtEmailNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class OtApprovalController extends Controller
 {
+    protected OtEmailNotificationService $emailService;
+
+    public function __construct(OtEmailNotificationService $emailService)
+    {
+        $this->emailService = $emailService;
+    }
+
     /**
      * List OT forms pending the current user's approval/review.
      */
@@ -157,6 +165,16 @@ class OtApprovalController extends Controller
         if ($nextStatus === 'pending_hr') {
             $monthName = \DateTime::createFromFormat('!m', $otForm->month)->format('F');
             $this->notifyHRUsers($otForm, 'OT Form Pending HR Review', "{$otForm->user->name}'s OT Form ({$otForm->form_type_label}) for {$monthName} {$otForm->year} is pending your review.");
+
+            // Send email notifications to HR users
+            $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
+            foreach ($hrUsers as $hrUser) {
+                $this->emailService->sendSubmissionNotification($otForm, $hrUser);
+            }
+        }
+
+        if ($nextStatus === 'approved') {
+            $this->emailService->sendApprovalNotification($otForm);
         }
 
         $message = match ($nextStatus) {
@@ -201,6 +219,18 @@ class OtApprovalController extends Controller
 
         // Notify CEO / final approver
         $this->notifyCEOUsers($otForm, 'OT Form Pending CEO Approval', "{$otForm->user->name}'s OT Form has been forwarded by HR for your approval.");
+
+        // Send email notification to CEO / final approver
+        $ceoUser = null;
+        if ($otForm->user->ot_final_approver_id) {
+            $ceoUser = User::find($otForm->user->ot_final_approver_id);
+        }
+        if (!$ceoUser) {
+            $ceoUser = User::where('role', 'ceo')->where('is_active', true)->first();
+        }
+        if ($ceoUser) {
+            $this->emailService->sendSubmissionNotification($otForm, $ceoUser);
+        }
 
         // Notify staff that the form has been reviewed and forwarded to CEO
         $editMessage = $otForm->hr_remarks
@@ -258,6 +288,9 @@ class OtApprovalController extends Controller
             'message' => "Your OT Form has been returned by HR for correction. Reason: {$request->remarks}",
             'link' => route('ot-forms.edit', $otForm),
         ]);
+
+        // Send email notification to employee
+        $this->emailService->sendHrReturnNotification($otForm, $request->remarks);
 
         return response()->json([
             'success' => true,
@@ -453,6 +486,9 @@ class OtApprovalController extends Controller
             'remarks' => $request->remarks,
             'acted_at' => now(),
         ]);
+
+        // Send email notification to employee
+        $this->emailService->sendRejectionNotification($otForm, $user, $request->remarks);
 
         return response()->json([
             'success' => true,
