@@ -70,26 +70,23 @@ class OtApprovalController extends Controller
     {
         $user = Auth::user();
 
-        $query = OtForm::with('user')->where('status', 'approved');
+        // Show OT forms this user has approved (matches History > My Approval Actions)
+        $approvedIds = ApprovalLog::where('approvable_type', 'ot_form')
+            ->where('approver_id', $user->id)
+            ->where('action', 'approved')
+            ->pluck('approvable_id')
+            ->unique()
+            ->values();
 
-        // Non-admin/hr users only see approved forms they personally approved
-        if (!in_array($user->role, ['admin', 'hr'])) {
-            $approvedIds = ApprovalLog::where('approvable_type', 'ot_form')
-                ->where('approver_id', $user->id)
-                ->where('action', 'approved')
-                ->pluck('approvable_id')
-                ->unique()
-                ->values();
-
-            $query->whereIn('id', $approvedIds);
-        }
+        $query = OtForm::with('user')->whereIn('id', $approvedIds);
 
         $otForms = $query->orderByDesc('updated_at')->paginate(20);
 
-        // Load final approval dates for the paginated forms
+        // Load this user's approval dates for the paginated forms
         $formIds = $otForms->pluck('id');
         $approvalLogs = ApprovalLog::where('approvable_type', 'ot_form')
             ->whereIn('approvable_id', $formIds)
+            ->where('approver_id', $user->id)
             ->where('action', 'approved')
             ->orderBy('id')
             ->get()
