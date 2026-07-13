@@ -16,11 +16,11 @@
             ['key' => 'ot_cobq', 'group' => '', 'cost' => 'COBQ', 'group_span' => 0],
         ];
 
-        $prefixes = ['MUHAMMAD ', 'MOHAMMAD ', 'MOHAMMED ', 'MUHAMAD ', 'MOHAMED ', 'MOHAMAD ', 'MOHD ', 'MUHD ', 'NUR '];
+        $prefixes = ['MUHAMMAD ', 'MOHAMMAD ', 'MOHAMMED ', 'MUHAMAD ', 'MOHAMED ', 'MOHAMAD ', 'MOHD ', 'MUHD ', 'NURUL ', 'NUR ', 'SITI '];
         $separators = [' BIN ', ' BINTI ', ' B ', ' BT '];
         $displayStaff = [];
         foreach ($staff as $user) {
-            $name = strtoupper($user->short_name ?? $user->name);
+            $name = strtoupper($user->name);
             foreach ($prefixes as $prefix) {
                 if (strpos($name, $prefix) === 0) {
                     $name = substr($name, strlen($prefix));
