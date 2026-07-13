@@ -88,7 +88,8 @@ class TimesheetSummaryExcelExport
         // Title row
         $monthName = strtoupper(Carbon::create($year, $month)->format('F'));
         $sheet->mergeCells("A{$r}:{$lastCol}{$r}");
-        $sheet->setCellValue("A{$r}", 'MONTHLY TIMESHEET SUMMARY - ' . strtoupper(User::CATEGORIES[$category] ?? $category));
+        $categoryLabel = $category === 'all' ? 'ALL STAFF' : strtoupper(User::CATEGORIES[$category] ?? $category);
+        $sheet->setCellValue("A{$r}", 'MONTHLY TIMESHEET SUMMARY - ' . $categoryLabel);
         $sheet->getStyle("A{$r}")->getFont()->setBold(true)->setSize(12);
         $sheet->getStyle("A{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $r++;
@@ -114,7 +115,7 @@ class TimesheetSummaryExcelExport
         $sheet->setCellValue($projectTotalCol . "{$r}", '');
         $r++;
         $sheet->mergeCells("E{$r}:{$this->columnLetter($staffCount + 4)}{$r}");
-        $sheet->setCellValue("E{$r}", strtoupper(User::CATEGORIES[$category] ?? $category));
+        $sheet->setCellValue("E{$r}", $categoryLabel);
         $r++;
         foreach ($displayStaff as $idx => $user) {
             $col = $staffCol($idx);
@@ -243,7 +244,7 @@ class TimesheetSummaryExcelExport
 
         if (empty($projects)) {
             $sheet->mergeCells("A{$r}:{$lastCol}{$r}");
-            $sheet->setCellValue("A{$r}", 'No project data found for this category and month.');
+            $sheet->setCellValue("A{$r}", 'No project data found for this period.');
             $sheet->getStyle("A{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $r++;
         }

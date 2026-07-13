@@ -50,17 +50,18 @@ class AllRecordController extends Controller
 
         $month = $request->input('month', (int) date('n'));
         $year = $request->input('year', (int) date('Y'));
-        $category = $request->input('category', User::CATEGORY_DL);
+        $category = $request->input('category', 'all');
 
-        // Build the list of staff in the selected category
-        $staff = User::where('category', $category)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        // Build the list of staff (all or by category)
+        $staffQuery = User::where('is_active', true)->orderBy('name');
+        if ($category !== 'all') {
+            $staffQuery->where('category', $category);
+        }
+        $staff = $staffQuery->get();
 
         // Load approved timesheets for the selected month/year across all staff
         // so the project code list is the same for every category. Hours/summary
-        // are still scoped to the selected category inside buildSummaryData.
+        // are still scoped to the selected staff list inside buildSummaryData.
         $timesheets = Timesheet::with(['user', 'adminHours', 'projectRows.projectCode', 'projectRows.hours', 'dayMetadata'])
             ->where('status', 'approved')
             ->where('month', $month)
@@ -83,12 +84,13 @@ class AllRecordController extends Controller
 
         $month = $request->input('month', (int) date('n'));
         $year = $request->input('year', (int) date('Y'));
-        $category = $request->input('category', User::CATEGORY_DL);
+        $category = $request->input('category', 'all');
 
-        $staff = User::where('category', $category)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $staffQuery = User::where('is_active', true)->orderBy('name');
+        if ($category !== 'all') {
+            $staffQuery->where('category', $category);
+        }
+        $staff = $staffQuery->get();
 
         $timesheets = Timesheet::with(['user', 'adminHours', 'projectRows.projectCode', 'projectRows.hours', 'dayMetadata'])
             ->where('status', 'approved')
@@ -120,12 +122,13 @@ class AllRecordController extends Controller
 
         $month = $request->input('month', (int) date('n'));
         $year = $request->input('year', (int) date('Y'));
-        $category = $request->input('category', User::CATEGORY_DL);
+        $category = $request->input('category', 'all');
 
-        $staff = User::where('category', $category)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $staffQuery = User::where('is_active', true)->orderBy('name');
+        if ($category !== 'all') {
+            $staffQuery->where('category', $category);
+        }
+        $staff = $staffQuery->get();
 
         $timesheets = Timesheet::with(['user', 'adminHours', 'projectRows.projectCode', 'projectRows.hours', 'dayMetadata'])
             ->where('status', 'approved')

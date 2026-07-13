@@ -28,7 +28,7 @@
     <table style="width: 100%; border: none; margin-bottom: 8px;">
         <tr style="border: none;">
             <td style="width: 25%; border: none; text-align: left; font-size: 8pt; font-weight: bold;">MONTH: {{ strtoupper(\DateTime::createFromFormat('!m', $month)->format('M')) }}-{{ substr((string) $year, -2) }}</td>
-            <td style="width: 50%; border: none; text-align: center; font-size: 10pt; font-weight: bold;">MONTHLY TIMESHEET SUMMARY - {{ strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}</td>
+            <td style="width: 50%; border: none; text-align: center; font-size: 10pt; font-weight: bold;">MONTHLY TIMESHEET SUMMARY - {{ $category === 'all' ? 'ALL STAFF' : strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}</td>
             <td style="width: 25%; border: none;"></td>
         </tr>
     </table>
@@ -79,7 +79,7 @@
                 <th rowspan="3" class="admin-blank-col" style="width: 7%;"></th>
             </tr>
             <tr>
-                <th colspan="{{ $staffCount }}" style="border-right: 1px solid #000;">{{ strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}</th>
+                <th colspan="{{ $staffCount }}" style="border-right: 1px solid #000;">{{ $category === 'all' ? 'ALL STAFF' : strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}</th>
             </tr>
             <tr>
                 @foreach($displayStaff as $user)
@@ -173,7 +173,7 @@
                 @endforeach
             @empty
                 <tr>
-                    <td colspan="{{ $staffCount + 6 }}" style="text-align: center; padding: 10px;">No project data found for this category and month.</td>
+                    <td colspan="{{ $staffCount + 6 }}" style="text-align: center; padding: 10px;">No project data found for this period.</td>
                 </tr>
             @endforelse
             <tr class="summary-external">

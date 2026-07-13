@@ -65,19 +65,29 @@
                                 <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
                             @endfor
                         </select>
-                        <select name="category" class="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 w-44">
-                            @foreach(\App\Models\User::CATEGORIES as $key => $label)
-                                <option value="{{ $key }}" {{ $category === $key ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        <input type="hidden" name="category" value="{{ $category }}">
                         <button type="submit" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">{{ __('Filter') }}</button>
                     </form>
+                </div>
+
+                {{-- Category tabs --}}
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <a href="{{ route('records.timesheets.summary', ['month' => $month, 'year' => $year, 'category' => 'all']) }}"
+                       class="px-3 py-1.5 rounded-md text-sm font-medium {{ $category === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                        {{ __('All Staff') }}
+                    </a>
+                    @foreach(\App\Models\User::CATEGORIES as $key => $label)
+                        <a href="{{ route('records.timesheets.summary', ['month' => $month, 'year' => $year, 'category' => $key]) }}"
+                           class="px-3 py-1.5 rounded-md text-sm font-medium {{ $category === $key ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                            {{ $label }}
+                        </a>
+                    @endforeach
                 </div>
 
                 <div class="flex items-center justify-between mb-4">
                     <div class="text-sm font-bold text-gray-800">{{ __('MONTH') }}: {{ DateTime::createFromFormat('!m', $month)->format('M') }}-{{ substr($year, -2) }}</div>
                     <div class="text-base font-bold text-gray-900 uppercase tracking-wide">
-                        {{ __('Monthly Timesheet Summary') }} - {{ strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}
+                        {{ __('Monthly Timesheet Summary') }} - {{ $category === 'all' ? __('All Staff') : strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}
                     </div>
                     <div class="flex items-center gap-2">
                         <a href="{{ route('records.timesheets.summary.export-excel', request()->only('month', 'year', 'category')) }}"
@@ -234,7 +244,7 @@
                                 <td class="border-t-0 border-r-0 border-b-0 border-l border-gray-300 px-2 py-1 bg-white"></td>
                             </tr>
                             <tr class="bg-gray-100 font-semibold">
-                                <td colspan="4" class="border border-gray-300 px-2 py-1 text-[11px]">{{ __('AVAILABLE') }}</td>
+                                <td colspan="4" class="border border-gray-300 px-2 py-1 text-[11px]">{{ __('HOURS AVAILABLE') }}</td>
                                 @php $grandAvailable = 0; @endphp
                                 @foreach($displayStaff as $user)
                                     @php
