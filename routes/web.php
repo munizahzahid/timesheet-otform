@@ -19,6 +19,7 @@ use App\Http\Controllers\AttendanceUploadController;
 use App\Http\Controllers\TimesheetApprovalController;
 use App\Http\Controllers\OtFormController;
 use App\Http\Controllers\OtApprovalController;
+use App\Http\Controllers\PendingTrackerController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\ProjectCodeSearchController;
 use App\Http\Controllers\AllRecordController;
@@ -92,6 +93,9 @@ Route::middleware('auth')->group(function () {
     // Project code search API
     Route::get('/api/project-codes/search', [ProjectCodeSearchController::class, 'search'])->name('api.project-codes.search');
 
+    // Pending Tracker (Admin / HR only)
+    Route::get('/approvals/pending-tracker', [PendingTrackerController::class, 'index'])->name('approvals.pending-tracker.index');
+
     // OT Form Approvals
     Route::get('/approvals/ot-forms', [OtApprovalController::class, 'index'])->name('approvals.ot-forms.index');
     Route::get('/approvals/ot-forms/approved', [OtApprovalController::class, 'approved'])->name('approvals.ot-forms.approved');
@@ -134,6 +138,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Project Management (Admin Only - Draft)
     Route::prefix('project')->name('project.')->group(function () {
         Route::get('/', [ProjectController::class, 'dashboard'])->name('dashboard');
+        Route::get('/calendar', [ProjectController::class, 'calendar'])->name('calendar');
         Route::prefix('projects')->name('projects.')->group(function () {
             Route::get('/', [ProjectController::class, 'index'])->name('index');
             Route::get('/create', [ProjectController::class, 'create'])->name('create');
