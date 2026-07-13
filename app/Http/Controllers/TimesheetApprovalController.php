@@ -6,12 +6,20 @@ use App\Models\Notification;
 use App\Models\Timesheet;
 use App\Models\TimesheetApprovalLog;
 use App\Models\User;
+use App\Services\TimesheetEmailNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TimesheetApprovalController extends Controller
 {
+    protected TimesheetEmailNotificationService $emailService;
+
+    public function __construct(TimesheetEmailNotificationService $emailService)
+    {
+        $this->emailService = $emailService;
+    }
+
     /**
      * List timesheets pending the current user's approval.
      */
@@ -311,6 +319,8 @@ class TimesheetApprovalController extends Controller
                     'level' => '1', // L1 approval
                     'action' => 'approved',
                 ]);
+
+                $this->emailService->sendApprovalNotification($timesheet);
             } else {
                 $timesheet->update([
                     'status' => 'pending_l1',
@@ -324,6 +334,11 @@ class TimesheetApprovalController extends Controller
                         'message' => "A timesheet from {$timesheet->user->name} is pending your approval.",
                         'link' => route('approvals.timesheets.show', $timesheet),
                     ]);
+
+                    $l1Approver = User::find($l1ApproverId);
+                    if ($l1Approver) {
+                        $this->emailService->sendSubmissionNotification($timesheet, $l1Approver);
+                    }
                 }
             }
 
@@ -368,6 +383,8 @@ class TimesheetApprovalController extends Controller
             'remarks' => $request->remarks,
         ]);
 
+        $this->emailService->sendRejectionNotification($timesheet, Auth::user(), $request->remarks);
+
         return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
 
@@ -405,6 +422,8 @@ class TimesheetApprovalController extends Controller
                 'level' => '1', // L1 approval (string to match enum)
                 'action' => 'approved',
             ]);
+
+            $this->emailService->sendApprovalNotification($timesheet);
 
             return response()->json(['success' => true, 'status' => $timesheet->status]);
         } catch (\Exception $e) {
@@ -445,6 +464,8 @@ class TimesheetApprovalController extends Controller
             'action' => 'rejected',
             'remarks' => $request->remarks,
         ]);
+
+        $this->emailService->sendRejectionNotification($timesheet, Auth::user(), $request->remarks);
 
         return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
@@ -610,6 +631,11 @@ private function notifyTimesheetApprovers(Timesheet $timesheet, string $status):
             'message' => "A timesheet from {$formUser->name} is pending your approval.",
             'link' => route('approvals.timesheets.show', $timesheet),
         ]);
+
+        $recipient = User::find($recipientId);
+        if ($recipient) {
+            $this->emailService->sendSubmissionNotification($timesheet, $recipient);
+        }
     }
 }
 }
