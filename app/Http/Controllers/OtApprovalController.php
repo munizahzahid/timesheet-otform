@@ -72,12 +72,16 @@ class OtApprovalController extends Controller
 
         $query = OtForm::with('user')->where('status', 'approved');
 
-        // Non-admin/hr users only see approved forms where they are a designated approver
+        // Non-admin/hr users only see approved forms they personally approved
         if (!in_array($user->role, ['admin', 'hr'])) {
-            $query->whereHas('user', function ($uq) use ($user) {
-                $uq->where('ot_approver_id', $user->id)
-                   ->orWhere('ot_final_approver_id', $user->id);
-            });
+            $approvedIds = ApprovalLog::where('approvable_type', 'ot_form')
+                ->where('approver_id', $user->id)
+                ->where('action', 'approved')
+                ->pluck('approvable_id')
+                ->unique()
+                ->values();
+
+            $query->whereIn('id', $approvedIds);
         }
 
         $otForms = $query->orderByDesc('updated_at')->paginate(20);
