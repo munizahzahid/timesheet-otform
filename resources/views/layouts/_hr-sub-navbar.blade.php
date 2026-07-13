@@ -35,8 +35,12 @@
                     <div x-show="open" x-cloak
                          class="absolute top-full left-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-30 overflow-hidden">
                         <a href="{{ route('records.timesheets') }}"
-                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.timesheets.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.timesheets') ? 'bg-indigo-50 text-indigo-700' : '' }}">
                             Timesheet
+                        </a>
+                        <a href="{{ route('records.timesheets.summary') }}"
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.timesheets.summary') ? 'bg-indigo-50 text-indigo-700' : '' }}">
+                            Monthly Summary
                         </a>
                         <a href="{{ route('records.ot-forms') }}"
                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.ot-forms.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
