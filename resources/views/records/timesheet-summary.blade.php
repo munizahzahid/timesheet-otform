@@ -233,21 +233,12 @@
                                 <td class="border border-gray-300 px-2 py-1 text-center">{{ $grandWorking > 0 ? number_format($grandWorking, 2) : '' }}</td>
                                 <td class="border-t-0 border-r-0 border-b-0 border-l border-gray-300 px-2 py-1 bg-white"></td>
                             </tr>
-                            @php
-                                $sharedAvailable = 0;
-                                foreach ($displayStaff as $u) {
-                                    if ($u['id'] && isset($summary[$u['id']]['hours_available'])) {
-                                        $sharedAvailable = $summary[$u['id']]['hours_available'];
-                                        break;
-                                    }
-                                }
-                            @endphp
                             <tr class="bg-gray-100 font-semibold">
                                 <td colspan="4" class="border border-gray-300 px-2 py-1 text-[11px]">{{ __('AVAILABLE') }}</td>
                                 @php $grandAvailable = 0; @endphp
                                 @foreach($displayStaff as $user)
                                     @php
-                                        $value = $sharedAvailable;
+                                        $value = $user['id'] ? ($summary[$user['id']]['hours_available'] ?? 0) : 0;
                                         $grandAvailable += $value;
                                     @endphp
                                     <td class="{{ $staffCellClass }}">{{ number_format($value, 1) }}</td>
@@ -261,7 +252,8 @@
                                 @foreach($displayStaff as $user)
                                     @php
                                         $userWorking = $user['id'] ? ($summary[$user['id']]['total_working_hours'] ?? 0) : 0;
-                                        $value = $userWorking - $sharedAvailable;
+                                        $userAvailable = $user['id'] ? ($summary[$user['id']]['hours_available'] ?? 0) : 0;
+                                        $value = $userWorking - $userAvailable;
                                         $grandOvertime += $value;
                                     @endphp
                                     <td class="{{ $staffCellClass }} {{ $value < 0 ? 'text-red-600' : '' }}">{{ number_format($value, 1) }}</td>

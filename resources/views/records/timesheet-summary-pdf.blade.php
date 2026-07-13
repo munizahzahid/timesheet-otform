@@ -196,21 +196,12 @@
                 <td class="text-right">{{ $grandWorking > 0 ? number_format($grandWorking, 2) : '' }}</td>
                 <td class="admin-blank-col"></td>
             </tr>
-            @php
-                $sharedAvailable = 0;
-                foreach ($displayStaff as $u) {
-                    if ($u['id'] && isset($summary[$u['id']]['hours_available'])) {
-                        $sharedAvailable = $summary[$u['id']]['hours_available'];
-                        break;
-                    }
-                }
-            @endphp
             <tr class="summary-available">
                 <td colspan="4" class="text-left">HOURS AVAILABLE</td>
                 @php $grandAvailable = 0; @endphp
                 @foreach($displayStaff as $user)
                     @php
-                        $value = $sharedAvailable;
+                        $value = $user['id'] ? ($summary[$user['id']]['hours_available'] ?? 0) : 0;
                         $grandAvailable += $value;
                     @endphp
                     <td>{{ number_format($value, 1) }}</td>
@@ -224,7 +215,8 @@
                 @foreach($displayStaff as $user)
                     @php
                         $userWorking = $user['id'] ? ($summary[$user['id']]['total_working_hours'] ?? 0) : 0;
-                        $value = $userWorking - $sharedAvailable;
+                        $userAvailable = $user['id'] ? ($summary[$user['id']]['hours_available'] ?? 0) : 0;
+                        $value = $userWorking - $userAvailable;
                         $grandOvertime += $value;
                     @endphp
                     <td class="{{ $value < 0 ? 'negative' : '' }}">{{ number_format($value, 1) }}</td>

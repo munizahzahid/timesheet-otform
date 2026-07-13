@@ -256,14 +256,6 @@ class TimesheetSummaryExcelExport
             ['label' => 'OVERTIME', 'key' => 'overtime', 'fill' => 'DDEBF7'],
         ];
 
-        $sharedAvailable = 0;
-        foreach ($displayStaff as $u) {
-            if ($u['id'] && isset($summary[$u['id']]['hours_available'])) {
-                $sharedAvailable = $summary[$u['id']]['hours_available'];
-                break;
-            }
-        }
-
         foreach ($summaryRows as $sRow) {
             $sheet->mergeCells("A{$r}:D{$r}");
             $sheet->setCellValue("A{$r}", $sRow['label']);
@@ -272,11 +264,10 @@ class TimesheetSummaryExcelExport
             foreach ($displayStaff as $idx => $user) {
                 $col = $staffCol($idx);
                 $actualValue = $user['id'] ? ($summary[$user['id']][$sRow['key']] ?? 0) : 0;
-                if ($sRow['key'] === 'hours_available') {
-                    $value = $sharedAvailable;
-                } elseif ($sRow['key'] === 'overtime') {
+                if ($sRow['key'] === 'overtime') {
                     $userWorking = $user['id'] ? ($summary[$user['id']]['total_working_hours'] ?? 0) : 0;
-                    $value = $userWorking - $sharedAvailable;
+                    $userAvailable = $user['id'] ? ($summary[$user['id']]['hours_available'] ?? 0) : 0;
+                    $value = $userWorking - $userAvailable;
                 } else {
                     $value = $actualValue;
                 }
