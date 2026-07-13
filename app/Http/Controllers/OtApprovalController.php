@@ -70,10 +70,10 @@ class OtApprovalController extends Controller
     {
         $user = Auth::user();
 
-        // Show OT forms this user has approved (matches History > My Approval Actions)
+        // Show OT forms this user has approved or reviewed/forwarded as HR
         $approvedIds = ApprovalLog::where('approvable_type', 'ot_form')
             ->where('approver_id', $user->id)
-            ->where('action', 'approved')
+            ->whereIn('action', ['approved', 'hr_forwarded'])
             ->pluck('approvable_id')
             ->unique()
             ->values();
@@ -82,12 +82,12 @@ class OtApprovalController extends Controller
 
         $otForms = $query->orderByDesc('updated_at')->paginate(20);
 
-        // Load this user's approval dates for the paginated forms
+        // Load this user's approval/review dates for the paginated forms
         $formIds = $otForms->pluck('id');
         $approvalLogs = ApprovalLog::where('approvable_type', 'ot_form')
             ->whereIn('approvable_id', $formIds)
             ->where('approver_id', $user->id)
-            ->where('action', 'approved')
+            ->whereIn('action', ['approved', 'hr_forwarded'])
             ->orderBy('id')
             ->get()
             ->groupBy('approvable_id');
