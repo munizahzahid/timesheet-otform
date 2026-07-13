@@ -82,6 +82,9 @@ Route::middleware('auth')->group(function () {
 
     // All Records (view-only)
     Route::get('/records/timesheets', [AllRecordController::class, 'timesheets'])->name('records.timesheets');
+    Route::get('/records/timesheets/summary', [AllRecordController::class, 'timesheetSummary'])->name('records.timesheets.summary');
+    Route::get('/records/timesheets/summary/export-excel', [AllRecordController::class, 'exportSummaryExcel'])->name('records.timesheets.summary.export-excel');
+    Route::get('/records/timesheets/summary/export-pdf', [AllRecordController::class, 'exportSummaryPdf'])->name('records.timesheets.summary.export-pdf');
     Route::get('/records/timesheets/{timesheet}', [AllRecordController::class, 'showTimesheet'])->name('records.timesheets.show');
     Route::get('/records/ot-forms', [AllRecordController::class, 'otForms'])->name('records.ot-forms');
     Route::get('/records/ot-forms/{otForm}', [AllRecordController::class, 'showOtForm'])->name('records.ot-forms.show');
