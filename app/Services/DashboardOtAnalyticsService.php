@@ -24,7 +24,7 @@ class DashboardOtAnalyticsService
             ->where('ot_forms.year', $year)
             ->where('ot_form_entries.actual_total_hours', '>', 0)
             ->select(
-                DB::raw("COALESCE(project_codes.code, ot_form_entries.manual_project_code_name, ot_form_entries.project_name, 'Unknown Project') as project_label"),
+                DB::raw("COALESCE(project_codes.name, ot_form_entries.manual_project_code_name, ot_form_entries.project_name, 'Unknown Project') as project_label"),
                 DB::raw('SUM(ot_form_entries.actual_total_hours) as total_hours')
             )
             ->leftJoin('project_codes', 'ot_form_entries.project_code_id', '=', 'project_codes.id')
