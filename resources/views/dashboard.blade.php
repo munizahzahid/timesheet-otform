@@ -16,6 +16,64 @@
             </div>
         </div>
 
+        {{-- OT Analytics Filter --}}
+        @if($availableMonths->isNotEmpty())
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
+                <div class="p-6">
+                    <form method="GET" action="{{ route('dashboard') }}" class="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <label for="month" class="text-sm font-medium text-gray-700">Filter OT charts by month:</label>
+                        <select id="month" name="month" onchange="this.form.submit()" class="block w-full sm:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm">
+                            @foreach($availableMonths as $m)
+                                <option value="{{ $m->value }}" {{ $selectedMonth === $m->value ? 'selected' : '' }}>{{ $m->label }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            {{-- OT Analytics Charts --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {{-- Monthly OT Hours Bar Chart --}}
+                <div class="bg-white overflow-hidden shadow-sm rounded-lg lg:col-span-2">
+                    <div class="p-6 border-b border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Total OT Hours by Month</h4>
+                        <p class="text-xs text-gray-400 mt-1">All approved OT forms</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="h-72">
+                            <canvas id="monthlyOtChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- OT Hours by Project Pie Chart --}}
+                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                    <div class="p-6 border-b border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Project</h4>
+                        <p class="text-xs text-gray-400 mt-1">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="h-72 flex items-center justify-center">
+                            <canvas id="projectOtChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- OT Hours by Staff Bar Chart --}}
+                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                    <div class="p-6 border-b border-gray-200">
+                        <h4 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Staff</h4>
+                        <p class="text-xs text-gray-400 mt-1">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="h-72">
+                            <canvas id="staffOtChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if(Auth::user()->isAdmin())
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <a href="{{ route('admin.users.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
@@ -161,6 +219,137 @@
                 <h4 class="font-semibold text-gray-900 mb-1">Admin Cards</h4>
                 <p>Cards below show active users, project codes, and last Desknet sync status. Click any card to manage that section.</p>
             @endif
+            <h4 class="font-semibold text-gray-900 mb-1">OT Analytics</h4>
+            <p>Charts above show approved OT hours by project, staff, and month. Use the month filter to change the project and staff charts.</p>
         </x-slot>
     </x-help-button>
+
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const monthlyData = @json($otMonthlyData->map(fn($r) => ['label' => $r->label, 'hours' => $r->hours]));
+                const projectData = @json($otProjectData->map(fn($r) => ['label' => $r->label, 'hours' => $r->hours]));
+                const staffData = @json($otStaffData->map(fn($r) => ['label' => $r->label, 'hours' => $r->hours]));
+
+                // Common chart colors
+                const colors = [
+                    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+                ];
+
+                function backgroundColors(count) {
+                    const arr = [];
+                    for (let i = 0; i < count; i++) {
+                        arr.push(colors[i % colors.length]);
+                    }
+                    return arr;
+                }
+
+                // Monthly OT Hours Bar Chart
+                new Chart(document.getElementById('monthlyOtChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: monthlyData.map(d => d.label),
+                        datasets: [{
+                            label: 'Total OT Hours',
+                            data: monthlyData.map(d => d.hours),
+                            backgroundColor: '#3B82F6',
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.parsed.y.toFixed(2) + ' hours';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Hours' }
+                            }
+                        }
+                    }
+                });
+
+                // OT Hours by Project Pie Chart
+                new Chart(document.getElementById('projectOtChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: projectData.map(d => d.label),
+                        datasets: [{
+                            data: projectData.map(d => d.hours),
+                            backgroundColor: backgroundColors(projectData.length),
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                        return context.label + ': ' + context.parsed.toFixed(2) + ' hours (' + percentage + '%)';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // OT Hours by Staff Bar Chart
+                new Chart(document.getElementById('staffOtChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: staffData.map(d => d.label),
+                        datasets: [{
+                            label: 'Total OT Hours',
+                            data: staffData.map(d => d.hours),
+                            backgroundColor: backgroundColors(staffData.length),
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.parsed.y.toFixed(2) + ' hours';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Hours' }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 30,
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        </script>
+    @endpush
 </x-app-layout>
