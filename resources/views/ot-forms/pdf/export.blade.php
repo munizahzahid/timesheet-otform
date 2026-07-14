@@ -454,8 +454,8 @@
                         $ot4 = (float)($e->ot_ph_hours ?? 0);
                         $ot5 = (int)($e->ot_rest_day_count ?? 0);
                         if ($ot1 <= 0 && !$isPH && !$isRest) $ot1 = $aHours;
-                        if ($ot2 <= 0 && $isRest && !$isPH)  $ot2 = min($aHours, 8.0);
-                        if ($ot3 <= 0 && $isRest && !$isPH && $aHours > 8.0) $ot3 = $aHours - 8.0;
+                        if ($ot2 <= 0 && $isRest && !$isPH)  $ot2 = $isExecutive ? $aHours : min($aHours, 8.0);
+                        if (!$isExecutive && $ot3 <= 0 && $isRest && !$isPH && $aHours > 8.0) $ot3 = $aHours - 8.0;
                         if ($ot4 <= 0 && $isPH) $ot4 = $aHours;
                         if ($ot5 <= 0 && $isRest && !$isPH) $ot5 = 1;
                         $totalOt1 += $ot1; $totalOt2 += $ot2; $totalOt3 += $ot3; $totalOt4 += $ot4; $totalOt5 += $ot5;

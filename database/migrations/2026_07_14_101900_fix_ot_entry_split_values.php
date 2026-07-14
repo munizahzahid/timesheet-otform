@@ -40,9 +40,11 @@ return new class extends Migration
                             $needsUpdate = true;
                         }
                     } elseif ($isWeekend) {
-                        // Rest day: split into ot_rest_day_hours (max 8.0) + ot_rest_day_excess_hours
-                        $expectedOt2 = min($actualTotal, 8.0);
-                        $expectedOt3 = max(0, $actualTotal - 8.0);
+                        // Executive: all hours in ot_rest_day_hours (no split)
+                        // Non-executive: split into ot_rest_day_hours (max 8.0) + ot_rest_day_excess_hours
+                        $isExec = $entry->otForm && $entry->otForm->form_type === 'executive';
+                        $expectedOt2 = $isExec ? $actualTotal : min($actualTotal, 8.0);
+                        $expectedOt3 = $isExec ? 0 : max(0, $actualTotal - 8.0);
                         $expectedOt5 = 1;
 
                         if ((float) $entry->ot_rest_day_hours !== $expectedOt2 ||

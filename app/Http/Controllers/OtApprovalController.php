@@ -401,8 +401,13 @@ class OtApprovalController extends Controller
                 } elseif ($isRest) {
                     $newValues['ot_type'] = 'rest_day';
                     $newValues['ot_normal_day_hours'] = 0;
-                    $newValues['ot_rest_day_hours'] = min($newActualTotal, 8.0);
-                    $newValues['ot_rest_day_excess_hours'] = max(0, $newActualTotal - 8.0);
+                    if ($otForm->isExecutive()) {
+                        $newValues['ot_rest_day_hours'] = $newActualTotal;
+                        $newValues['ot_rest_day_excess_hours'] = 0;
+                    } else {
+                        $newValues['ot_rest_day_hours'] = min($newActualTotal, 8.0);
+                        $newValues['ot_rest_day_excess_hours'] = max(0, $newActualTotal - 8.0);
+                    }
                     $newValues['ot_rest_day_count'] = 1;
                     $newValues['ot_ph_hours'] = 0;
                 } else {

@@ -335,8 +335,12 @@ class OtFormController extends Controller
                 if ($isPublicHoliday) {
                     $otPhHours = $actualTotal;
                 } elseif ($isWeekend) {
-                    $otRestDay = min($actualTotal, 8.0);
-                    $otRestDayExcess = max(0, $actualTotal - 8.0);
+                    if ($otForm->isExecutive()) {
+                        $otRestDay = $actualTotal;
+                    } else {
+                        $otRestDay = min($actualTotal, 8.0);
+                        $otRestDayExcess = max(0, $actualTotal - 8.0);
+                    }
                     $otRestDayCount = 1;
                 } else {
                     $otNormalDay = $actualTotal;
