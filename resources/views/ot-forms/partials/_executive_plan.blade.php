@@ -34,7 +34,12 @@
                 @php
                     $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
                     $dow = $entry->entry_date->dayOfWeek;
-                    $isRestOrPH = in_array($dow, [0, 6]) || $entry->is_public_holiday;
+                    // For entries with data, trust is_public_holiday from attendance (auto-fill).
+                    // For blank entries, fall back to the public holidays table.
+                    $isPublicHoliday = $isFilled
+                        ? $entry->is_public_holiday
+                        : isset($publicHolidays[$entry->entry_date->format('Y-m-d')]);
+                    $isRestOrPH = in_array($dow, [0, 6]) || $isPublicHoliday;
                     $isFirstRow = $entryIdx === 0;
                     $planTimeOptions = [];
                     for ($h = 0; $h <= 23; $h++) {
@@ -43,7 +48,7 @@
                         }
                     }
                 @endphp
-                <tr class="entry-row hover:bg-gray-50"
+                <tr class="entry-row {{ $isPublicHoliday ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50' }}"
                     data-entry-id="{{ $entry->id }}" data-entry-date="{{ $dateStr }}" data-is-weekend="{{ $isRestOrPH ? '1' : '0' }}">
                     {{-- DATE --}}
                     <td class="border border-gray-200 px-2 py-1.5 text-center text-xs">
@@ -196,6 +201,15 @@
                                name="entries[{{ $entry->id }}][actual_total_hours]"
                                value="{{ number_format(abs($entry->actual_total_hours ?? 0), 2) }}"
                                class="actual-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
+                    </td>
+
+                    {{-- PUBLIC HOLIDAY FLAG (hidden for save logic) --}}
+                    <td class="hidden">
+                        @if($otForm->isEditable())
+                            <input type="checkbox" name="entries[{{ $entry->id }}][is_public_holiday]" value="1"
+                                   {{ $isPublicHoliday ? 'checked' : '' }}
+                                   id="ph-{{ $entry->id }}">
+                        @endif
                     </td>
 
                     {{-- TOTAL HOURS: NORMAL DAY, REST DAY, PUBLIC HOLIDAY --}}

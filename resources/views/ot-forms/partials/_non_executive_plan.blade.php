@@ -43,9 +43,14 @@
                 @php
                     $dayOfWeek = $entry->entry_date->dayOfWeek;
                     $isWeekend = in_array($dayOfWeek, [0, 6]);
-                    $isRestOrPH = $isWeekend || $entry->is_public_holiday;
-                    $rowBg = $isWeekend ? 'bg-gray-50' : '';
                     $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
+                    // For entries with data, trust is_public_holiday from attendance (auto-fill).
+                    // For blank entries, fall back to the public holidays table.
+                    $isPublicHoliday = $isFilled
+                        ? $entry->is_public_holiday
+                        : isset($publicHolidays[$entry->entry_date->format('Y-m-d')]);
+                    $isRestOrPH = $isWeekend || $isPublicHoliday;
+                    $rowBg = $isPublicHoliday ? 'bg-red-50 hover:bg-red-100' : ($isWeekend ? 'bg-gray-50' : '');
                     $isFirstRow = $entryIdx === 0;
                     $isExtraRow = $entryIdx > 0;
                     $planTimeOptions = [];
@@ -60,7 +65,7 @@
                     data-entry-date="{{ $entry->entry_date->format('Y-m-d') }}"
                     data-is-weekend="{{ $isWeekend ? '1' : '0' }}">
                     {{-- TARIKH --}}
-                    <td class="border px-1 py-0.5 text-center {{ $isWeekend ? 'text-red-600' : '' }}">
+                    <td class="border px-1 py-0.5 text-center {{ $isWeekend || $isPublicHoliday ? 'text-red-600' : '' }}">
                         @if($isFirstRow)
                             <div class="flex items-center justify-center gap-0.5">
                                 <span>{{ $entry->entry_date->day }}</span>
@@ -211,7 +216,7 @@
                     <td class="border px-0.5 py-0.5 text-center hidden">
                         @if($otForm->isEditable())
                             <input type="checkbox" name="entries[{{ $entry->id }}][is_public_holiday]" value="1"
-                                   {{ $entry->is_public_holiday ? 'checked' : '' }}
+                                   {{ $isPublicHoliday ? 'checked' : '' }}
                                    onchange="calcOT({{ $entry->id }})"
                                    id="ph-{{ $entry->id }}">
                         @endif

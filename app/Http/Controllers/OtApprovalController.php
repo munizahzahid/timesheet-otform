@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\OtForm;
 use App\Models\OtFormEntry;
 use App\Models\ProjectCode;
+use App\Models\PublicHoliday;
 use App\Models\User;
 use App\Services\OtEmailNotificationService;
 use Illuminate\Http\Request;
@@ -111,13 +112,21 @@ class OtApprovalController extends Controller
             ->orderBy('code')
             ->get();
 
+        // Load public holidays for this month (for UI highlighting)
+        $publicHolidays = PublicHoliday::whereYear('holiday_date', $otForm->year)
+            ->whereMonth('holiday_date', $otForm->month)
+            ->pluck('holiday_date')
+            ->map(fn($d) => $d->format('Y-m-d'))
+            ->flip()
+            ->all();
+
         // Build approval stamps
         $approvalLogs = $otForm->approvalLogs()->get();
         $approvalStamps = $this->buildApprovalStamps($otForm, $approvalLogs);
 
         $hasHrCorrections = $otForm->entries->contains(fn ($e) => !empty($e->hr_corrections));
 
-        return view('approvals.ot-forms.show', compact('otForm', 'approvalStamps', 'projectCodes', 'hasHrCorrections'));
+        return view('approvals.ot-forms.show', compact('otForm', 'approvalStamps', 'projectCodes', 'publicHolidays', 'hasHrCorrections'));
     }
 
     /**
@@ -375,6 +384,36 @@ class OtApprovalController extends Controller
                 $newPlannedTotal = $this->calcHoursFromStrings($newValues['planned_start_time'], $newValues['planned_end_time']);
                 $newActualTotal = $this->calcHoursFromStrings($newValues['actual_start_time'], $newValues['actual_end_time']);
 
+                // Recalculate OT category breakdown based on day type
+                // Match PDF/Excel split logic:
+                //   rest day: ot2 = min(8.0, hours), ot3 = max(0, hours - 8.0), ot5 = 1
+                //   normal day: ot1 = hours
+                //   public holiday: ot4 = hours
+                $isPH = $entry->is_public_holiday ?? false;
+                $isRest = $entry->entry_date && in_array($entry->entry_date->dayOfWeek, [0, 6]);
+                if ($isPH) {
+                    $newValues['ot_type'] = 'public_holiday';
+                    $newValues['ot_normal_day_hours'] = 0;
+                    $newValues['ot_rest_day_hours'] = 0;
+                    $newValues['ot_rest_day_excess_hours'] = 0;
+                    $newValues['ot_rest_day_count'] = 0;
+                    $newValues['ot_ph_hours'] = $newActualTotal;
+                } elseif ($isRest) {
+                    $newValues['ot_type'] = 'rest_day';
+                    $newValues['ot_normal_day_hours'] = 0;
+                    $newValues['ot_rest_day_hours'] = min($newActualTotal, 8.0);
+                    $newValues['ot_rest_day_excess_hours'] = max(0, $newActualTotal - 8.0);
+                    $newValues['ot_rest_day_count'] = 1;
+                    $newValues['ot_ph_hours'] = 0;
+                } else {
+                    $newValues['ot_type'] = 'normal_day';
+                    $newValues['ot_normal_day_hours'] = $newActualTotal;
+                    $newValues['ot_rest_day_hours'] = 0;
+                    $newValues['ot_rest_day_excess_hours'] = 0;
+                    $newValues['ot_rest_day_count'] = 0;
+                    $newValues['ot_ph_hours'] = 0;
+                }
+
                 // Detect changes and record summary
                 $dateLabel = $entry->entry_date->format('j/n');
                 $changedFields = [];
@@ -422,6 +461,12 @@ class OtApprovalController extends Controller
                     'project_category' => $newValues['project_category'] ?: null,
                     'manual_project_code_name' => $newValues['manual_project_code_name'] ?: null,
                     'project_name' => $newValues['project_name'] ?: null,
+                    'ot_type' => $newValues['ot_type'] ?? $entry->ot_type,
+                    'ot_normal_day_hours' => $newValues['ot_normal_day_hours'] ?? 0,
+                    'ot_rest_day_hours' => $newValues['ot_rest_day_hours'] ?? 0,
+                    'ot_rest_day_excess_hours' => $newValues['ot_rest_day_excess_hours'] ?? 0,
+                    'ot_rest_day_count' => $newValues['ot_rest_day_count'] ?? 0,
+                    'ot_ph_hours' => $newValues['ot_ph_hours'] ?? 0,
                 ];
 
                 if (empty($entry->hr_corrections)) {
@@ -431,11 +476,15 @@ class OtApprovalController extends Controller
                 $entry->update($updateData);
             }
 
+            // Recalculate total OT hours from all entries
+            $totalOtHours = $otForm->entries()->sum('actual_total_hours');
+
             // Update OT form HR metadata
             $otForm->update([
                 'hr_remarks' => !empty($summaryLines) ? implode("\n", $summaryLines) : null,
                 'hr_edited_at' => $now,
                 'hr_edited_by' => $user->id,
+                'total_ot_hours' => $totalOtHours,
             ]);
         });
 

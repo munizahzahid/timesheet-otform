@@ -24,21 +24,22 @@ class OtAutoFillService
         $year = $otForm->year;
         $warnings = [];
 
-        // Get attendance records with OT for this user/month
-        $attendanceRecords = AttendanceRecord::where('user_id', $userId)
+        // Get all attendance records for this user/month to update is_public_holiday
+        $allAttendanceRecords = AttendanceRecord::where('user_id', $userId)
             ->where('month', $month)
             ->where('year', $year)
-            ->where('is_ot', true)
-            ->where('ot_hours', '>', 0)
             ->get()
             ->keyBy(fn($r) => $r->entry_date->format('Y-m-d'));
 
-        if ($attendanceRecords->isEmpty()) {
+        // Get OT-eligible attendance records for filling actual times
+        $otAttendanceRecords = $allAttendanceRecords->filter(fn($r) => $r->is_ot && $r->ot_hours > 0);
+
+        if ($otAttendanceRecords->isEmpty() && $allAttendanceRecords->isEmpty()) {
             return [
                 'filled' => 0,
                 'skipped' => 0,
                 'warnings' => [],
-                'message' => 'No OT-eligible attendance records found for this month. Please upload the attendance PDF in the timesheet first.',
+                'message' => 'No attendance records found for this month. Please upload the attendance PDF in the timesheet first.',
             ];
         }
 
@@ -50,7 +51,8 @@ class OtAutoFillService
             'user_id' => $userId,
             'month' => $month,
             'year' => $year,
-            'ot_records_found' => $attendanceRecords->count(),
+            'all_records' => $allAttendanceRecords->count(),
+            'ot_records' => $otAttendanceRecords->count(),
             'project_codes_mapped' => count($projectCodeMap),
         ]);
 
@@ -59,57 +61,69 @@ class OtAutoFillService
         $filled = 0;
         $skipped = 0;
 
-        foreach ($attendanceRecords as $dateStr => $attendance) {
+        foreach ($allAttendanceRecords as $dateStr => $attendance) {
             $entry = $entries->get($dateStr);
             if (!$entry) {
                 $skipped++;
                 continue;
             }
 
-            // Fill actual time slot from attendance record
+            // Update is_public_holiday from attendance day_type regardless of OT
             $updateData = [
-                'actual_start_time' => $attendance->ot_start_time,
-                'actual_end_time' => $attendance->ot_end_time,
-                'actual_total_hours' => $attendance->ot_hours,
+                'is_public_holiday' => $attendance->day_type === 'public_holiday',
             ];
 
-            // Auto-fill project code from timesheet
-            if (isset($projectCodeMap[$dateStr])) {
-                $proj = $projectCodeMap[$dateStr];
-                $updateData['project_code_id'] = $proj['project_code_id'];
-                $updateData['project_name'] = $proj['project_name'];
-                $updateData['project_category'] = $proj['project_category'] ?? null;
-                $updateData['manual_project_code_name'] = $proj['manual_project_code_name'] ?? null;
+            // Only fill actual times and OT fields for OT-eligible records
+            if ($attendance->is_ot && $attendance->ot_hours > 0) {
+                $updateData['actual_start_time'] = $attendance->ot_start_time;
+                $updateData['actual_end_time'] = $attendance->ot_end_time;
+                $updateData['actual_total_hours'] = $attendance->ot_hours;
 
-                // Validate: compare OT hours from attendance vs timesheet OT hours
-                $timesheetOtHours = $proj['ot_hours'];
-                if ($timesheetOtHours > 0 && abs($timesheetOtHours - $attendance->ot_hours) > 0.01) {
-                    $warnings[] = "Day {$attendance->entry_date->day}: Timesheet OT hours ({$timesheetOtHours}) differs from calculated OT ({$attendance->ot_hours}).";
+                // Auto-fill project code from timesheet
+                if (isset($projectCodeMap[$dateStr])) {
+                    $proj = $projectCodeMap[$dateStr];
+                    $updateData['project_code_id'] = $proj['project_code_id'];
+                    $updateData['project_name'] = $proj['project_name'];
+                    $updateData['project_category'] = $proj['project_category'] ?? null;
+                    $updateData['manual_project_code_name'] = $proj['manual_project_code_name'] ?? null;
+
+                    // Validate: compare OT hours from attendance vs timesheet OT hours
+                    $timesheetOtHours = $proj['ot_hours'];
+                    if ($timesheetOtHours > 0 && abs($timesheetOtHours - $attendance->ot_hours) > 0.01) {
+                        $warnings[] = "Day {$attendance->entry_date->day}: Timesheet OT hours ({$timesheetOtHours}) differs from calculated OT ({$attendance->ot_hours}).";
+                    }
+                } else {
+                    $warnings[] = "Day {$attendance->entry_date->day}: No project code found in timesheet for this OT day.";
                 }
-            } else {
-                $warnings[] = "Day {$attendance->entry_date->day}: No project code found in timesheet for this OT day.";
-            }
 
-            // Set OT type breakdown hours
-            if ($attendance->ot_type === 'normal_day') {
-                $updateData['ot_normal_day_hours'] = $attendance->ot_hours;
-                $updateData['ot_rest_day_hours'] = 0;
-                $updateData['ot_ph_hours'] = 0;
-            } elseif ($attendance->ot_type === 'rest_day') {
-                $updateData['ot_normal_day_hours'] = 0;
-                $updateData['ot_rest_day_hours'] = $attendance->ot_hours;
-                $updateData['ot_ph_hours'] = 0;
-            } elseif ($attendance->ot_type === 'public_holiday') {
-                $updateData['ot_normal_day_hours'] = 0;
-                $updateData['ot_rest_day_hours'] = 0;
-                $updateData['ot_ph_hours'] = $attendance->ot_hours;
+                // Set OT type breakdown hours
+                $updateData['ot_type'] = $attendance->ot_type;
+                if ($attendance->ot_type === 'normal_day') {
+                    $updateData['ot_normal_day_hours'] = $attendance->ot_hours;
+                    $updateData['ot_rest_day_hours'] = 0;
+                    $updateData['ot_rest_day_excess_hours'] = 0;
+                    $updateData['ot_rest_day_count'] = 0;
+                    $updateData['ot_ph_hours'] = 0;
+                } elseif ($attendance->ot_type === 'rest_day') {
+                    $updateData['ot_normal_day_hours'] = 0;
+                    $updateData['ot_rest_day_hours'] = min($attendance->ot_hours, 8.0);
+                    $updateData['ot_rest_day_excess_hours'] = max(0, $attendance->ot_hours - 8.0);
+                    $updateData['ot_rest_day_count'] = 1;
+                    $updateData['ot_ph_hours'] = 0;
+                } elseif ($attendance->ot_type === 'public_holiday') {
+                    $updateData['ot_normal_day_hours'] = 0;
+                    $updateData['ot_rest_day_hours'] = 0;
+                    $updateData['ot_rest_day_excess_hours'] = 0;
+                    $updateData['ot_rest_day_count'] = 0;
+                    $updateData['ot_ph_hours'] = $attendance->ot_hours;
+                }
+                $filled++;
             }
 
             $entry->update($updateData);
-            $filled++;
         }
 
-        // Update total OT hours on the form
+        // Update total OT hours on the form from OT-eligible entries only
         $totalOtHours = $otForm->entries()->sum('actual_total_hours');
         $otForm->update(['total_ot_hours' => $totalOtHours]);
 

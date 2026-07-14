@@ -7,6 +7,7 @@ use App\Models\OtForm;
 use App\Models\OtFormEntry;
 use App\Models\ProjectCode;
 use App\Models\ApprovalLog;
+use App\Models\PublicHoliday;
 use App\Models\User;
 use App\Services\OtAutoFillService;
 use App\Services\OtEmailNotificationService;
@@ -60,11 +61,19 @@ class OtFormController extends Controller
 
         // Pre-create 31 empty rows (one per day) for both executive and non-executive
         $daysInMonth = Carbon::create($request->year, $request->month)->daysInMonth;
+        $publicHolidays = PublicHoliday::whereYear('holiday_date', $request->year)
+            ->whereMonth('holiday_date', $request->month)
+            ->pluck('holiday_date')
+            ->map(fn($d) => $d->format('Y-m-d'))
+            ->flip()
+            ->all();
         $entries = [];
         for ($day = 1; $day <= $daysInMonth; $day++) {
+            $dateStr = Carbon::create($request->year, $request->month, $day)->toDateString();
             $entries[] = [
                 'ot_form_id' => $otForm->id,
-                'entry_date' => Carbon::create($request->year, $request->month, $day)->toDateString(),
+                'entry_date' => $dateStr,
+                'is_public_holiday' => isset($publicHolidays[$dateStr]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
@@ -87,6 +96,14 @@ class OtFormController extends Controller
         $projectCodes = ProjectCode::where('is_active', true)
             ->orderBy('code')
             ->get();
+
+        // Load public holidays for this month (for UI highlighting)
+        $publicHolidays = PublicHoliday::whereYear('holiday_date', $otForm->year)
+            ->whereMonth('holiday_date', $otForm->month)
+            ->pluck('holiday_date')
+            ->map(fn($d) => $d->format('Y-m-d'))
+            ->flip()
+            ->all();
 
         // Build approval stamps data
         $approvalLogs = $otForm->approvalLogs()->get();
@@ -148,7 +165,7 @@ class OtFormController extends Controller
         }
 
         return view('ot-forms.edit', compact(
-            'otForm', 'projectCodes', 'approvalStamps',
+            'otForm', 'projectCodes', 'approvalStamps', 'publicHolidays',
             'staffApproverName', 'managerApproverName', 'gmApproverName',
             'managerApproverDesignation', 'gmApproverDesignation',
             'managerApprovedDate', 'gmApprovedDate', 'canUnsubmit'
@@ -318,7 +335,8 @@ class OtFormController extends Controller
                 if ($isPublicHoliday) {
                     $otPhHours = $actualTotal;
                 } elseif ($isWeekend) {
-                    $otRestDay = $actualTotal;
+                    $otRestDay = min($actualTotal, 8.0);
+                    $otRestDayExcess = max(0, $actualTotal - 8.0);
                     $otRestDayCount = 1;
                 } else {
                     $otNormalDay = $actualTotal;

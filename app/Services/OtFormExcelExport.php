@@ -376,7 +376,7 @@ class OtFormExcelExport
                         $totalOt2 += $ot2;
                     } elseif ($isRestDay && !$isPH) {
                         // Calculate OT2 if not stored
-                        $ot2h = min($aHours, 7.5);
+                        $ot2h = min($aHours, 8.0);
                         $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
                         $totalOt2 += $ot2h;
                     }
@@ -384,9 +384,9 @@ class OtFormExcelExport
                     if ($ot3 > 0) {
                         $sheet->setCellValue("AD{$r}", number_format($ot3, 2));
                         $totalOt3 += $ot3;
-                    } elseif ($isRestDay && !$isPH && $aHours > 7.5) {
+                    } elseif ($isRestDay && !$isPH && $aHours > 8.0) {
                         // Calculate OT3 if not stored
-                        $ot3h = max($aHours - 7.5, 0);
+                        $ot3h = max($aHours - 8.0, 0);
                         $sheet->setCellValue("AD{$r}", number_format($ot3h, 2));
                         $totalOt3 += $ot3h;
                     }
@@ -394,9 +394,9 @@ class OtFormExcelExport
                     if ($ot4 > 0) {
                         $sheet->setCellValue("AE{$r}", number_format($ot4, 2));
                         $totalOt4 += $ot4;
-                    } elseif ($isPH && $aHours > 7.5) {
-                        // Calculate OT4 if not stored
-                        $ot4h = max($aHours - 7.5, 0);
+                    } elseif ($isPH) {
+                        // Calculate OT4 if not stored: all hours on public holiday
+                        $ot4h = $aHours;
                         $sheet->setCellValue("AE{$r}", number_format($ot4h, 2));
                         $totalOt4 += $ot4h;
                     }

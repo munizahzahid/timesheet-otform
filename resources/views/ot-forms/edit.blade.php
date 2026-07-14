@@ -509,14 +509,13 @@ session(['ot_forms_last_seen' => now()]);
             if (hours <= 0) return;
 
             if (isPH) {
-                // Public holiday: OT4 = excess hours (after 7.5h normal period)
-                const ot4h = Math.max(hours - 7.5, 0);
-                if (ot4h > 0) ot4El.value = ot4h.toFixed(2);
+                // Public holiday: OT4 = all hours
+                ot4El.value = hours.toFixed(2);
             } else if (isWeekend) {
-                // Rest day (Sat/Sun): OT2 = first 7.5h, OT3 = excess, OT5 = 1 (count)
-                const ot2h = Math.min(hours, 7.5);
+                // Rest day (Sat/Sun): OT2 = first 8.0h, OT3 = excess, OT5 = 1 (count)
+                const ot2h = Math.min(hours, 8.0);
                 ot2El.value = ot2h.toFixed(2);
-                const ot3h = Math.max(hours - 7.5, 0);
+                const ot3h = Math.max(hours - 8.0, 0);
                 if (ot3h > 0) ot3El.value = ot3h.toFixed(2);
                 ot5El.value = '1';
             } else {
