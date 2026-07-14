@@ -85,23 +85,38 @@ class DashboardOtAnalyticsService
     }
 
     /**
-     * List of all distinct month/year combinations with approved OT form data.
+     * List of all months for every year that has approved OT form data.
      * Used to populate the month filter dropdown.
      */
     public function getAvailableMonths(): Collection
     {
-        return OtForm::query()
+        $years = OtForm::query()
             ->where('status', 'approved')
-            ->select('year', 'month')
+            ->select('year')
             ->distinct()
             ->orderByDesc('year')
-            ->orderByDesc('month')
-            ->get()
-            ->map(fn ($row) => (object) [
-                'value' => "{$row->year}-" . str_pad($row->month, 2, '0', STR_PAD_LEFT),
-                'label' => date('F Y', mktime(0, 0, 0, $row->month, 1, $row->year)),
-                'year' => (int) $row->year,
-                'month' => (int) $row->month,
-            ]);
+            ->pluck('year')
+            ->toArray();
+
+        if (empty($years)) {
+            $years = [(int) now()->format('Y')];
+        }
+
+        $months = [];
+        foreach ($years as $year) {
+            for ($month = 1; $month <= 12; $month++) {
+                $months[] = (object) [
+                    'value' => "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT),
+                    'label' => date('F Y', mktime(0, 0, 0, $month, 1, $year)),
+                    'year' => (int) $year,
+                    'month' => $month,
+                ];
+            }
+        }
+
+        // Sort descending by year then month
+        usort($months, fn ($a, $b) => ($b->year <=> $a->year) ?: ($b->month <=> $a->month));
+
+        return collect($months);
     }
 }
