@@ -16,6 +16,46 @@
             </div>
         </div>
 
+        @if(Auth::user()->isAdmin())
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <a href="{{ route('admin.users.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
+                    <h4 class="text-sm font-medium text-gray-500 uppercase">Users</h4>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ \App\Models\User::where('is_active', true)->count() }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Active users</p>
+                </a>
+                <a href="{{ route('admin.project-codes.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
+                    <h4 class="text-sm font-medium text-gray-500 uppercase">Project Codes</h4>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ \App\Models\ProjectCode::where('is_active', true)->count() }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Active projects</p>
+                </a>
+                <a href="{{ route('admin.desknet-sync.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
+                    <h4 class="text-sm font-medium text-gray-500 uppercase">Last Sync</h4>
+                    @php $lastSync = \App\Models\DesknetSyncLog::where('status','success')->orderByDesc('completed_at')->first(); @endphp
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ $lastSync ? $lastSync->completed_at->diffForHumans() : 'Never' }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Desknet sync status</p>
+                </a>
+            </div>
+        @endif
+
+        @if($canApproveTimesheets || $canApproveOtForms)
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                @if($canApproveTimesheets)
+                    <a href="{{ route('approvals.timesheets.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
+                        <h4 class="text-sm font-medium text-gray-500 uppercase">Pending Timesheet Approvals</h4>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ $pendingTimesheetApprovalCount }}</p>
+                        <p class="text-xs text-gray-400 mt-1">Awaiting your approval</p>
+                    </a>
+                @endif
+                @if($canApproveOtForms)
+                    <a href="{{ route('approvals.ot-forms.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
+                        <h4 class="text-sm font-medium text-gray-500 uppercase">Pending OT Approvals</h4>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ $pendingOtApprovalCount }}</p>
+                        <p class="text-xs text-gray-400 mt-1">Awaiting your approval</p>
+                    </a>
+                @endif
+            </div>
+        @endif
+
         {{-- OT Analytics Filter --}}
         @if($availableMonths->isNotEmpty())
             <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-6">
@@ -71,46 +111,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        @endif
-
-        @if(Auth::user()->isAdmin())
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <a href="{{ route('admin.users.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
-                    <h4 class="text-sm font-medium text-gray-500 uppercase">Users</h4>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ \App\Models\User::where('is_active', true)->count() }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Active users</p>
-                </a>
-                <a href="{{ route('admin.project-codes.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
-                    <h4 class="text-sm font-medium text-gray-500 uppercase">Project Codes</h4>
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ \App\Models\ProjectCode::where('is_active', true)->count() }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Active projects</p>
-                </a>
-                <a href="{{ route('admin.desknet-sync.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
-                    <h4 class="text-sm font-medium text-gray-500 uppercase">Last Sync</h4>
-                    @php $lastSync = \App\Models\DesknetSyncLog::where('status','success')->orderByDesc('completed_at')->first(); @endphp
-                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ $lastSync ? $lastSync->completed_at->diffForHumans() : 'Never' }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Desknet sync status</p>
-                </a>
-            </div>
-        @endif
-
-        @if($canApproveTimesheets || $canApproveOtForms)
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                @if($canApproveTimesheets)
-                    <a href="{{ route('approvals.timesheets.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
-                        <h4 class="text-sm font-medium text-gray-500 uppercase">Pending Timesheet Approvals</h4>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ $pendingTimesheetApprovalCount }}</p>
-                        <p class="text-xs text-gray-400 mt-1">Awaiting your approval</p>
-                    </a>
-                @endif
-                @if($canApproveOtForms)
-                    <a href="{{ route('approvals.ot-forms.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-6 hover:shadow-md transition">
-                        <h4 class="text-sm font-medium text-gray-500 uppercase">Pending OT Approvals</h4>
-                        <p class="text-2xl font-bold text-gray-900 mt-1">{{ $pendingOtApprovalCount }}</p>
-                        <p class="text-xs text-gray-400 mt-1">Awaiting your approval</p>
-                    </a>
-                @endif
             </div>
         @endif
 
