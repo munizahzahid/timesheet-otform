@@ -444,6 +444,7 @@ class OtApprovalController extends Controller
                 };
 
                 foreach ($newValues as $field => $newValue) {
+                    if (!isset($fieldLabels[$field])) continue;
                     $oldValue = $original[$field] ?? null;
                     if (!$compareValue($field, $oldValue, $newValue)) {
                         $changedFields[] = "- {$fieldLabels[$field]}: {$displayValue($field, $oldValue)} → {$displayValue($field, $newValue)}";
