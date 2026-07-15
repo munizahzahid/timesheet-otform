@@ -308,9 +308,9 @@
                         plugins: {
                             legend: { display: false },
                             datalabels: {
-                                anchor: 'end',
-                                align: 'top',
-                                color: '#374151',
+                                anchor: 'center',
+                                align: 'center',
+                                color: '#FFFFFF',
                                 font: { weight: 'bold', size: 11 },
                                 formatter: function(value) {
                                     return value.toFixed(1);
