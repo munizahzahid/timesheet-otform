@@ -114,8 +114,21 @@
 
             {{-- OT Analytics Charts --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                {{-- OT Hours by Project Donut Chart --}}
+                <div class="bg-white overflow-hidden shadow-sm rounded-lg lg:row-span-2">
+                    <div class="p-4 border-b border-gray-200">
+                        <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Project</h4>
+                        <p class="text-xs text-gray-400">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
+                    </div>
+                    <div class="p-4">
+                        <div class="h-64 lg:h-96 flex items-center justify-center">
+                            <canvas id="projectOtChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Monthly OT Hours Bar Chart --}}
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg lg:col-span-2">
+                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                     <div class="p-4 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Total OT Hours by Month</h4>
                         <p class="text-xs text-gray-400">All approved OT forms</p>
@@ -123,19 +136,6 @@
                     <div class="p-4">
                         <div class="h-44">
                             <canvas id="monthlyOtChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- OT Hours by Project Pie Chart --}}
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-4 border-b border-gray-200">
-                        <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Project</h4>
-                        <p class="text-xs text-gray-400">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
-                    </div>
-                    <div class="p-4">
-                        <div class="h-44 flex items-center justify-center">
-                            <canvas id="projectOtChart"></canvas>
                         </div>
                     </div>
                 </div>
