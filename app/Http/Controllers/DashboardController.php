@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TrainingAttendance;
+use App\Models\TrainingSession;
 use App\Services\DashboardHRSummaryService;
 use App\Services\DashboardOtAnalyticsService;
 use Illuminate\Http\Request;
@@ -32,6 +34,19 @@ class DashboardController extends Controller
             $selectedMonth = now()->format('Y-m');
         }
 
+        // Active training sessions
+        $attendedIds = TrainingAttendance::where('user_id', $user->id)
+            ->pluck('training_session_id')
+            ->toArray();
+
+        $activeTrainingSessions = TrainingSession::withCount('attendances')
+            ->where('is_active', true)
+            ->orWhereIn('id', $attendedIds)
+            ->orderByDesc('training_date')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($session) => $session->setRelation('attended', $session->attendedBy($user)));
+
         $analyticsData = [
             'otProjectData' => $analytics->getOtHoursByProject($month, $year),
             'otStaffData' => $analytics->getOtHoursByStaff($month, $year),
@@ -45,7 +60,8 @@ class DashboardController extends Controller
         return view('dashboard', array_merge(
             ['user' => $user],
             $summary,
-            $analyticsData
+            $analyticsData,
+            ['activeTrainingSessions' => $activeTrainingSessions]
         ));
     }
 }
