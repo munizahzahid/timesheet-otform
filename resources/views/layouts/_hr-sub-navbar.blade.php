@@ -21,6 +21,11 @@
                     </span>
                 @endif
             </a>
+            <a href="{{ route('training-attendance.index') }}"
+               class="inline-flex items-center gap-2 px-1 text-sm font-medium border-b-2 transition-colors
+                      {{ request()->routeIs('training-attendance.*') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+                <span>Training Attendance</span>
+            </a>
 
             @if(Auth::user()->canViewAllRecords())
                 <div class="relative inline-flex items-center h-10" x-data="{ open: false }" @click.away="open = false">

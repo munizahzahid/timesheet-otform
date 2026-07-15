@@ -19,6 +19,7 @@ use App\Http\Controllers\AttendanceUploadController;
 use App\Http\Controllers\TimesheetApprovalController;
 use App\Http\Controllers\OtFormController;
 use App\Http\Controllers\OtApprovalController;
+use App\Http\Controllers\TrainingAttendanceController;
 use App\Http\Controllers\PendingTrackerController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\ProjectCodeSearchController;
@@ -105,6 +106,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/approvals/ot-forms/{otForm}/hr-forward', [OtApprovalController::class, 'hrForward'])->name('approvals.ot-forms.hr-forward');
     Route::post('/approvals/ot-forms/{otForm}/hr-return', [OtApprovalController::class, 'hrReturn'])->name('approvals.ot-forms.hr-return');
     Route::post('/approvals/ot-forms/{otForm}/hr-edit', [OtApprovalController::class, 'hrEdit'])->name('approvals.ot-forms.hr-edit');
+
+    // Training Attendance
+    Route::get('/training-attendance', [TrainingAttendanceController::class, 'index'])->name('training-attendance.index');
+    Route::get('/training-attendance/create', [TrainingAttendanceController::class, 'create'])->name('training-attendance.create');
+    Route::post('/training-attendance', [TrainingAttendanceController::class, 'store'])->name('training-attendance.store');
+    Route::get('/training-attendance/{trainingSession}/edit', [TrainingAttendanceController::class, 'edit'])->name('training-attendance.edit');
+    Route::put('/training-attendance/{trainingSession}', [TrainingAttendanceController::class, 'update'])->name('training-attendance.update');
+    Route::delete('/training-attendance/{trainingSession}', [TrainingAttendanceController::class, 'destroy'])->name('training-attendance.destroy');
+    Route::post('/training-attendance/{trainingSession}/activate', [TrainingAttendanceController::class, 'activate'])->name('training-attendance.activate');
+    Route::post('/training-attendance/{trainingSession}/deactivate', [TrainingAttendanceController::class, 'deactivate'])->name('training-attendance.deactivate');
+    Route::post('/training-attendance/{trainingSession}/attend', [TrainingAttendanceController::class, 'attend'])->name('training-attendance.attend');
+    Route::get('/training-attendance/{trainingSession}/report', [TrainingAttendanceController::class, 'report'])->name('training-attendance.report');
+    Route::get('/training-attendance/{trainingSession}/export-pdf', [TrainingAttendanceController::class, 'exportPdf'])->name('training-attendance.export-pdf');
+    Route::delete('/training-attendance/attendance/{attendance}', [TrainingAttendanceController::class, 'destroyAttendee'])->name('training-attendance.attendance.destroy');
+    Route::post('/training-attendance/{trainingSession}/add-attendee', [TrainingAttendanceController::class, 'addAttendee'])->name('training-attendance.add-attendee');
 });
 
 // Admin routes
