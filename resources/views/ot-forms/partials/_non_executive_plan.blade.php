@@ -189,10 +189,10 @@
                                class="actual-total w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
 
-                    {{-- MAKAN 0-3 JAM --}}
+                    {{-- MAKAN >3 JAM --}}
                     <td class="border px-0.5 py-0.5 text-center">
                         @if($otForm->isEditable())
-                            <input type="checkbox" name="entries[{{ $entry->id }}][meal_break]" value="1"
+                            <input type="checkbox" id="meal-{{ $entry->id }}" name="entries[{{ $entry->id }}][meal_break]" value="1"
                                    {{ $entry->meal_break ? 'checked' : '' }}
                                    class="rounded border-gray-300 h-3 w-3">
                         @else

@@ -312,6 +312,7 @@ class OtFormExcelExport
                 $aStart = $e ? $e->actual_start_time : null;
                 $aEnd   = $e ? $e->actual_end_time : null;
                 $aHours = $e ? ((float)$e->actual_total_hours ?: $this->calcHours($aStart, $aEnd)) : 0;
+                $aHours = floor($aHours * 4) / 4;
                 $sheet->setCellValue("L{$r}", $aStart ? substr($aStart, 0, 5) : '');
                 $sheet->setCellValue("M{$r}", $aEnd ? substr($aEnd, 0, 5) : '');
                 $sheet->setCellValue("N{$r}", $aHours > 0 ? number_format($aHours, 2) : '');
@@ -350,6 +351,7 @@ class OtFormExcelExport
 
                 // PENGIRAAN OT: AB=OT1, AC=OT2, AD=OT3, AE=OT4, AF=OT5
                 // Use stored values if available, otherwise calculate
+                 // Non-exec: weekend first 7.5h to OT2, PH first 7.5h to OT2, excess to OT4
                 if ($aHours > 0 && $e) {
                     $dow = $e->entry_date->dayOfWeek; // 0=Sun, 6=Sat
                     $isPH = $e->is_public_holiday ?? false;
@@ -366,48 +368,56 @@ class OtFormExcelExport
                         $sheet->setCellValue("AB{$r}", number_format($ot1, 2));
                         $totalOt1 += $ot1;
                     } elseif (!$isPH && !$isRestDay) {
-                        // Calculate OT1 if not stored
+                        // Normal day: OT1 = all hours
                         $sheet->setCellValue("AB{$r}", number_format($aHours, 2));
                         $totalOt1 += $aHours;
                     }
 
-                    if ($ot2 > 0) {
-                        $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
-                        $totalOt2 += $ot2;
-                    } elseif ($isRestDay && !$isPH) {
-                        // Calculate OT2 if not stored
-                        $ot2h = min($aHours, 8.0);
-                        $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
-                        $totalOt2 += $ot2h;
+                    if ($isRestDay && !$isPH) {
+                        // Weekend: OT2 = first 7.5h, OT3 = excess, OT5 = 1
+                        if ($ot2 > 0) {
+                            $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
+                            $totalOt2 += $ot2;
+                        } else {
+                            $ot2h = min($aHours, 7.5);
+                            $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
+                            $totalOt2 += $ot2h;
+                        }
+                        if ($ot3 > 0) {
+                            $sheet->setCellValue("AD{$r}", number_format($ot3, 2));
+                            $totalOt3 += $ot3;
+                        } elseif ($aHours > 7.5) {
+                            $ot3h = max($aHours - 7.5, 0);
+                            $sheet->setCellValue("AD{$r}", number_format($ot3h, 2));
+                            $totalOt3 += $ot3h;
+                        }
+                        if ($ot5 > 0) {
+                            $sheet->setCellValue("{$lastCol}{$r}", $ot5);
+                            $totalOt5 += $ot5;
+                        } else {
+                            $sheet->setCellValue("{$lastCol}{$r}", '1');
+                            $totalOt5 += 1;
+                        }
                     }
 
-                    if ($ot3 > 0) {
-                        $sheet->setCellValue("AD{$r}", number_format($ot3, 2));
-                        $totalOt3 += $ot3;
-                    } elseif ($isRestDay && !$isPH && $aHours > 8.0) {
-                        // Calculate OT3 if not stored
-                        $ot3h = max($aHours - 8.0, 0);
-                        $sheet->setCellValue("AD{$r}", number_format($ot3h, 2));
-                        $totalOt3 += $ot3h;
-                    }
-
-                    if ($ot4 > 0) {
-                        $sheet->setCellValue("AE{$r}", number_format($ot4, 2));
-                        $totalOt4 += $ot4;
-                    } elseif ($isPH) {
-                        // Calculate OT4 if not stored: all hours on public holiday
-                        $ot4h = $aHours;
-                        $sheet->setCellValue("AE{$r}", number_format($ot4h, 2));
-                        $totalOt4 += $ot4h;
-                    }
-
-                    if ($ot5 > 0) {
-                        $sheet->setCellValue("{$lastCol}{$r}", $ot5);
-                        $totalOt5 += $ot5;
-                    } elseif ($isRestDay && !$isPH) {
-                        // Calculate OT5 if not stored
-                        $sheet->setCellValue("{$lastCol}{$r}", '1');
-                        $totalOt5 += 1;
+                    if ($isPH) {
+                        // Public holiday: OT2 = first 7.5h, OT4 = excess
+                        if ($ot2 > 0) {
+                            $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
+                            $totalOt2 += $ot2;
+                        } else {
+                            $ot2h = min($aHours, 7.5);
+                            $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
+                            $totalOt2 += $ot2h;
+                        }
+                        if ($ot4 > 0) {
+                            $sheet->setCellValue("AE{$r}", number_format($ot4, 2));
+                            $totalOt4 += $ot4;
+                        } elseif ($aHours > 7.5) {
+                            $ot4h = max($aHours - 7.5, 0);
+                            $sheet->setCellValue("AE{$r}", number_format($ot4h, 2));
+                            $totalOt4 += $ot4h;
+                        }
                     }
                 }
 
@@ -879,6 +889,7 @@ class OtFormExcelExport
                 if ($actualHours <= 0 && $e && $e->actual_start_time && $e->actual_end_time) {
                     $actualHours = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
                 }
+                $actualHours = floor($actualHours * 4) / 4;
                 $sheet->setCellValue("P{$r}", $actualHours > 0 ? number_format($actualHours, 2) : '');
                 // Distribute OT hours: use stored values, or fallback to actual hours by day type
                 $otNormal = $e ? (float)$e->ot_normal_day_hours : 0;
@@ -970,6 +981,7 @@ class OtFormExcelExport
                 if ($ah <= 0 && $e->actual_start_time && $e->actual_end_time) {
                     $ah = $this->calcHoursFromTimes($e->actual_start_time, $e->actual_end_time);
                 }
+                $ah = floor($ah * 4) / 4;
                 $totalActual += $ah;
 
                 $on = (float)$e->ot_normal_day_hours;

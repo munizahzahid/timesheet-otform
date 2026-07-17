@@ -317,7 +317,7 @@ class OtFormController extends Controller
             $actualEnd = $data['actual_end_time'] ?? null;
             $actualTotal = 0;
             if ($actualStart && $actualEnd) {
-                $actualTotal = $this->calcHours($actualStart, $actualEnd);
+                $actualTotal = $this->floorQuarter($this->calcHours($actualStart, $actualEnd));
             }
 
             // Calculate OT breakdown by day type
@@ -333,13 +333,20 @@ class OtFormController extends Controller
 
             if ($actualTotal > 0) {
                 if ($isPublicHoliday) {
-                    $otPhHours = $actualTotal;
+                    if ($otForm->isExecutive()) {
+                        $otPhHours = $actualTotal;
+                    } else {
+                        // Non-exec PH: first 7.5h to OT2, excess to OT4
+                        $otRestDay = min($actualTotal, 7.5);
+                        $otPhHours = $this->floorQuarter(max(0, $actualTotal - 7.5));
+                    }
                 } elseif ($isWeekend) {
                     if ($otForm->isExecutive()) {
                         $otRestDay = $actualTotal;
                     } else {
-                        $otRestDay = min($actualTotal, 8.0);
-                        $otRestDayExcess = max(0, $actualTotal - 8.0);
+                        // Non-exec weekend: first 7.5h to OT2, excess to OT3
+                        $otRestDay = min($actualTotal, 7.5);
+                        $otRestDayExcess = $this->floorQuarter(max(0, $actualTotal - 7.5));
                     }
                     $otRestDayCount = 1;
                 } else {
@@ -384,6 +391,11 @@ class OtFormController extends Controller
         }
         $diff = $e->diffInMinutes($s, true);
         return max(0, round($diff / 60, 2));
+    }
+
+    private function floorQuarter(float $hours): float
+    {
+        return floor($hours * 4) / 4;
     }
 
     /**

@@ -436,13 +436,14 @@
                     $aStart = $e ? $e->actual_start_time : null;
                     $aEnd   = $e ? $e->actual_end_time   : null;
                     $aHours = $e ? ((float)$e->actual_total_hours ?: \App\Services\OtFormExcelExport::calcHours($aStart, $aEnd)) : 0;
+                    $aHours = floor($aHours * 4) / 4;
 
                     $totalPlan   += $pHours;
                     $totalActual += $aHours;
                     if ($e && $e->meal_break) $totalMeal++;
                     if ($e && $e->is_shift)   $totalShift++;
 
-                    // OT calc
+                    // OT calc (non-exec: weekend first 7.5h to OT2, PH first 7.5h to OT2, excess to OT4)
                     $ot1 = $ot2 = $ot3 = $ot4 = 0.0; $ot5 = 0;
                     if ($aHours > 0 && $e) {
                         $dow = $e->entry_date->dayOfWeek;
@@ -454,10 +455,15 @@
                         $ot4 = (float)($e->ot_ph_hours ?? 0);
                         $ot5 = (int)($e->ot_rest_day_count ?? 0);
                         if ($ot1 <= 0 && !$isPH && !$isRest) $ot1 = $aHours;
-                        if ($ot2 <= 0 && $isRest && !$isPH)  $ot2 = $isExecutive ? $aHours : min($aHours, 8.0);
-                        if (!$isExecutive && $ot3 <= 0 && $isRest && !$isPH && $aHours > 8.0) $ot3 = $aHours - 8.0;
-                        if ($ot4 <= 0 && $isPH) $ot4 = $aHours;
-                        if ($ot5 <= 0 && $isRest && !$isPH) $ot5 = 1;
+                        if ($isRest && !$isPH) {
+                            if ($ot2 <= 0) $ot2 = min($aHours, 7.5);
+                            if ($ot3 <= 0 && $aHours > 7.5) $ot3 = $aHours - 7.5;
+                            if ($ot5 <= 0) $ot5 = 1;
+                        }
+                        if ($isPH) {
+                            if ($ot2 <= 0) $ot2 = min($aHours, 7.5);
+                            if ($ot4 <= 0) $ot4 = max($aHours - 7.5, 0);
+                        }
                         $totalOt1 += $ot1; $totalOt2 += $ot2; $totalOt3 += $ot3; $totalOt4 += $ot4; $totalOt5 += $ot5;
                     }
                     $showStaff = $isFilled && !in_array($otForm->status, ['draft']);
@@ -731,6 +737,7 @@
                     if ($aHours <= 0 && $e && $aStart && $aEnd) {
                         $aHours = \App\Services\OtFormExcelExport::calcHours($aStart, $aEnd);
                     }
+                    $aHours = floor($aHours * 4) / 4;
                     $totalActualOCF += $aHours;
 
                     // OT hours

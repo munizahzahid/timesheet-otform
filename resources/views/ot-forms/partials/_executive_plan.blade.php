@@ -214,25 +214,34 @@
 
                     {{-- TOTAL HOURS: NORMAL DAY, REST DAY, PUBLIC HOLIDAY --}}
                     <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
-                        @if($entry->ot_normal_day_hours > 0)
-                            {{ number_format($entry->ot_normal_day_hours, 2) }}
-                        @else
-                            <span class="text-gray-400">-</span>
-                        @endif
+                        <span id="ot1-{{ $entry->id }}">
+                            @if($entry->ot_normal_day_hours > 0)
+                                {{ number_format($entry->ot_normal_day_hours, 2) }}
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </span>
+                        <input type="hidden" id="ot1-input-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_normal_day_hours]" value="{{ number_format($entry->ot_normal_day_hours ?? 0, 2) }}">
                     </td>
                     <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
-                        @if($entry->ot_rest_day_hours > 0)
-                            {{ number_format($entry->ot_rest_day_hours, 2) }}
-                        @else
-                            <span class="text-gray-400">-</span>
-                        @endif
+                        <span id="ot2-{{ $entry->id }}">
+                            @if($entry->ot_rest_day_hours > 0)
+                                {{ number_format($entry->ot_rest_day_hours, 2) }}
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </span>
+                        <input type="hidden" id="ot2-input-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_rest_day_hours]" value="{{ number_format($entry->ot_rest_day_hours ?? 0, 2) }}">
                     </td>
                     <td class="border border-gray-200 px-1 py-1.5 text-center text-xs">
-                        @if($entry->ot_ph_hours > 0)
-                            {{ number_format($entry->ot_ph_hours, 2) }}
-                        @else
-                            <span class="text-gray-400">-</span>
-                        @endif
+                        <span id="ot3-{{ $entry->id }}">
+                            @if($entry->ot_ph_hours > 0)
+                                {{ number_format($entry->ot_ph_hours, 2) }}
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
+                        </span>
+                        <input type="hidden" id="ot3-input-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_ph_hours]" value="{{ number_format($entry->ot_ph_hours ?? 0, 2) }}">
                     </td>
                 </tr>
             @endforeach

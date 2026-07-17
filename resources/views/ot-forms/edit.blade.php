@@ -410,6 +410,11 @@ session(['ot_forms_last_seen' => now()]);
             }
         }
 
+        // Floor hours down to nearest 0.25 increment
+        function floorQuarter(hours) {
+            return Math.floor(hours * 4) / 4;
+        }
+
         // Calculate total hours for a row (planned or actual)
         function calcTotal(entryId, type) {
             const prefix = 'entries[' + entryId + ']';
@@ -423,8 +428,10 @@ session(['ot_forms_last_seen' => now()]);
             const [eh, em] = endEl.value.split(':').map(Number);
             let diff = (eh * 60 + em) - (sh * 60 + sm);
             if (diff < 0) diff += 1440; // Handle overnight
-            const hours = Math.abs(diff / 60).toFixed(2);
-            totalEl.value = hours;
+            let hours = Math.abs(diff / 60);
+            // Floor actual hours to 0.25 increment for OT distribution
+            if (type === 'actual') hours = floorQuarter(hours);
+            totalEl.value = hours.toFixed(2);
             updateTotals();
         }
 
@@ -482,13 +489,26 @@ session(['ot_forms_last_seen' => now()]);
             }
         }
 
+        // Set OT value on either an input or a span/td, and update hidden counterpart if present
+        function setOtValue(el, value) {
+            if (!el) return;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.value = value;
+            } else {
+                el.textContent = value;
+            }
+            const hidden = document.getElementById(el.id + '-input');
+            if (hidden) hidden.value = value;
+        }
+
         // Calculate OT1-OT5 based on day type and actual hours (Malaysian labor law)
         function calcOT(entryId) {
             const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
             if (!row) return;
 
             const actualTotalEl = document.getElementById('actual-total-' + entryId);
-            const hours = parseFloat(actualTotalEl.value) || 0;
+            let hours = parseFloat(actualTotalEl?.value) || 0;
+            hours = floorQuarter(hours);
             const isWeekend = row.getAttribute('data-is-weekend') === '1';
             const phEl = document.getElementById('ph-' + entryId);
             const isPH = phEl && phEl.checked;
@@ -499,28 +519,53 @@ session(['ot_forms_last_seen' => now()]);
             const ot4El = document.getElementById('ot4-' + entryId);
             const ot5El = document.getElementById('ot5-' + entryId);
 
+            // Detect executive form by absence of ot4 field
+            const isExecutive = !ot4El;
+
             // Reset all
-            ot1El.value = '0.00';
-            ot2El.value = '0.00';
-            ot3El.value = '0.00';
-            ot4El.value = '0.00';
-            ot5El.value = '0';
+            setOtValue(ot1El, '0.00');
+            setOtValue(ot2El, '0.00');
+            setOtValue(ot3El, '0.00');
+            setOtValue(ot4El, '0.00');
+            setOtValue(ot5El, '0');
 
             if (hours <= 0) return;
 
-            if (isPH) {
-                // Public holiday: OT4 = all hours
-                ot4El.value = hours.toFixed(2);
+            if (isExecutive) {
+                // Executive: all hours go to the matching day type bucket
+                if (isPH) {
+                    setOtValue(ot3El, hours.toFixed(2));
+                } else if (isWeekend) {
+                    setOtValue(ot2El, hours.toFixed(2));
+                } else {
+                    setOtValue(ot1El, hours.toFixed(2));
+                }
+            } else if (isPH) {
+                // Non-exec public holiday: OT2 = first 7.5h, OT4 = excess
+                const ot2h = Math.min(hours, 7.5);
+                setOtValue(ot2El, ot2h.toFixed(2));
+                const ot4h = Math.max(hours - 7.5, 0);
+                if (ot4h > 0) setOtValue(ot4El, ot4h.toFixed(2));
             } else if (isWeekend) {
-                // Rest day (Sat/Sun): OT2 = first 8.0h, OT3 = excess, OT5 = 1 (count)
-                const ot2h = Math.min(hours, 8.0);
-                ot2El.value = ot2h.toFixed(2);
-                const ot3h = Math.max(hours - 8.0, 0);
-                if (ot3h > 0) ot3El.value = ot3h.toFixed(2);
-                ot5El.value = '1';
+                // Non-exec rest day: OT2 = first 7.5h, OT3 = excess, OT5 = 1
+                const ot2h = Math.min(hours, 7.5);
+                setOtValue(ot2El, ot2h.toFixed(2));
+                const ot3h = Math.max(hours - 7.5, 0);
+                if (ot3h > 0) setOtValue(ot3El, ot3h.toFixed(2));
+                setOtValue(ot5El, '1');
             } else {
-                // Normal day: OT1 = actual hours (after work)
-                ot1El.value = hours.toFixed(2);
+                // Normal day: OT1 = actual hours
+                setOtValue(ot1El, hours.toFixed(2));
+            }
+
+            // Auto-tick meal checkbox on normal day when OT is 3 hours or more (non-exec only)
+            const mealEl = document.getElementById('meal-' + entryId);
+            if (mealEl && !isExecutive) {
+                if (!isPH && !isWeekend && hours >= 3) {
+                    mealEl.checked = true;
+                } else if (!isPH && !isWeekend) {
+                    mealEl.checked = false;
+                }
             }
         }
 
