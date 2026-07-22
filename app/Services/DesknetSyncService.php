@@ -987,21 +987,9 @@ class DesknetSyncService
 
             $val = $record[$key];
 
-            // Nested structure: {key: {val: "..."}} (Desknet AppSuite standard)
-            if (is_array($val) && isset($val['val'])) {
-                $extracted = trim((string) $val['val']);
-                return $extracted !== '' ? $extracted : null;
-            }
-
-            // Nested structure: {key: {value: "..."}}
-            if (is_array($val) && isset($val['value'])) {
-                $extracted = trim((string) $val['value']);
-                return $extracted !== '' ? $extracted : null;
-            }
-
-            // Direct scalar value
-            if (!is_array($val) && $val !== '' && $val !== null) {
-                return trim((string) $val);
+            $extracted = $this->scalarToString($val);
+            if ($extracted !== null) {
+                return $extracted;
             }
         }
 
@@ -1010,13 +998,54 @@ class DesknetSyncService
             foreach ($record['columns'] as $col) {
                 $colName = $col['name'] ?? $col['title'] ?? '';
                 if (in_array($colName, $possibleKeys)) {
-                    if (isset($col['val'])) return trim((string) $col['val']);
-                    if (isset($col['value'])) return trim((string) $col['value']);
+                    if (isset($col['val'])) {
+                        $extracted = $this->scalarToString($col['val']);
+                        if ($extracted !== null) return $extracted;
+                    }
+                    if (isset($col['value'])) {
+                        $extracted = $this->scalarToString($col['value']);
+                        if ($extracted !== null) return $extracted;
+                    }
                 }
             }
         }
 
         return null;
+    }
+
+    /**
+     * Extract a scalar string value from a Desknet field that may be wrapped
+     * in {val: ...} or {value: ...}, or contain an array.
+     */
+    protected function scalarToString(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            if (isset($value['val'])) {
+                return $this->scalarToString($value['val']);
+            }
+            if (isset($value['value'])) {
+                return $this->scalarToString($value['value']);
+            }
+
+            // If it is a sequential array of scalar values, pick the first one.
+            if (array_is_list($value)) {
+                foreach ($value as $item) {
+                    $extracted = $this->scalarToString($item);
+                    if ($extracted !== null) {
+                        return $extracted;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $extracted = trim((string) $value);
+        return $extracted !== '' ? $extracted : null;
     }
 
     /**
@@ -1026,14 +1055,14 @@ class DesknetSyncService
     {
         // Desknet AppSuite returns data_id as either a scalar or nested under val/value.
         // The staff list app uses the localized field name "Data ID".
-        $dataId = $this->extractRawField($record, 'data_id')
-            ?? $this->extractRawField($record, 'Data ID')
-            ?? $this->extractRawField($record, 'id')
-            ?? $this->extractRawField($record, 'record_id')
-            ?? $this->extractRawField($record, 'rid')
-            ?? null;
+        foreach (['data_id', 'Data ID', 'id', 'record_id', 'rid'] as $key) {
+            $dataId = $this->scalarToString($this->extractRawField($record, $key));
+            if ($dataId !== null) {
+                return $dataId;
+            }
+        }
 
-        return $dataId !== null ? (string) $dataId : null;
+        return null;
     }
 
     /**
