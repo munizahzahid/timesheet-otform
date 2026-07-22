@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\OtForm;
 use App\Models\OtFormEntry;
-use App\Models\ProjectCode;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,10 +24,10 @@ class DashboardOtAnalyticsService
             ->where('ot_forms.year', $year)
             ->where('ot_form_entries.actual_total_hours', '>', 0)
             ->select(
-                DB::raw("COALESCE(project_codes.name, ot_form_entries.manual_project_code_name, ot_form_entries.project_name, 'Unknown Project') as project_label"),
+                DB::raw("COALESCE(pm_projects.project_name, ot_form_entries.manual_project_code_name, ot_form_entries.project_name, 'Unknown Project') as project_label"),
                 DB::raw('SUM(ot_form_entries.actual_total_hours) as total_hours')
             )
-            ->leftJoin('project_codes', 'ot_form_entries.project_code_id', '=', 'project_codes.id')
+            ->leftJoin('pm_projects', 'ot_form_entries.project_code_id', '=', 'pm_projects.id')
             ->groupBy('project_label')
             ->orderByDesc('total_hours')
             ->get()

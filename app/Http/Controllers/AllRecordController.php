@@ -459,9 +459,9 @@ class AllRecordController extends Controller
             $gmIsApproved = true;
         }
 
-        $projectCodes = \App\Models\ProjectCode::where('is_active', true)
-            ->orderBy('code')
-            ->get();
+        $projectCodes = \App\Models\Project::where('is_active', true)
+            ->orderBy('project_code')
+            ->get(['id', 'project_code', 'project_name']);
 
         return view('records.ot-form-show', compact(
             'otForm', 'approvalStamps', 'projectCodes', 'staffApproverName',

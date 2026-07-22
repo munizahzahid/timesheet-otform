@@ -53,6 +53,11 @@ class OtFormEntry extends Model
 
     public function projectCode(): BelongsTo
     {
-        return $this->belongsTo(ProjectCode::class);
+        return $this->belongsTo(Project::class);
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 }

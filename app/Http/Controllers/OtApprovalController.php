@@ -6,7 +6,7 @@ use App\Models\ApprovalLog;
 use App\Models\Notification;
 use App\Models\OtForm;
 use App\Models\OtFormEntry;
-use App\Models\ProjectCode;
+use App\Models\Project;
 use App\Models\PublicHoliday;
 use App\Models\User;
 use App\Services\OtEmailNotificationService;
@@ -108,9 +108,9 @@ class OtApprovalController extends Controller
     {
         $otForm->load('entries.projectCode', 'user.department');
 
-        $projectCodes = ProjectCode::where('is_active', true)
-            ->orderBy('code')
-            ->get();
+        $projectCodes = Project::where('is_active', true)
+            ->orderBy('project_code')
+            ->get(['id', 'project_code', 'project_name']);
 
         // Load public holidays for this month (for UI highlighting)
         $publicHolidays = PublicHoliday::whereYear('holiday_date', $otForm->year)
@@ -438,7 +438,7 @@ class OtApprovalController extends Controller
                         return $normalizeTime($value) ?? '-';
                     }
                     if ($field === 'project_code_id') {
-                        return $value ? ProjectCode::find($value)?->code : '-';
+                        return $value ? Project::find($value)?->project_code : '-';
                     }
                     return $value ?? '-';
                 };

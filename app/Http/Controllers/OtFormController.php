@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Notification;
 use App\Models\OtForm;
 use App\Models\OtFormEntry;
-use App\Models\ProjectCode;
+use App\Models\Project;
 use App\Models\ApprovalLog;
 use App\Models\PublicHoliday;
 use App\Models\User;
@@ -105,9 +105,9 @@ class OtFormController extends Controller
         $otForm->load(['entries' => function ($q) {
             $q->orderBy('entry_date')->orderBy('id');
         }, 'entries.projectCode', 'user.department', 'hrEditor']);
-        $projectCodes = ProjectCode::where('is_active', true)
-            ->orderBy('code')
-            ->get();
+        $projectCodes = Project::where('is_active', true)
+            ->orderBy('project_code')
+            ->get(['id', 'project_code', 'project_name']);
 
         // Load public holidays for this month (for UI highlighting)
         $publicHolidays = PublicHoliday::whereYear('holiday_date', $otForm->year)

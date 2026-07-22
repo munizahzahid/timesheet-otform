@@ -25,7 +25,7 @@
                 </a>
                 <a href="{{ route('admin.project-codes.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">
                     <h4 class="text-xs font-medium text-gray-500 uppercase">Project Codes</h4>
-                    <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\ProjectCode::where('is_active', true)->count() }}</p>
+                    <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\Project::where('is_active', true)->count() }}</p>
                     <p class="text-xs text-gray-400">Active projects</p>
                 </a>
                 <a href="{{ route('admin.desknet-sync.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">

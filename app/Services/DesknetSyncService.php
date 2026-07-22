@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Department;
 use App\Models\DesknetSyncLog;
-use App\Models\ProjectCode;
+use App\Models\Project;
 use App\Models\SystemConfig;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -24,7 +24,7 @@ class DesknetSyncService
         // Read from system_config DB table first, fall back to config/services.php
         $this->apiUrl = SystemConfig::getValue('desknet_api_url') ?: config('services.desknet.api_url', '');
         $this->accessKey = SystemConfig::getValue('desknet_api_key') ?: config('services.desknet.access_key', '');
-        $this->projectCodesAppId = (int) (SystemConfig::getValue('desknet_project_codes_app_id') ?: config('services.desknet.project_codes_app_id', 308));
+        $this->projectCodesAppId = (int) (SystemConfig::getValue('desknet_project_codes_app_id') ?: config('services.desknet.project_codes_app_id', 12));
         $this->staffListAppId = (int) (SystemConfig::getValue('desknet_staff_list_app_id') ?: config('services.desknet.staff_list_app_id', 29));
     }
 
@@ -125,6 +125,33 @@ class DesknetSyncService
         }
 
         return null;
+    }
+
+    /**
+     * Fetch app details from Desknet AppSuite.
+     */
+    protected function fetchAppDetail(int $appId): ?array
+    {
+        $params = [
+            'action' => 'get_app',
+            'app_id' => $appId,
+        ];
+
+        $response = Http::timeout(30)
+            ->asForm()
+            ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
+            ->post($this->apiUrl, $params);
+
+        if (!$response->successful()) {
+            Log::error('Desknet app detail fetch failed', [
+                'app_id' => $appId,
+                'status' => $response->status(),
+                'body' => Str::limit($response->body(), 500),
+            ]);
+            return null;
+        }
+
+        return $response->json();
     }
 
     protected function fetchAppData(int $appId): array
@@ -355,8 +382,8 @@ class DesknetSyncService
                     continue;
                 }
 
-                $desknetId = $this->extractRecordId($record) ?? $staffNo;
-                $seenDesknetIds[] = $desknetId;
+                $desknetId = $this->extractRecordId($record);
+                $seenDesknetIds[] = $desknetId ?? $staffNo;
                 $isActive = !$status || strtolower($status) === 'active';
 
                 // Sync department
@@ -440,11 +467,11 @@ class DesknetSyncService
     }
 
     /**
-     * Sync project codes from Desknet (app_id: 308).
+     * Sync project codes from Desknet (app_id: 12).
+     * Also creates/updates project header records in the projects table.
      */
     public function syncProjectCodes(?int $triggeredBy = null, string $triggerType = 'manual'): DesknetSyncLog
     {
-        // Remove execution time limit since we're fetching individual records
         set_time_limit(0);
 
         $log = DesknetSyncLog::create([
@@ -458,80 +485,74 @@ class DesknetSyncService
         try {
             $records = $this->fetchAppData($this->projectCodesAppId);
 
-            $created = 0;
-            $updated = 0;
-            $deactivated = 0;
+            $projectCreated = 0;
+            $projectUpdated = 0;
+            $projectDeactivated = 0;
             $seenDesknetIds = [];
 
-            // Log first record keys to help debug field mapping
             if (!empty($records)) {
                 Log::info("Desknet project codes: first record keys", ['keys' => array_keys($records[0])]);
             }
 
             foreach ($records as $index => $record) {
-                // Log progress every 50 records
                 if ($index > 0 && $index % 50 === 0) {
                     Log::info("Desknet project codes: progress", ['processed' => $index, 'total' => count($records)]);
                 }
 
-                // Extract fields from record
+                $desknetId = $this->extractRecordId($record) ?? null;
                 $code = $this->extractField($record, ['PROJECT CODE', 'pc']);
-                $name = $this->extractField($record, ['PROJECT NAME', 'PROJECT NAME (PN)', 'pn', 'name']);
-                $checklistStatus = $this->extractField($record, ['Checklist Status', 'checklist_status', 'status']);
 
                 if (!$code) {
                     continue;
                 }
 
-                // Log extracted values for first few records
-                static $logCount = 0;
-                if ($logCount < 3) {
-                    Log::info("Desknet project codes: extracted values", [
-                        'code' => $code,
-                        'name' => $name,
-                        'checklist_status' => $checklistStatus,
-                        'record_keys' => array_keys($record),
-                    ]);
-                    $logCount++;
+                if ($desknetId) {
+                    $seenDesknetIds[] = $desknetId;
                 }
 
-                $desknetId = $this->extractRecordId($record) ?? $code;
-                $seenDesknetIds[] = $desknetId;
+                // Fetch full detail to get all fields
+                $detail = null;
+                if ($desknetId) {
+                    $detail = $this->fetchRecordDetail($this->projectCodesAppId, $desknetId);
+                }
 
-                $data = [
-                    'desknet_id' => $desknetId,
-                    'name' => $name,
-                    'is_active' => true,
-                    'last_synced_at' => now(),
-                ];
+                // Fall back to list data if detail fails
+                $source = $detail ?: $record;
+                $projectData = $this->buildProjectData($source, $desknetId, $code);
 
-                $existing = ProjectCode::where('desknet_id', $desknetId)
-                    ->orWhere('code', $code)
+                // Primary: sync pm_projects table for all years
+                $projectExisting = Project::where('desknet_id', $desknetId)
+                    ->orWhere('project_code', $code)
                     ->first();
 
-                if ($existing) {
-                    $existing->update(array_merge($data, ['code' => $code]));
-                    $updated++;
+                if ($projectExisting) {
+                    $projectExisting->update($projectData);
+                    $projectUpdated++;
                 } else {
-                    ProjectCode::create(array_merge($data, ['code' => $code]));
-                    $created++;
+                    Project::create($projectData);
+                    $projectCreated++;
                 }
             }
 
-            // Deactivate project codes not in Desknet anymore
+            // Deactivate projects not in Desknet anymore
             if (!empty($seenDesknetIds)) {
-                $deactivated = ProjectCode::whereNotNull('desknet_id')
+                $projectDeactivated = Project::whereNotNull('desknet_id')
                     ->whereNotIn('desknet_id', $seenDesknetIds)
                     ->where('is_active', true)
-                    ->update(['is_active' => false]);
+                    ->update(['is_active' => false, 'status' => 'inactive']);
             }
 
             $log->update([
                 'status' => 'success',
-                'records_created' => $created,
-                'records_updated' => $updated,
-                'records_deactivated' => $deactivated,
+                'records_created' => $projectCreated,
+                'records_updated' => $projectUpdated,
+                'records_deactivated' => $projectDeactivated,
                 'completed_at' => now(),
+                'metadata' => [
+                    'projects_created' => $projectCreated,
+                    'projects_updated' => $projectUpdated,
+                    'projects_deactivated' => $projectDeactivated,
+                ],
             ]);
         } catch (\Throwable $e) {
             Log::error('Desknet project codes sync failed: ' . $e->getMessage());
@@ -543,6 +564,402 @@ class DesknetSyncService
         }
 
         return $log;
+    }
+
+    /**
+     * Build pm_projects data from a Desknet record.
+     */
+    protected function buildProjectData(array $record, ?string $desknetId, string $code): array
+    {
+        $poCustomer = $this->extractAttachmentUrls($this->extractRawField($record, 'attachment_po_cust'));
+        $otherAttachments = $this->extractAttachmentUrls($this->extractRawField($record, 'other_attach'));
+
+        return [
+            'desknet_id' => $desknetId,
+            'project_code' => $code,
+            'project_name' => $this->extractField($record, ['PROJECT NAME', 'PROJECT NAME (PN)', 'pn', 'name']) ?? $code,
+            'description' => null,
+            'status' => 'active',
+            'start_date_plan' => $this->parseDate($this->extractField($record, ['start_date'])),
+            'end_date_plan' => $this->parseDate($this->extractField($record, ['delivery_date'])),
+            'project_manager' => $this->extractField($record, ['pm']),
+            'project_manager_staff_id' => $this->extractField($record, ['staff_id_pm']),
+            'project_manager_department' => $this->extractField($record, ['dept_pm']),
+            'deskman_1' => $this->extractField($record, ['pdm_1']),
+            'deskman_1_staff_id' => $this->extractField($record, ['staff_id_dm_1']),
+            'deskman_1_department' => $this->extractField($record, ['dept_dm_1']),
+            'deskman_2' => $this->extractField($record, ['pdm_2']),
+            'deskman_2_staff_id' => $this->extractField($record, ['staff_id_dm_2']),
+            'deskman_2_department' => $this->extractField($record, ['dept_dm_2']),
+            'po_no' => $this->extractField($record, ['po']),
+            'client' => $this->extractField($record, ['client']),
+            'attn' => $this->extractField($record, ['attn']),
+            'full_address' => $this->extractField($record, ['full_address']),
+            'tin' => $this->extractField($record, ['tin']),
+            'identification_no' => $this->extractField($record, ['identification_no']),
+            'contact_no' => $this->extractField($record, ['contact_no']),
+            'email' => $this->extractField($record, ['email']),
+            'exemption_cert_no' => $this->extractField($record, ['exemp_cert_no']),
+            'term_1' => $this->extractField($record, ['term_1']),
+            'term_2' => $this->extractField($record, ['term_2']),
+            'term_3' => $this->extractField($record, ['term_3']),
+            'term_4' => $this->extractField($record, ['term_4']),
+            'term_5' => $this->extractField($record, ['term_5']),
+            'project_value' => $this->parseDecimal($this->extractField($record, ['proj_value'])),
+            'purchasing_budget_100' => $this->parseDecimal($this->extractField($record, ['pur_budget_100'])),
+            'purchasing_budget_95' => $this->parseDecimal($this->extractField($record, ['pur_budget_95'])),
+            'year' => $this->parseInt($this->extractField($record, ['year'])),
+            'attachment_po_customer' => $poCustomer,
+            'other_attachments' => $otherAttachments,
+            'project_schedule_status' => $this->extractField($record, ['proj_schedule_status']),
+            'date_time_added' => $this->parseDateTime($this->extractField($record, ['date_time_added'])),
+            'added_by' => $this->extractField($record, ['added_by']),
+            'date_time_updated' => $this->parseDateTime($this->extractField($record, ['date_time_updated'])),
+            'updated_by' => $this->extractField($record, ['updated_by']),
+            'last_synced_at' => now(),
+        ];
+    }
+
+    /**
+     * Build a Desknet payload from a local Project.
+     */
+    public function buildDesknetProjectPayload(Project $project): array
+    {
+        $payload = [
+            '{{pc}}' => $project->project_code,
+            '{{pn}}' => $project->project_name,
+            '{{start_date}}' => $project->start_date_plan?->format('Y-m-d'),
+            '{{delivery_date}}' => $project->end_date_plan?->format('Y-m-d'),
+            '{{pm}}' => $project->project_manager,
+            '{{staff_id_pm}}' => $project->project_manager_staff_id,
+            '{{dept_pm}}' => $project->project_manager_department,
+            '{{pdm_1}}' => $project->deskman_1,
+            '{{staff_id_dm_1}}' => $project->deskman_1_staff_id,
+            '{{dept_dm_1}}' => $project->deskman_1_department,
+            '{{pdm_2}}' => $project->deskman_2,
+            '{{staff_id_dm_2}}' => $project->deskman_2_staff_id,
+            '{{dept_dm_2}}' => $project->deskman_2_department,
+            '{{po}}' => $project->po_no,
+            '{{client}}' => $project->client,
+            '{{attn}}' => $project->attn,
+            '{{full_address}}' => $project->full_address,
+            '{{tin}}' => $project->tin,
+            '{{identification_no}}' => $project->identification_no,
+            '{{contact_no}}' => $project->contact_no,
+            '{{email}}' => $project->email,
+            '{{exemp_cert_no}}' => $project->exemption_cert_no,
+            '{{term_1}}' => $project->term_1,
+            '{{term_2}}' => $project->term_2,
+            '{{term_3}}' => $project->term_3,
+            '{{term_4}}' => $project->term_4,
+            '{{term_5}}' => $project->term_5,
+            '{{proj_value}}' => $project->project_value,
+            '{{pur_budget_100}}' => $project->purchasing_budget_100,
+            '{{pur_budget_95}}' => $project->purchasing_budget_95,
+            '{{year}}' => $project->year,
+            '{{proj_schedule_status}}' => $project->project_schedule_status,
+        ];
+
+        // Note: date_time_added, added_by, date_time_updated, updated_by are
+        // Desknet-managed system fields and cannot be written via the external API.
+
+        // Remove null/empty values so they don't overwrite existing Desknet data unexpectedly
+        return array_filter($payload, function ($value) {
+            return $value !== null && $value !== '';
+        });
+    }
+
+    /**
+     * Push a local Project to Desknet (create or update).
+     * Only called when the user explicitly clicks Save / Push to Desknet.
+     */
+    public function pushProjectToDesknet(Project $project, ?int $triggeredBy = null): array
+    {
+        if (empty($this->apiUrl) || empty($this->accessKey)) {
+            throw new \RuntimeException('Desknet API URL or Access Key is not configured.');
+        }
+
+        $payload = $this->buildDesknetProjectPayload($project);
+
+        // Desknet uses insert_data for create and update_data for update
+        $action = $project->desknet_id ? 'update_data' : 'insert_data';
+
+        $params = [
+            'action' => $action,
+            'app_id' => $this->projectCodesAppId,
+        ];
+
+        if ($project->desknet_id) {
+            $params['data_id'] = $project->desknet_id;
+
+            // Fetch current record to get revision number for optimistic locking
+            $existingRecord = $this->fetchRecordDetail($this->projectCodesAppId, $project->desknet_id);
+            if ($existingRecord) {
+                $revision = $this->extractRawField($existingRecord, 'revision');
+                if ($revision) {
+                    $payload['{{revision}}'] = (string) $revision;
+                }
+
+                Log::info("Desknet push project existing record", [
+                    'project_id' => $project->id,
+                    'desknet_id' => $project->desknet_id,
+                    'revision' => $revision,
+                    'pm_raw' => $this->extractRawField($existingRecord, 'pm'),
+                    'staff_id_pm_raw' => $this->extractRawField($existingRecord, 'staff_id_pm'),
+                    'dept_pm_raw' => $this->extractRawField($existingRecord, 'dept_pm'),
+                ]);
+            }
+        }
+
+        $params = array_merge($params, $payload);
+
+        Log::info("Desknet push project", [
+            'project_id' => $project->id,
+            'desknet_id' => $project->desknet_id,
+            'action' => $action,
+            'field_count' => count($payload),
+            'payload_keys' => array_keys($payload),
+        ]);
+
+        $response = Http::timeout(30)
+            ->asForm()
+            ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
+            ->post($this->apiUrl, $params);
+
+        if (!$response->successful()) {
+            Log::error("Desknet push project failed", [
+                'project_id' => $project->id,
+                'status' => $response->status(),
+                'body' => Str::limit($response->body(), 1000),
+            ]);
+            throw new \RuntimeException("Desknet push failed: HTTP {$response->status()} — " . Str::limit($response->body(), 500));
+        }
+
+        $data = $response->json();
+        $bodyStatus = $data['status'] ?? null;
+
+        if ($bodyStatus !== null && $bodyStatus !== 'ok' && $bodyStatus !== 'OK' && $bodyStatus !== 'success') {
+            Log::error("Desknet push project returned non-ok status", [
+                'project_id' => $project->id,
+                'status' => $bodyStatus,
+                'body' => Str::limit($response->body(), 1000),
+            ]);
+            throw new \RuntimeException("Desknet push failed: status='{$bodyStatus}' — " . Str::limit($response->body(), 500));
+        }
+
+        // If creating, capture the new Desknet record id
+        if (!$project->desknet_id) {
+            $newId = $data['id'] ?? $data['ID'] ?? $data['data_id'] ?? $data['record']['id'] ?? null;
+            if ($newId) {
+                $project->update(['desknet_id' => (string) $newId]);
+            }
+        }
+
+        $log = DesknetSyncLog::create([
+            'sync_type' => 'project_codes',
+            'trigger_type' => 'manual',
+            'triggered_by' => $triggeredBy,
+            'status' => 'success',
+            'records_updated' => $action === 'update_data' ? 1 : 0,
+            'records_created' => $action === 'insert_data' ? 1 : 0,
+            'started_at' => now(),
+            'completed_at' => now(),
+            'metadata' => [
+                'project_id' => $project->id,
+                'desknet_id' => $project->desknet_id,
+                'direction' => 'push',
+                'action' => $action,
+                'response' => $data,
+            ],
+        ]);
+
+        return [
+            'success' => true,
+            'desknet_id' => $project->desknet_id,
+            'response' => $data,
+            'log' => $log,
+        ];
+    }
+
+    /**
+     * Extract the raw field value (including nested arrays) from a Desknet record.
+     */
+    protected function extractRawField(array $record, string $key): mixed
+    {
+        if (!array_key_exists($key, $record)) {
+            return null;
+        }
+
+        $val = $record[$key];
+
+        if (is_array($val) && isset($val['val'])) {
+            return $val['val'];
+        }
+
+        if (is_array($val) && isset($val['value'])) {
+            return $val['value'];
+        }
+
+        return $val;
+    }
+
+    /**
+     * Extract attachment URLs from a Desknet attachment field value.
+     */
+    protected function extractAttachmentUrls(mixed $fieldValue): ?array
+    {
+        if (!is_array($fieldValue)) {
+            return null;
+        }
+
+        if (isset($fieldValue['attach']['item']) && is_array($fieldValue['attach']['item'])) {
+            $items = $fieldValue['attach']['item'];
+            if (isset($items['id'])) {
+                $items = [$items];
+            }
+
+            return array_map(function ($item) {
+                return [
+                    'id' => $item['id'] ?? null,
+                    'name' => $item['attachdisp'] ?? null,
+                    'url' => $item['url'] ?? null,
+                    'mimetype' => $item['mimetype'] ?? null,
+                    'size' => $item['size'] ?? null,
+                ];
+            }, $items);
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse a string value to an integer.
+     */
+    protected function parseInt(?string $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return (int) preg_replace('/[^0-9]/', '', $value);
+    }
+
+    /**
+     * Parse a string value to a decimal.
+     */
+    protected function parseDecimal(?string $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return (float) str_replace(',', '', $value);
+    }
+
+    /**
+     * Parse a string value to a datetime.
+     */
+    protected function parseDateTime(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Fetch and log a single Desknet record detail for field mapping.
+     */
+    public function diagnoseRecordDetail(int $appId, string $dataId): ?array
+    {
+        $detail = $this->fetchRecordDetail($appId, $dataId);
+
+        if ($detail === null) {
+            return null;
+        }
+
+        Log::info("Desknet diagnose detail app_id={$appId} data_id={$dataId}", [
+            'keys' => array_keys($detail),
+            'detail' => $detail,
+        ]);
+
+        return $detail;
+    }
+
+    /**
+     * Diagnose a Desknet app by fetching a few records and logging the raw structure.
+     */
+    public function diagnoseApp(int $appId, int $limit = 3, ?int $viewId = null): array
+    {
+        if (empty($this->apiUrl) || empty($this->accessKey)) {
+            throw new \RuntimeException('Desknet API URL or Access Key is not configured.');
+        }
+
+        $params = [
+            'action'  => 'list_data',
+            'app_id'  => $appId,
+            'rp'      => $limit,
+        ];
+
+        if ($viewId) {
+            $params['view_id'] = $viewId;
+        }
+
+        Log::info("Desknet diagnose: fetching app_id={$appId}" . ($viewId ? " view_id={$viewId}" : ''));
+
+        $response = Http::timeout(30)
+            ->asForm()
+            ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
+            ->post($this->apiUrl, $params);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException("Desknet API error (app_id={$appId}): HTTP {$response->status()} — " . Str::limit($response->body(), 500));
+        }
+
+        $data = $response->json();
+        $records = [];
+
+        if (isset($data['list']['item']) && is_array($data['list']['item'])) {
+            $records = $data['list']['item'];
+        } elseif (isset($data['record']) && is_array($data['record'])) {
+            $records = $data['record'];
+        } elseif (isset($data['records']) && is_array($data['records'])) {
+            $records = $data['records'];
+        } elseif (is_array($data) && isset($data[0])) {
+            $records = $data;
+        }
+
+        $diagnostics = [];
+        foreach ($records as $index => $record) {
+            // Flatten first level keys and sample values
+            $sample = [];
+            foreach ($record as $key => $value) {
+                if (is_array($value)) {
+                    $sample[$key] = $value;
+                } else {
+                    $sample[$key] = $value;
+                }
+            }
+            $diagnostics[] = [
+                'index' => $index,
+                'record_keys' => array_keys($record),
+                'sample' => $sample,
+            ];
+
+            Log::info("Desknet diagnose app_id={$appId} record #{$index}", [
+                'keys' => array_keys($record),
+                'sample' => $sample,
+            ]);
+        }
+
+        return [
+            'app_id' => $appId,
+            'view_id' => $viewId,
+            'record_count' => count($records),
+            'records' => $diagnostics,
+        ];
     }
 
     /**
@@ -608,11 +1025,16 @@ class DesknetSyncService
      */
     protected function extractRecordId(array $record): ?string
     {
-        // Desknet AppSuite uses data_id with nested val
-        if (isset($record['data_id']['val'])) {
-            return (string) $record['data_id']['val'];
-        }
-        return $record['data_id'] ?? $record['id'] ?? $record['record_id'] ?? $record['rid'] ?? null;
+        // Desknet AppSuite returns data_id as either a scalar or nested under val/value.
+        // The staff list app uses the localized field name "Data ID".
+        $dataId = $this->extractRawField($record, 'data_id')
+            ?? $this->extractRawField($record, 'Data ID')
+            ?? $this->extractRawField($record, 'id')
+            ?? $this->extractRawField($record, 'record_id')
+            ?? $this->extractRawField($record, 'rid')
+            ?? null;
+
+        return $dataId !== null ? (string) $dataId : null;
     }
 
     /**

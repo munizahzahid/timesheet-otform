@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ProjectCode;
+use App\Models\Project;
 use App\Models\Timesheet;
 use App\Models\TimesheetAdminHour;
 use App\Models\TimesheetDayMetadata;
@@ -157,9 +157,9 @@ class TimesheetController extends Controller
             ];
         }
 
-        $projectCodes = ProjectCode::where('is_active', true)
-            ->orderBy('code')
-            ->get(['id', 'code', 'name']);
+        $projectCodes = Project::where('is_active', true)
+            ->orderBy('project_code')
+            ->get(['id', 'project_code', 'project_name']);
 
         $adminTypes = TimesheetCalculationService::ADMIN_TYPES;
 
