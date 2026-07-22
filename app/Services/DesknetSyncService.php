@@ -578,7 +578,6 @@ class DesknetSyncService
             'desknet_id' => $desknetId,
             'project_code' => $code,
             'project_name' => $this->extractField($record, ['PROJECT NAME', 'PROJECT NAME (PN)', 'pn', 'name']) ?? $code,
-            'description' => null,
             'status' => 'active',
             'start_date_plan' => $this->parseDate($this->extractField($record, ['start_date'])),
             'end_date_plan' => $this->parseDate($this->extractField($record, ['delivery_date'])),
