@@ -27,11 +27,63 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Step 1: Add new columns
+        // Step 0: Ensure pm_projects has all columns needed by project_codes data.
+        // These columns were added locally by earlier project-module migrations, but
+        // Coolify did not have them yet, so this migration must be self-contained.
         Schema::table('pm_projects', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true)->after('status');
-            $table->unsignedBigInteger('old_project_code_id')->nullable()->after('id');
-            $table->index('old_project_code_id');
+            if (!Schema::hasColumn('pm_projects', 'desknet_id')) {
+                $table->string('desknet_id', 100)->nullable()->unique()->after('id');
+            }
+            if (!Schema::hasColumn('pm_projects', 'project_name')) {
+                $table->string('project_name', 255)->nullable()->after('project_code');
+            }
+            if (!Schema::hasColumn('pm_projects', 'description')) {
+                $table->text('description')->nullable()->after('project_name');
+            }
+            if (!Schema::hasColumn('pm_projects', 'start_date_plan')) {
+                $table->date('start_date_plan')->nullable()->after('description');
+            }
+            if (!Schema::hasColumn('pm_projects', 'end_date_plan')) {
+                $table->date('end_date_plan')->nullable()->after('start_date_plan');
+            }
+            if (!Schema::hasColumn('pm_projects', 'project_manager')) {
+                $table->string('project_manager', 255)->nullable()->after('end_date_plan');
+            }
+            if (!Schema::hasColumn('pm_projects', 'po_no')) {
+                $table->string('po_no', 100)->nullable()->after('project_manager');
+            }
+            if (!Schema::hasColumn('pm_projects', 'client')) {
+                $table->string('client', 255)->nullable()->after('po_no');
+            }
+            if (!Schema::hasColumn('pm_projects', 'project_value')) {
+                $table->decimal('project_value', 15, 2)->nullable()->after('client');
+            }
+            if (!Schema::hasColumn('pm_projects', 'project_schedule_status')) {
+                $table->string('project_schedule_status', 100)->nullable()->after('project_value');
+            }
+            if (!Schema::hasColumn('pm_projects', 'year')) {
+                $table->smallInteger('year')->nullable()->after('project_schedule_status');
+            }
+            if (!Schema::hasColumn('pm_projects', 'last_synced_at')) {
+                $table->timestamp('last_synced_at')->nullable()->after('year');
+            }
+            if (!Schema::hasColumn('pm_projects', 'overall_plan_progress')) {
+                $table->unsignedSmallInteger('overall_plan_progress')->default(0)->after('last_synced_at');
+            }
+            if (!Schema::hasColumn('pm_projects', 'overall_actual_progress')) {
+                $table->unsignedSmallInteger('overall_actual_progress')->default(0)->after('overall_plan_progress');
+            }
+        });
+
+        // Step 1: Add new columns (idempotent for Coolify re-run after partial failure)
+        Schema::table('pm_projects', function (Blueprint $table) {
+            if (!Schema::hasColumn('pm_projects', 'is_active')) {
+                $table->boolean('is_active')->default(true)->after('status');
+            }
+            if (!Schema::hasColumn('pm_projects', 'old_project_code_id')) {
+                $table->unsignedBigInteger('old_project_code_id')->nullable()->after('id');
+                $table->index('old_project_code_id');
+            }
         });
 
         // Step 2: Migrate data from project_codes → pm_projects
