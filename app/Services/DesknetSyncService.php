@@ -23,7 +23,7 @@ class DesknetSyncService
     {
         // Read from system_config DB table first, fall back to config/services.php
         $this->apiUrl = SystemConfig::getValue('desknet_api_url') ?: config('services.desknet.api_url', '');
-        $this->accessKey = SystemConfig::getValue('desknet_api_key') ?: config('services.desknet.access_key', '');
+        $this->accessKey = SystemConfig::getValue('desknet_api_key') ?: config('services.desknet.access_key', '44kxFuA5nxlPTs9oQg6ZzzEcx3sKsXrtxE++OsC8cTo');
         $this->projectCodesAppId = (int) (SystemConfig::getValue('desknet_project_codes_app_id') ?: config('services.desknet.project_codes_app_id', 12));
         $this->staffListAppId = (int) (SystemConfig::getValue('desknet_staff_list_app_id') ?: config('services.desknet.staff_list_app_id', 29));
     }
