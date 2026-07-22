@@ -22,8 +22,8 @@ class SystemConfigSeeder extends Seeder
             ['key' => 'ot_payroll_submit_day', 'value' => '5', 'description' => 'Day of month to submit OT claims to payroll'],
             ['key' => 'desknet_api_url', 'value' => config('services.desknet.api_url', ''), 'description' => 'Desknet NEO AppSuite API URL'],
             ['key' => 'desknet_api_key', 'value' => '', 'description' => 'Desknet API access key (set via .env)'],
-            ['key' => 'desknet_project_codes_app_id', 'value' => config('services.desknet.project_codes_app_id', 12), 'description' => 'Desknet app ID for project codes (default: 12)'},
-            ['key' => 'desknet_staff_list_app_id', 'value' => config('services.desknet.staff_list_app_id', 29), 'description' => 'Desknet app ID for staff list (default: 29)'},
+            ['key' => 'desknet_project_codes_app_id', 'value' => config('services.desknet.project_codes_app_id', 12), 'description' => 'Desknet app ID for project codes (default: 12)'],
+            ['key' => 'desknet_staff_list_app_id', 'value' => config('services.desknet.staff_list_app_id', 29), 'description' => 'Desknet app ID for staff list (default: 29)'],
             ['key' => 'desknet_sync_cron', 'value' => '0 1 * * *', 'description' => 'Cron schedule for Desknet sync (default: daily 1AM)'],
             ['key' => 'desknet_sync_enabled', 'value' => '1', 'description' => 'Enable/disable automatic Desknet sync'],
         ];
