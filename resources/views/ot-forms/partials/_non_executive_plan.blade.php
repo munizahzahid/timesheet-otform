@@ -41,14 +41,10 @@
             @foreach($groupedEntries as $dateStr => $dateEntries)
             @foreach($dateEntries as $entryIdx => $entry)
                 @php
+                    $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
                     $dayOfWeek = $entry->entry_date->dayOfWeek;
                     $isWeekend = in_array($dayOfWeek, [0, 6]);
-                    $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
-                    // For entries with data, trust is_public_holiday from attendance (auto-fill).
-                    // For blank entries, fall back to the public holidays table.
-                    $isPublicHoliday = $isFilled
-                        ? $entry->is_public_holiday
-                        : isset($publicHolidays[$entry->entry_date->format('Y-m-d')]);
+                    $isPublicHoliday = (bool) $entry->is_public_holiday;
                     $isRestOrPH = $isWeekend || $isPublicHoliday;
                     $rowBg = $isPublicHoliday ? 'bg-red-50 hover:bg-red-100' : ($isWeekend ? 'bg-gray-50' : '');
                     $isFirstRow = $entryIdx === 0;

@@ -49,6 +49,16 @@ class OtFormController extends Controller
             'section_line' => 'nullable|string|max:150',
         ]);
 
+        // Guard: require PDF attendance to be uploaded first
+        $hasAttendance = \App\Models\AttendanceRecord::where('user_id', Auth::id())
+            ->where('month', $request->month)
+            ->where('year', $request->year)
+            ->exists();
+
+        if (!$hasAttendance) {
+            return redirect()->back()->with('error', 'Please upload your PDF Attendance from Infotech in the Timesheet first before creating an OT form.');
+        }
+
         $otForm = OtForm::create([
             'user_id' => Auth::id(),
             'month' => $request->month,
@@ -59,11 +69,13 @@ class OtFormController extends Controller
             'status' => 'draft',
         ]);
 
-        // Pre-create 31 empty rows (one per day) for both executive and non-executive
+        // Pre-create empty rows (one per day) — PH from attendance records (PDF Infotech)
         $daysInMonth = Carbon::create($request->year, $request->month)->daysInMonth;
-        $publicHolidays = PublicHoliday::whereYear('holiday_date', $request->year)
-            ->whereMonth('holiday_date', $request->month)
-            ->pluck('holiday_date')
+        $attendancePH = \App\Models\AttendanceRecord::where('user_id', Auth::id())
+            ->where('month', $request->month)
+            ->where('year', $request->year)
+            ->where('day_type', 'public_holiday')
+            ->pluck('entry_date')
             ->map(fn($d) => $d->format('Y-m-d'))
             ->flip()
             ->all();
@@ -73,7 +85,7 @@ class OtFormController extends Controller
             $entries[] = [
                 'ot_form_id' => $otForm->id,
                 'entry_date' => $dateStr,
-                'is_public_holiday' => isset($publicHolidays[$dateStr]),
+                'is_public_holiday' => isset($attendancePH[$dateStr]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
@@ -104,6 +116,12 @@ class OtFormController extends Controller
             ->map(fn($d) => $d->format('Y-m-d'))
             ->flip()
             ->all();
+
+        // Check if attendance records exist (PDF uploaded)
+        $hasAttendance = \App\Models\AttendanceRecord::where('user_id', $otForm->user_id)
+            ->where('month', $otForm->month)
+            ->where('year', $otForm->year)
+            ->exists();
 
         // Build approval stamps data
         $approvalLogs = $otForm->approvalLogs()->get();
@@ -166,6 +184,7 @@ class OtFormController extends Controller
 
         return view('ot-forms.edit', compact(
             'otForm', 'projectCodes', 'approvalStamps', 'publicHolidays',
+            'hasAttendance',
             'staffApproverName', 'managerApproverName', 'gmApproverName',
             'managerApproverDesignation', 'gmApproverDesignation',
             'managerApprovedDate', 'gmApprovedDate', 'canUnsubmit'

@@ -34,11 +34,7 @@
                 @php
                     $isFilled = $entry->project_code_id || $entry->planned_start_time || $entry->actual_start_time;
                     $dow = $entry->entry_date->dayOfWeek;
-                    // For entries with data, trust is_public_holiday from attendance (auto-fill).
-                    // For blank entries, fall back to the public holidays table.
-                    $isPublicHoliday = $isFilled
-                        ? $entry->is_public_holiday
-                        : isset($publicHolidays[$entry->entry_date->format('Y-m-d')]);
+                    $isPublicHoliday = (bool) $entry->is_public_holiday;
                     $isRestOrPH = in_array($dow, [0, 6]) || $isPublicHoliday;
                     $isFirstRow = $entryIdx === 0;
                     $planTimeOptions = [];

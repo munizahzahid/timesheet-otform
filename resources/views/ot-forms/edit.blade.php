@@ -56,6 +56,25 @@ session(['ot_forms_last_seen' => now()]);
                 </div>
             @endif
 
+            {{-- Guard: No attendance records (PDF not uploaded) --}}
+            @if(!$hasAttendance)
+                <div id="noAttendanceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">PDF Attendance Required</h3>
+                        <p class="text-gray-600 mb-6">Please upload your PDF Attendance from Infotech in the Timesheet first. The system needs this to determine Public Holiday dates.</p>
+                        <a href="{{ route('timesheets.index') }}"
+                           class="inline-flex items-center px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition shadow-md">
+                            Okay
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             {{-- HR Correction Notes --}}
             @if($otForm->hr_remarks)
                 <div class="mb-4 bg-gradient-to-r from-yellow-50 to-amber-50 border-l-4 border-yellow-500 text-yellow-900 px-4 py-3 rounded-r-lg shadow-sm">

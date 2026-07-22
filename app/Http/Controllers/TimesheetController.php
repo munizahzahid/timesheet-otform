@@ -183,9 +183,15 @@ class TimesheetController extends Controller
         // Get uploaded file for this timesheet
         $excelUpload = \App\Models\ExcelUpload::where('timesheet_id', $timesheet->id)->first();
 
+        // Check if attendance records exist (PDF uploaded)
+        $hasAttendance = \App\Models\AttendanceRecord::where('user_id', $timesheet->user_id)
+            ->where('month', $timesheet->month)
+            ->where('year', $timesheet->year)
+            ->exists();
+
         return response()->view('timesheets.edit', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit'
+            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit', 'hasAttendance'
         ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');

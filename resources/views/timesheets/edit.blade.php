@@ -39,6 +39,19 @@ session(['timesheets_last_seen' => now()]);
             {{-- Attendance Upload (PDF / Excel) --}}
             @include('timesheets.partials._upload')
 
+            {{-- Warning: No PDF uploaded yet --}}
+            @if(!$hasAttendance)
+                <div class="mb-4 bg-gradient-to-r from-amber-50 to-yellow-50 border-l-4 border-amber-500 text-amber-900 px-4 py-3 rounded-r-lg shadow-sm flex items-center gap-3">
+                    <svg class="w-6 h-6 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <div>
+                        <p class="font-semibold">PDF Attendance Required</p>
+                        <p class="text-sm mt-0.5">Please upload your PDF Attendance from Infotech above before filling in hours. The system needs this to determine Public Holiday dates and OT eligibility.</p>
+                    </div>
+                </div>
+            @endif
+
             {{-- Matrix Container --}}
             <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
                 <div class="overflow-x-auto" id="matrixScroll">
