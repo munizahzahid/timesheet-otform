@@ -14,7 +14,7 @@ class DesknetSyncLog extends Model
     protected $fillable = [
         'sync_type', 'trigger_type', 'triggered_by', 'status',
         'records_created', 'records_updated', 'records_deactivated',
-        'error_message', 'started_at', 'completed_at',
+        'metadata', 'error_message', 'started_at', 'completed_at',
     ];
 
     protected function casts(): array
@@ -22,6 +22,7 @@ class DesknetSyncLog extends Model
         return [
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 

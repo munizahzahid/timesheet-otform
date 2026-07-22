@@ -7,6 +7,51 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
 
+                    @if(session('success'))
+                        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 text-sm">{{ session('success') }}</div>
+                    @endif
+                    @if(session('error'))
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4 text-sm">{{ session('error') }}</div>
+                    @endif
+
+                    {{-- Add Project Code --}}
+                    <div class="mb-6">
+                        <button type="button" onclick="document.getElementById('add-project-form').classList.toggle('hidden')"
+                            class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 font-medium">
+                            + Add Project Code
+                        </button>
+                        <div id="add-project-form" class="hidden mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <form method="POST" action="{{ route('admin.project-codes.store') }}" class="flex flex-wrap gap-4 items-end">
+                                @csrf
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Code <span class="text-red-500">*</span></label>
+                                    <input type="text" name="code" required
+                                           class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+                                    <input type="text" name="name" required
+                                           class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm w-64">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Client</label>
+                                    <input type="text" name="client"
+                                           class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm w-48">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Year</label>
+                                    <input type="number" name="year" min="2000" max="2099"
+                                           class="mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm w-24">
+                                </div>
+                                <div>
+                                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm hover:bg-indigo-700 font-medium">Save</button>
+                                    <button type="button" onclick="document.getElementById('add-project-form').classList.add('hidden')"
+                                            class="ml-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     {{-- Filters --}}
                     <form method="GET" action="{{ route('admin.project-codes.index') }}" class="mb-6 flex flex-wrap gap-4 items-end">
                         <div>
@@ -39,7 +84,7 @@
                     </form>
 
                     <p class="text-sm text-gray-500 mb-4">
-                        Showing {{ $projectCodes->total() }} project codes (read-only, synced from Desknet)
+                        Showing {{ $projectCodes->total() }} project codes (synced from Desknet + manually added)
                     </p>
 
                     {{-- Table --}}

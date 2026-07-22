@@ -342,6 +342,7 @@ class PdfParsingService
             $month = (int) $dateMatch[2];
             $year = (int) $dateMatch[3];
 
+
             if ($month !== $targetMonth || $year !== $targetYear) {
                 $skippedDates++;
                 continue;

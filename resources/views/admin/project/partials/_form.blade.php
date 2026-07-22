@@ -109,8 +109,12 @@
        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
         Cancel
     </a>
-    <button type="submit"
+    <button type="submit" name="action" value="save"
             class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
         {{ $isEdit ? 'Update Project' : 'Create Project' }}
+    </button>
+    <button type="submit" name="action" value="push_to_desknet"
+            class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 transition">
+        {{ $isEdit ? 'Update & Push to Desknet' : 'Create & Push to Desknet' }}
     </button>
 </div>

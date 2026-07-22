@@ -19,13 +19,7 @@ class ProjectTaskController extends Controller
      */
     public function index(Project $project)
     {
-        $tasks = $project->tasks()->with(['phase', 'assignedTo', 'comments.user', 'attachments.user'])->withCount('comments')->withCount('attachments')->orderBy('task_order')->get();
-        $phases = $project->phases()->orderBy('phase_order')->get();
-
-        $resolver = new TaskDependencyResolver();
-        $effectiveDates = $resolver->resolve($project);
-
-        return view('admin.project.tasks.index', compact('project', 'tasks', 'phases', 'effectiveDates'));
+        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks');
     }
 
     /**
@@ -89,7 +83,7 @@ class ProjectTaskController extends Controller
 
         (new ProjectProgressCalculator())->recalculateFromTask($task);
 
-        return redirect()->route('admin.project.projects.tasks.index', $project)
+        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
             ->with('success', 'Task created successfully.');
     }
 
@@ -190,7 +184,7 @@ class ProjectTaskController extends Controller
         }
         $calculator->recalculateFromTask($task->refresh());
 
-        return redirect()->route('admin.project.projects.tasks.index', $project)
+        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
             ->with('success', 'Task updated successfully.');
     }
 
@@ -266,6 +260,61 @@ class ProjectTaskController extends Controller
     }
 
     /**
+     * Inline update a single field on a task (status, weight, end_date_revise)
+     * Called via AJAX from the Kanban board
+     */
+    public function inlineUpdate(Request $request, Project $project, ProjectTask $task)
+    {
+        $validated = $request->validate([
+            'status' => 'sometimes|required|string|in:not_started,in_progress,completed,on_hold,cancelled',
+            'weight' => 'sometimes|required|integer|min:0|max:100',
+            'end_date_revise' => 'sometimes|nullable|date',
+        ]);
+
+        if (array_key_exists('status', $validated)) {
+            $task->update(['status' => $validated['status']]);
+            (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
+        }
+
+        if (array_key_exists('weight', $validated)) {
+            try {
+                $this->validateTaskWeightSum($project, $task->phase_id, $validated['weight'], $task->id);
+            } catch (ValidationException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Exceed weight percentage. ' . collect($e->errors())->flatten()->first(),
+                ], 422);
+            }
+            $task->update(['weight' => $validated['weight']]);
+            (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
+        }
+
+        if (array_key_exists('end_date_revise', $validated)) {
+            $oldReviseEnd = $task->end_date_revise ? $task->end_date_revise->format('Y-m-d') : null;
+            $task->update(['end_date_revise' => $validated['end_date_revise']]);
+            $newReviseEnd = $validated['end_date_revise'] ? \Carbon\Carbon::parse($validated['end_date_revise'])->format('Y-m-d') : null;
+            if ($oldReviseEnd !== $newReviseEnd) {
+                $task->refresh();
+                $resolver = new TaskDependencyResolver();
+                $resolver->cascadeReviseDates($project, $task);
+            }
+        }
+
+        $task->refresh();
+
+        return response()->json([
+            'success' => true,
+            'task' => [
+                'id' => $task->id,
+                'status' => $task->status,
+                'weight' => $task->weight,
+                'end_date_revise' => $task->end_date_revise?->format('M d'),
+                'end_date_revise_raw' => $task->end_date_revise?->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    /**
      * Delete a task
      */
     public function destroy(Project $project, ProjectTask $task)
@@ -281,7 +330,7 @@ class ProjectTaskController extends Controller
         }
         $calculator->recalculateProjectProgress($project);
 
-        return redirect()->route('admin.project.projects.show', $project)
+        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
             ->with('success', 'Task deleted successfully.');
     }
 

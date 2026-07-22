@@ -145,8 +145,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/desknet-sync/run', [DesknetSyncController::class, 'run'])->name('desknet-sync.run');
     Route::post('/desknet-sync/test', [DesknetSyncController::class, 'test'])->name('desknet-sync.test');
 
-    // Project codes (read-only)
+    // Project codes
     Route::get('/project-codes', [ProjectCodeController::class, 'index'])->name('project-codes.index');
+    Route::post('/project-codes', [ProjectCodeController::class, 'store'])->name('project-codes.store');
 
     // Audit logs
     Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
@@ -155,6 +156,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::prefix('project')->name('project.')->group(function () {
         Route::get('/', [ProjectController::class, 'dashboard'])->name('dashboard');
         Route::get('/calendar', [ProjectController::class, 'calendar'])->name('calendar');
+        Route::get('/assigned-tasks/{user}', [ProjectController::class, 'assignedTasks'])->name('assigned-tasks');
         Route::prefix('projects')->name('projects.')->group(function () {
             Route::get('/', [ProjectController::class, 'index'])->name('index');
             Route::get('/create', [ProjectController::class, 'create'])->name('create');
@@ -184,6 +186,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
                 Route::put('/{task}', [ProjectTaskController::class, 'update'])->name('update');
                 Route::delete('/{task}', [ProjectTaskController::class, 'destroy'])->name('destroy');
                 Route::post('/{task}/quick-update', [ProjectTaskController::class, 'quickUpdate'])->name('quick-update');
+                Route::post('/{task}/inline-update', [ProjectTaskController::class, 'inlineUpdate'])->name('inline-update');
 
                 // Comments
                 Route::post('/{task}/comments', [ProjectTaskCommentController::class, 'store'])->name('comments.store');
