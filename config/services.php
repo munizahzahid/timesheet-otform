@@ -38,7 +38,7 @@ return [
     'desknet' => [
         'api_url' => env('DESKNET_API_URL'),
         'access_key' => env('DESKNET_ACCESS_KEY'),
-        'project_codes_app_id' => env('DESKNET_PROJECT_CODES_APP_ID', 308),
+        'project_codes_app_id' => env('DESKNET_PROJECT_CODES_APP_ID', 12),
         'staff_list_app_id' => env('DESKNET_STAFF_LIST_APP_ID', 29),
     ],
 
