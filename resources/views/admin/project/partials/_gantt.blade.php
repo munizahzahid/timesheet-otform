@@ -151,6 +151,20 @@
                     <span class="text-gray-600">Effective</span>
                 </div>
             </div>
+            <div class="flex items-center gap-1 mr-2">
+                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition" data-zoom="day">Day</button>
+                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="week">Week</button>
+                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="month">Month</button>
+                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="year">Year</button>
+            </div>
+            <button type="button" id="gantt-fullscreen-btn" class="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition mr-2" title="Fullscreen">
+                <svg id="gantt-icon-expand" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                </svg>
+                <svg id="gantt-icon-contract" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4M4 10V6m0 0h4M4 6l5 5m11-5l-5 5m5-5V6m0 0h-4"/>
+                </svg>
+            </button>
             <a href="{{ route('admin.project.projects.phases.create', $project) }}"
                class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                 Add Phase
@@ -171,7 +185,8 @@
             <p class="text-xs text-gray-400 mt-1">Add phases and tasks to see the Gantt chart.</p>
         </div>
     @else
-        <div class="overflow-x-auto">
+        <div id="gantt-chart-container" class="relative">
+            <div class="overflow-x-auto">
             <div id="gantt-wrapper" class="relative inline-block" style="min-width: max-content;">
                 @if($showTodayLine)
                     <div id="gantt-today-line" class="absolute z-20 pointer-events-none border-l-2 border-red-500 border-dashed"
@@ -212,7 +227,7 @@
                         <th class="sticky left-108 bg-gray-50 z-10 border-r border-gray-200"></th>
                         <th class="sticky left-140 bg-gray-50 z-10 border-r border-gray-200"></th>
                         <th class="px-0 py-0 border-b border-gray-200">
-                            <div class="relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
+                            <div id="gantt-timeline-header" class="relative" data-timeline-start="{{ $timelineStart->format('Y-m-d') }}" data-timeline-end="{{ $timelineEnd->format('Y-m-d') }}" data-total-days="{{ $totalDays }}" data-timeline-left-offset="{{ $timelineLeftOffset }}" data-today-offset="{{ $todayOffset }}" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                 {{-- Year row --}}
                                 <div class="absolute" style="left: 0; right: 0; top: 0; height: 22px; border-bottom: 1px solid #d1d5db;">
                                     @foreach($yearBlocks as $block)
@@ -315,20 +330,20 @@
                                         $phaseActualDuration = null;
                                     }
                                 @endphp
-                                <div class="relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
+                                <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                     @for($i = 0; $i <= $totalDays; $i++)
-                                        <div class="absolute" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
+                                        <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
                                     @endfor
                                     {{-- Plan bar --}}
                                     @if($phasePlanStartOffset !== null && $phasePlanDuration !== null)
-                                        <div class="absolute"
+                                        <div class="gantt-bar absolute" data-start-offset="{{ $phasePlanStartOffset }}" data-duration="{{ $phasePlanDuration }}" data-bar-type="plan"
                                              style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: #a855f7; border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Plan: {{ $phase->start_date_plan->format('d M Y') }} — {{ $phase->end_date_plan->format('d M Y') }}">
                                         </div>
                                     @endif
                                     {{-- Revise bar --}}
                                     @if($phaseReviseStartOffset !== null && $phaseReviseDuration !== null)
-                                        <div class="absolute"
+                                        <div class="gantt-bar absolute" data-start-offset="{{ $phaseReviseStartOffset }}" data-duration="{{ $phaseReviseDuration }}" data-bar-type="revise"
                                              style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Revise: {{ $phase->start_date_revise->format('d M Y') }} — {{ $phase->end_date_revise->format('d M Y') }}">
                                         </div>
@@ -345,7 +360,7 @@
                                                 ? "background-color: #86efac; border: 1px solid #22c55e; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                                 : "background-color: #22c55e; border: 1px solid #16a34a; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
                                         @endphp
-                                        <div class="absolute"
+                                        <div class="gantt-bar absolute" data-start-offset="{{ $phaseActualStartOffset }}" data-duration="{{ $phaseActualDuration }}" data-bar-type="actual"
                                              style="left: {{ $phaseActualStartOffset * $dayWidth }}px; top: 48px; width: {{ max($phaseActualDuration * $dayWidth, 4) }}px; height: 16px; {{ $phaseActualStyle }}"
                                              title="{{ $phaseActualTitle }}">
                                         </div>
@@ -371,9 +386,9 @@
                             <td class="sticky left-108 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="sticky left-140 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="px-0 py-2 bg-gray-100">
-                                <div class="relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
+                                <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                     @for($i = 0; $i <= $totalDays; $i++)
-                                        <div class="absolute" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
+                                        <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
                                     @endfor
                                 </div>
                             </td>
@@ -386,6 +401,12 @@
             </table>
             </div>
         </div>
+        <button id="gantt-exit-fullscreen" class="hidden fixed top-4 right-4 z-[60] inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 shadow-lg text-gray-700 hover:bg-gray-50 transition" title="Exit Fullscreen">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4M4 10V6m0 0h4M4 6l5 5m11-5l-5 5m5-5V6m0 0h-4"/>
+            </svg>
+        </button>
+    </div>
     @endif
 </div>
 
@@ -583,6 +604,308 @@
 
     ganttDropdown.addEventListener('click', function(e) {
         e.stopPropagation();
+    });
+
+    // --- Gantt Zoom Logic ---
+    var GANTT_ZOOM = {
+        day:   { pixelsPerDay: 30,  rows: ['year', 'month', 'day'] },
+        week:  { pixelsPerDay: 20,  rows: ['year', 'month', 'week'] },
+        month: { pixelsPerDay: 8,   rows: ['year', 'month'] },
+        year:  { pixelsPerDay: 3,   rows: ['year'] }
+    };
+
+    function ganttDaysBetween(startStr, endStr) {
+        var start = new Date(startStr + 'T00:00:00');
+        var end = new Date(endStr + 'T00:00:00');
+        return Math.round((end - start) / (1000 * 60 * 60 * 24));
+    }
+
+    function ganttGetHeaderRows(startStr, endStr, zoomLevel) {
+        var start = new Date(startStr + 'T00:00:00');
+        var end = new Date(endStr + 'T00:00:00');
+        var totalDays = ganttDaysBetween(startStr, endStr);
+        var rows = [];
+
+        function addYearBlocks() {
+            var blocks = [];
+            var currentYear = start.getFullYear();
+            var endYear = end.getFullYear();
+            while (currentYear <= endYear) {
+                var yearStart = new Date(currentYear, 0, 1);
+                var yearEnd = new Date(currentYear, 11, 31);
+                var blockStart = new Date(Math.max(yearStart.getTime(), start.getTime()));
+                var blockEnd = new Date(Math.min(yearEnd.getTime(), end.getTime()));
+                blocks.push({
+                    startOffset: ganttDaysBetween(startStr, blockStart.toISOString().split('T')[0]),
+                    endOffset: ganttDaysBetween(startStr, blockEnd.toISOString().split('T')[0]),
+                    label: currentYear
+                });
+                currentYear++;
+            }
+            rows.push({ type: 'year', height: 22, blocks: blocks });
+        }
+
+        function addMonthBlocks() {
+            var blocks = [];
+            var current = new Date(start);
+            while (current <= end) {
+                var year = current.getFullYear();
+                var month = current.getMonth();
+                var monthStart = new Date(year, month, 1);
+                var monthEnd = new Date(year, month + 1, 0);
+                var blockStart = new Date(Math.max(monthStart.getTime(), start.getTime()));
+                var blockEnd = new Date(Math.min(monthEnd.getTime(), end.getTime()));
+                blocks.push({
+                    startOffset: ganttDaysBetween(startStr, blockStart.toISOString().split('T')[0]),
+                    endOffset: ganttDaysBetween(startStr, blockEnd.toISOString().split('T')[0]),
+                    label: current.toLocaleString('en-US', { month: 'short' })
+                });
+                current.setMonth(current.getMonth() + 1);
+            }
+            rows.push({ type: 'month', height: 22, blocks: blocks });
+        }
+
+        function addWeekBlocks() {
+            var blocks = [];
+            var weekIndex = 1;
+            for (var i = 0; i <= totalDays; i += 7) {
+                var chunkEnd = Math.min(i + 6, totalDays);
+                blocks.push({
+                    startOffset: i,
+                    endOffset: chunkEnd,
+                    label: 'W' + weekIndex
+                });
+                weekIndex++;
+            }
+            rows.push({ type: 'week', height: 26, blocks: blocks });
+        }
+
+        function addDayBlocks() {
+            var blocks = [];
+            for (var i = 0; i <= totalDays; i++) {
+                var d = new Date(start);
+                d.setDate(d.getDate() + i);
+                blocks.push({
+                    startOffset: i,
+                    endOffset: i,
+                    label: d.getDate()
+                });
+            }
+            rows.push({ type: 'day', height: 26, blocks: blocks });
+        }
+
+        GANTT_ZOOM[zoomLevel].rows.forEach(function(rowType) {
+            if (rowType === 'year') addYearBlocks();
+            if (rowType === 'month') addMonthBlocks();
+            if (rowType === 'week') addWeekBlocks();
+            if (rowType === 'day') addDayBlocks();
+        });
+
+        return rows;
+    }
+
+    function ganttRenderHeader(zoomLevel) {
+        var header = document.getElementById('gantt-timeline-header');
+        if (!header) return;
+        var startStr = header.dataset.timelineStart;
+        var endStr = header.dataset.timelineEnd;
+        var totalDays = parseInt(header.dataset.totalDays, 10);
+        var todayOffset = parseInt(header.dataset.todayOffset, 10);
+        var config = GANTT_ZOOM[zoomLevel];
+        var pixelsPerDay = config.pixelsPerDay;
+        var totalWidth = totalDays * pixelsPerDay;
+
+        header.style.width = totalWidth + 'px';
+        header.style.minWidth = totalWidth + 'px';
+
+        var rows = ganttGetHeaderRows(startStr, endStr, zoomLevel);
+        var html = '';
+        var top = 0;
+
+        rows.forEach(function(row, index) {
+            var isLast = index === rows.length - 1;
+            var borderBottom = isLast ? '' : 'border-bottom: 1px solid #d1d5db;';
+            html += '<div class="absolute" style="left: 0; right: 0; top: ' + top + 'px; height: ' + row.height + 'px; ' + borderBottom + '">';
+            row.blocks.forEach(function(block) {
+                var blockWidth = (block.endOffset - block.startOffset + 1) * pixelsPerDay;
+                var bgClass = row.type === 'year' ? 'bg-gray-100' : (row.type === 'month' ? 'bg-gray-50' : '');
+                var bgStyle = bgClass ? '' : 'background-color: transparent;';
+                var fontWeight = row.type === 'year' || row.type === 'month' ? 'font-semibold' : '';
+                var fontSize = row.type === 'day' ? 'text-[9px]' : 'text-[10px]';
+                var borderRight = row.type === 'day' ? 'border-right: 1px solid #e5e7eb;' : 'border-right: 1px solid #d1d5db;';
+                var extraAttrs = '';
+                var extraClasses = '';
+                if (row.type === 'day' && block.startOffset === todayOffset) {
+                    extraAttrs = ' id="gantt-today-marker"';
+                    extraClasses = ' text-red-600 font-bold';
+                }
+                html += '<div class="absolute h-full flex items-center justify-center ' + fontSize + ' ' + fontWeight + ' text-gray-700 ' + bgClass + extraClasses + '"' +
+                        extraAttrs +
+                        ' style="left: ' + (block.startOffset * pixelsPerDay) + 'px; width: ' + blockWidth + 'px; ' + borderRight + ' ' + bgStyle + '">' +
+                        block.label + '</div>';
+            });
+            html += '</div>';
+            top += row.height;
+        });
+
+        header.style.height = top + 'px';
+        header.innerHTML = html;
+    }
+
+    function ganttUpdateBars(zoomLevel) {
+        var config = GANTT_ZOOM[zoomLevel];
+        var pixelsPerDay = config.pixelsPerDay;
+        document.querySelectorAll('.gantt-bar').forEach(function(bar) {
+            var startOffset = parseFloat(bar.dataset.startOffset);
+            var duration = parseFloat(bar.dataset.duration);
+            if (isNaN(startOffset) || isNaN(duration)) return;
+            bar.style.left = (startOffset * pixelsPerDay) + 'px';
+            bar.style.width = Math.max(duration * pixelsPerDay, 4) + 'px';
+        });
+    }
+
+    function ganttUpdateGridLines(zoomLevel) {
+        var config = GANTT_ZOOM[zoomLevel];
+        var pixelsPerDay = config.pixelsPerDay;
+        var isDayView = zoomLevel === 'day';
+        document.querySelectorAll('.gantt-grid-line').forEach(function(line) {
+            if (!isDayView) {
+                line.style.display = 'none';
+                return;
+            }
+            line.style.display = '';
+            var offset = parseFloat(line.dataset.dayOffset);
+            if (isNaN(offset)) return;
+            line.style.left = (offset * pixelsPerDay) + 'px';
+        });
+    }
+
+    function ganttUpdateTimelineAreas(zoomLevel) {
+        var config = GANTT_ZOOM[zoomLevel];
+        var pixelsPerDay = config.pixelsPerDay;
+        var header = document.getElementById('gantt-timeline-header');
+        if (!header) return;
+        var totalDays = parseInt(header.dataset.totalDays, 10);
+        var totalWidth = totalDays * pixelsPerDay;
+        document.querySelectorAll('.gantt-timeline-area').forEach(function(area) {
+            area.style.width = totalWidth + 'px';
+            area.style.minWidth = totalWidth + 'px';
+        });
+    }
+
+    function ganttUpdateTodayLine(zoomLevel) {
+        var config = GANTT_ZOOM[zoomLevel];
+        var pixelsPerDay = config.pixelsPerDay;
+        var line = document.getElementById('gantt-today-line');
+        if (!line) return;
+        var header = document.getElementById('gantt-timeline-header');
+        if (!header) return;
+        var todayOffset = parseInt(header.dataset.todayOffset, 10);
+        var totalDays = parseInt(header.dataset.totalDays, 10);
+        var timelineLeftOffset = parseInt(header.dataset.timelineLeftOffset, 10);
+        if (todayOffset < 0 || todayOffset > totalDays) {
+            line.style.display = 'none';
+            return;
+        }
+        line.style.display = '';
+        line.style.left = (timelineLeftOffset + (todayOffset * pixelsPerDay)) + 'px';
+    }
+
+    function ganttApplyZoom(zoomLevel) {
+        ganttRenderHeader(zoomLevel);
+        ganttUpdateBars(zoomLevel);
+        ganttUpdateGridLines(zoomLevel);
+        ganttUpdateTimelineAreas(zoomLevel);
+        ganttUpdateTodayLine(zoomLevel);
+        positionTodayLine();
+
+        document.querySelectorAll('.gantt-zoom-btn').forEach(function(btn) {
+            if (btn.dataset.zoom === zoomLevel) {
+                btn.classList.add('bg-indigo-50', 'border-indigo-300', 'text-indigo-700');
+                btn.classList.remove('bg-white', 'border-gray-300', 'text-gray-700');
+            } else {
+                btn.classList.remove('bg-indigo-50', 'border-indigo-300', 'text-indigo-700');
+                btn.classList.add('bg-white', 'border-gray-300', 'text-gray-700');
+            }
+        });
+    }
+
+    function ganttInitZoom() {
+        document.querySelectorAll('.gantt-zoom-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                ganttApplyZoom(this.dataset.zoom);
+            });
+        });
+        ganttApplyZoom('day');
+    }
+
+    ganttInitZoom();
+
+    // --- Fullscreen Toggle ---
+    var ganttFullscreenBtn = document.getElementById('gantt-fullscreen-btn');
+    var ganttExitFullscreenBtn = document.getElementById('gantt-exit-fullscreen');
+    var ganttChartContainer = document.getElementById('gantt-chart-container');
+    var ganttIconExpand = document.getElementById('gantt-icon-expand');
+    var ganttIconContract = document.getElementById('gantt-icon-contract');
+    var ganttIsFullscreen = false;
+    var ganttOriginalScrollY = 0;
+
+    function ganttEnterFullscreen() {
+        if (!ganttChartContainer) return;
+        ganttIsFullscreen = true;
+        ganttOriginalScrollY = window.scrollY;
+        ganttChartContainer.style.position = 'fixed';
+        ganttChartContainer.style.top = '0';
+        ganttChartContainer.style.left = '0';
+        ganttChartContainer.style.width = '100vw';
+        ganttChartContainer.style.height = '100vh';
+        ganttChartContainer.style.zIndex = '50';
+        ganttChartContainer.style.backgroundColor = '#fff';
+        ganttChartContainer.style.overflow = 'auto';
+        ganttChartContainer.style.padding = '1rem';
+        if (ganttExitFullscreenBtn) ganttExitFullscreenBtn.classList.remove('hidden');
+        if (ganttIconExpand) ganttIconExpand.classList.add('hidden');
+        if (ganttIconContract) ganttIconContract.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function ganttExitFullscreen() {
+        if (!ganttChartContainer) return;
+        ganttIsFullscreen = false;
+        ganttChartContainer.style.position = '';
+        ganttChartContainer.style.top = '';
+        ganttChartContainer.style.left = '';
+        ganttChartContainer.style.width = '';
+        ganttChartContainer.style.height = '';
+        ganttChartContainer.style.zIndex = '';
+        ganttChartContainer.style.backgroundColor = '';
+        ganttChartContainer.style.overflow = '';
+        ganttChartContainer.style.padding = '';
+        if (ganttExitFullscreenBtn) ganttExitFullscreenBtn.classList.add('hidden');
+        if (ganttIconExpand) ganttIconExpand.classList.remove('hidden');
+        if (ganttIconContract) ganttIconContract.classList.add('hidden');
+        document.body.style.overflow = '';
+        window.scrollTo(0, ganttOriginalScrollY);
+    }
+
+    if (ganttFullscreenBtn) {
+        ganttFullscreenBtn.addEventListener('click', function() {
+            if (ganttIsFullscreen) {
+                ganttExitFullscreen();
+            } else {
+                ganttEnterFullscreen();
+            }
+        });
+    }
+
+    if (ganttExitFullscreenBtn) {
+        ganttExitFullscreenBtn.addEventListener('click', ganttExitFullscreen);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && ganttIsFullscreen) {
+            ganttExitFullscreen();
+        }
     });
 </script>
 </div>

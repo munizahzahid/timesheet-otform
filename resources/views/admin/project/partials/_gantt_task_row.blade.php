@@ -80,16 +80,16 @@
     </td>
     <td class="px-0 py-2 bg-white">
         {{-- 3-lane timeline --}}
-        <div class="relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
+        <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
             {{-- Daily grid lines --}}
             @for($i = 0; $i <= $totalDays; $i++)
-                <div class="absolute" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
+                <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
             @endfor
 
             {{-- Plan lane (row 1) --}}
             <div class="absolute" style="left: 0; right: 0; top: 4px; height: 18px; background-color: rgba(59, 130, 246, 0.08); border-radius: 4px;"></div>
             @if($planStartOffset !== null && $planDuration !== null)
-                <div class="absolute" 
+                <div class="gantt-bar absolute" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
                      style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: #60a5fa; border: 1px solid #3b82f6; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                      title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }}">
                 </div>
@@ -98,7 +98,7 @@
             {{-- Revise lane (row 2) --}}
             <div class="absolute" style="left: 0; right: 0; top: 26px; height: 18px; background-color: rgba(251, 146, 60, 0.08); border-radius: 4px;"></div>
             @if($reviseStartOffset !== null && $reviseDuration !== null)
-                <div class="absolute" 
+                <div class="gantt-bar absolute" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
                      style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                      title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }}">
                 </div>
@@ -117,7 +117,7 @@
                         ? "background-color: #86efac; border: 1px solid #22c55e; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                         : "background-color: #22c55e; border: 1px solid #16a34a; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
                 @endphp
-                <div class="absolute"
+                <div class="gantt-bar absolute" data-start-offset="{{ $actualStartOffset }}" data-duration="{{ $actualDuration }}" data-bar-type="actual"
                      style="left: {{ $actualStartOffset * $dayWidth }}px; top: 48px; width: {{ max($actualDuration * $dayWidth, 4) }}px; height: 18px; {{ $actualStyle }}"
                      title="{{ $actualTitle }}">
                 </div>
