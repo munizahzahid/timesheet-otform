@@ -579,14 +579,6 @@ session(['timesheets_last_seen' => now()]);
             },
 
             getAvailableHoursForDay(day) {
-                if (this.dayTypes[day] === 'absent') {
-                    let working = parseFloat(this.totalWorkingForDay(day)) || 0;
-                    if (working > 0) {
-                        return this.dayOfWeeks[day] === 'FRI' ? 7 : 8;
-                    } else {
-                        return 0;
-                    }
-                }
                 return parseFloat(this.availableHours[day]) || 0;
             },
 

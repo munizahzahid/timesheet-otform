@@ -168,7 +168,7 @@
                                         @php
                                             $dayTotal = 0;
                                             foreach ($projectRowsData as $project) {
-                                                $dayTotal += ($project['hours'][$d]['normal_nc'] ?? 0) + ($project['hours'][$d]['normal_cobq'] ?? 0);
+                                                $dayTotal += ($project['hours'][$d]['normal_nc'] ?? 0) + ($project['hours'][$d]['normal_cobq'] ?? 0) + ($project['hours'][$d]['ot_nc'] ?? 0) + ($project['hours'][$d]['ot_cobq'] ?? 0);
                                             }
                                             echo $dayTotal > 0 ? number_format($dayTotal, 1) : '';
                                         @endphp
@@ -179,7 +179,7 @@
                                         $grandTotal = 0;
                                         foreach ($projectRowsData as $project) {
                                             foreach ($project['hours'] as $dayHours) {
-                                                $grandTotal += ($dayHours['normal_nc'] ?? 0) + ($dayHours['normal_cobq'] ?? 0);
+                                                $grandTotal += ($dayHours['normal_nc'] ?? 0) + ($dayHours['normal_cobq'] ?? 0) + ($dayHours['ot_nc'] ?? 0) + ($dayHours['ot_cobq'] ?? 0);
                                             }
                                         }
                                         echo number_format($grandTotal, 1);
