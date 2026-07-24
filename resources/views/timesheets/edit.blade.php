@@ -222,6 +222,21 @@ session(['timesheets_last_seen' => now()]);
                         </tbody>
                     </table>
                 </div>
+
+                @if($otApprovedByHr !== null)
+                <div class="mt-2 flex justify-end">
+                    <div class="border border-gray-300 bg-white w-64 text-sm">
+                        <div class="flex justify-between px-3 py-1 border-b border-gray-300 font-semibold">
+                            <span>OT Approved by HR:</span>
+                            <span>{{ number_format($otApprovedByHr, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between px-3 py-1 font-semibold" x-data="{ variance: 0 }" x-init="$watch(() => grandTotalOvertime(), val => variance = {{ $otApprovedByHr }} - (parseFloat(val) || 0))">
+                            <span>Variance:</span>
+                            <span x-text="(variance => { let v = {{ $otApprovedByHr }} - (parseFloat(grandTotalOvertime()) || 0); return v.toFixed(2); })()"></span>
+                        </div>
+                    </div>
+                </div>
+                @endif
             </div>
 
             {{-- Notes and Legend Section --}}
