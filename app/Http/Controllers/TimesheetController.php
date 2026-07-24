@@ -345,20 +345,19 @@ class TimesheetController extends Controller
                 }
             }
 
-            // Update TimesheetDayMetadata for absent days
+            // Update TimesheetDayMetadata available_hours based on day type
             foreach ($dailyTotals as $day => $totalWorking) {
                 $entryDate = sprintf('%04d-%02d-%02d', $timesheet->year, $timesheet->month, $day);
                 $meta = \App\Models\TimesheetDayMetadata::where('timesheet_id', $timesheet->id)
                     ->where('entry_date', $entryDate)
                     ->first();
 
-                if ($meta && $meta->day_type === 'absent') {
-                    if ($totalWorking > 0) {
-                        $dateObj = \Carbon\Carbon::parse($entryDate);
-                        $isFriday = $dateObj->isFriday();
-                        $meta->available_hours = $isFriday ? 7.0 : 8.0;
-                    } else {
+                if ($meta) {
+                    $dateObj = \Carbon\Carbon::parse($entryDate);
+                    if ($meta->day_type === 'public_holiday' || $meta->day_type === 'off_day') {
                         $meta->available_hours = 0.0;
+                    } else {
+                        $meta->available_hours = $dateObj->isFriday() ? 7.0 : 8.0;
                     }
                     $meta->save();
                 }

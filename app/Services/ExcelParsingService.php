@@ -106,23 +106,24 @@ class ExcelParsingService
             if ($reason === 'ABS') {
                 // Absent: leave blank (no hours), staff can fill manually
                 $dayType = 'absent';
-                $availableHours = 0;
             } elseif ($reason === 'PH') {
                 $dayType = 'public_holiday';
-                $availableHours = 0;
             } elseif ($dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {
                 $dayType = 'off_day';
-                $availableHours = 0;
             } elseif ($timeIn === null && $timeOut === null && !in_array($dow, [Carbon::SATURDAY, Carbon::SUNDAY])) {
                 // No clock data on a weekday → MC/Leave
                 $dayType = 'mc';
-                $availableHours = 0;
             } elseif ($dow === Carbon::FRIDAY) {
                 $dayType = 'working';
-                $availableHours = $defaultHoursFri;
             } else {
                 $dayType = 'working';
-                $availableHours = $defaultHoursMon;
+            }
+
+            // Hours available: 8 (Mon-Thu) or 7 (Fri), except public holidays / off days
+            if ($dayType === 'public_holiday' || $dayType === 'off_day') {
+                $availableHours = 0;
+            } else {
+                $availableHours = $dow === Carbon::FRIDAY ? $defaultHoursFri : $defaultHoursMon;
             }
 
             // Calculate late hours

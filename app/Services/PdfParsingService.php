@@ -118,23 +118,24 @@ class PdfParsingService
             if ($reason === 'ABS') {
                 // Absent: leave blank (no hours), staff can fill manually
                 $dayType = 'absent';
-                $availableHours = 0;
             } elseif ($reason === 'PH') {
                 $dayType = 'public_holiday';
-                $availableHours = 0;
             } elseif ($reason === 'RES' || $dow === Carbon::SATURDAY || $dow === Carbon::SUNDAY) {
                 $dayType = 'off_day';
-                $availableHours = 0;
             } elseif (in_array($reason, $leaveReasons) || (!$hasValidClockData && !in_array($dow, [Carbon::SATURDAY, Carbon::SUNDAY]))) {
                 // Leave/MC reason code OR no clock data on weekday
                 $dayType = 'mc';
-                $availableHours = $dow === Carbon::FRIDAY ? $defaultHoursFri : $defaultHoursMon;
             } elseif ($dow === Carbon::FRIDAY) {
                 $dayType = 'working';
-                $availableHours = $defaultHoursFri;
             } else {
                 $dayType = 'working';
-                $availableHours = $defaultHoursMon;
+            }
+
+            // Hours available: 8 (Mon-Thu) or 7 (Fri), except public holidays / off days
+            if ($dayType === 'public_holiday' || $dayType === 'off_day') {
+                $availableHours = 0;
+            } else {
+                $availableHours = $dow === Carbon::FRIDAY ? $defaultHoursFri : $defaultHoursMon;
             }
 
             // Calculate late hours
