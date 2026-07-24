@@ -247,23 +247,34 @@
                                 @for($d = 1; $d <= $daysInMonth; $d++)
                                     <td class="border border-gray-300 px-1 py-1 text-center text-xs">
                                         @php
-                                            $dayTotal = 0;
-                                            foreach ($projectRowsData as $project) {
-                                                $dayTotal += ($project['hours'][$d]['ot_nc'] ?? 0) + ($project['hours'][$d]['ot_cobq'] ?? 0);
+                                            $dayWorking = 0;
+                                            foreach ($adminHours as $type => $hours) {
+                                                $dayWorking += is_numeric(($hours[$d] ?? 0)) ? (float)($hours[$d] ?? 0) : 0;
                                             }
-                                            echo $dayTotal > 0 ? number_format($dayTotal, 1) : '';
+                                            foreach ($projectRowsData as $project) {
+                                                $dayWorking += ($project['hours'][$d]['normal_nc'] ?? 0) + ($project['hours'][$d]['normal_cobq'] ?? 0)
+                                                             + ($project['hours'][$d]['ot_nc'] ?? 0) + ($project['hours'][$d]['ot_cobq'] ?? 0);
+                                            }
+                                            $dayOvertime = max(0, $dayWorking - $days[$d]['available_hours']);
+                                            echo $dayOvertime > 0 ? number_format($dayOvertime, 1) : '';
                                         @endphp
                                     </td>
                                 @endfor
                                 <td class="border border-gray-300 px-1 py-1 text-center bg-sky-200">
                                     @php
-                                        $grandTotal = 0;
-                                        foreach ($projectRowsData as $project) {
-                                            foreach ($project['hours'] as $dayHours) {
-                                                $grandTotal += ($dayHours['ot_nc'] ?? 0) + ($dayHours['ot_cobq'] ?? 0);
+                                        $grandOvertime = 0;
+                                        for ($d = 1; $d <= $daysInMonth; $d++) {
+                                            $dayWorking = 0;
+                                            foreach ($adminHours as $type => $hours) {
+                                                $dayWorking += is_numeric(($hours[$d] ?? 0)) ? (float)($hours[$d] ?? 0) : 0;
                                             }
+                                            foreach ($projectRowsData as $project) {
+                                                $dayWorking += ($project['hours'][$d]['normal_nc'] ?? 0) + ($project['hours'][$d]['normal_cobq'] ?? 0)
+                                                             + ($project['hours'][$d]['ot_nc'] ?? 0) + ($project['hours'][$d]['ot_cobq'] ?? 0);
+                                            }
+                                            $grandOvertime += max(0, $dayWorking - $days[$d]['available_hours']);
                                         }
-                                        echo number_format($grandTotal, 1);
+                                        echo number_format($grandOvertime, 1);
                                     @endphp
                                 </td>
                             </tr>
@@ -271,6 +282,36 @@
                     </table>
                 </div>
             </div>
+
+            @if($otApprovedByHr !== null)
+            @php
+                $apOvertime = 0;
+                for ($d = 1; $d <= $daysInMonth; $d++) {
+                    $dayWorking = 0;
+                    foreach ($adminHours as $type => $hours) {
+                        $dayWorking += is_numeric(($hours[$d] ?? 0)) ? (float)($hours[$d] ?? 0) : 0;
+                    }
+                    foreach ($projectRowsData as $project) {
+                        $dayWorking += ($project['hours'][$d]['normal_nc'] ?? 0) + ($project['hours'][$d]['normal_cobq'] ?? 0)
+                                     + ($project['hours'][$d]['ot_nc'] ?? 0) + ($project['hours'][$d]['ot_cobq'] ?? 0);
+                    }
+                    $apOvertime += max(0, $dayWorking - $days[$d]['available_hours']);
+                }
+                $apVariance = $otApprovedByHr - $apOvertime;
+            @endphp
+            <div class="flex justify-end mb-4">
+                <div class="border border-gray-300 bg-white w-64 text-sm">
+                    <div class="flex justify-between px-3 py-1 border-b border-gray-300 font-semibold">
+                        <span>OT Approved by HR:</span>
+                        <span>{{ number_format($otApprovedByHr, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between px-3 py-1 font-semibold {{ $apVariance < 0 ? 'text-red-600' : '' }}">
+                        <span>Variance:</span>
+                        <span>{{ number_format($apVariance, 2) }}</span>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             {{-- Export Options --}}
             <div class="bg-white shadow-sm sm:rounded-lg mb-6">

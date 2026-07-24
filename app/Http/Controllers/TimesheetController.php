@@ -189,9 +189,17 @@ class TimesheetController extends Controller
             ->where('year', $timesheet->year)
             ->exists();
 
+        // Get approved OT form total hours for this user/month
+        $approvedOtForm = \App\Models\OtForm::where('user_id', $timesheet->user_id)
+            ->where('month', $timesheet->month)
+            ->where('year', $timesheet->year)
+            ->whereIn('status', ['pending_gm', 'approved'])
+            ->first();
+        $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
+
         return response()->view('timesheets.edit', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit', 'hasAttendance'
+            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit', 'hasAttendance', 'otApprovedByHr'
         ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');
@@ -454,9 +462,17 @@ class TimesheetController extends Controller
 
         $adminTypes = TimesheetCalculationService::ADMIN_TYPES;
 
+        // Get approved OT form total hours for this user/month
+        $approvedOtForm = \App\Models\OtForm::where('user_id', $timesheet->user_id)
+            ->where('month', $timesheet->month)
+            ->where('year', $timesheet->year)
+            ->whereIn('status', ['pending_gm', 'approved'])
+            ->first();
+        $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
+
         return view('timesheets.print', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'adminTypes'
+            'projectRowsData', 'adminTypes', 'otApprovedByHr'
         ));
     }
 
@@ -482,7 +498,15 @@ class TimesheetController extends Controller
         $name = preg_replace('/\s+/', '_', $timesheet->user->name ?? 'Staff');
         $filename = "Timesheet_{$name}_{$month}_{$timesheet->year}.pdf";
 
-        $pdf = Pdf::loadView('timesheets.pdf.export', compact('timesheet'))
+        // Get approved OT form total hours for this user/month
+        $approvedOtForm = \App\Models\OtForm::where('user_id', $timesheet->user_id)
+            ->where('month', $timesheet->month)
+            ->where('year', $timesheet->year)
+            ->whereIn('status', ['pending_gm', 'approved'])
+            ->first();
+        $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
+
+        $pdf = Pdf::loadView('timesheets.pdf.export', compact('timesheet', 'otApprovedByHr'))
             ->setPaper('a4', 'landscape')
             ->setOption('margin-top', 3)
             ->setOption('margin-bottom', 3)

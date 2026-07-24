@@ -103,7 +103,7 @@
                                 @endforeach
                             </select>
                         @else
-                            <span class="text-xs">{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}</span>
+                            @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_start_time'])
                         @endif
                     </td>
 
@@ -119,7 +119,7 @@
                                 @endforeach
                             </select>
                         @else
-                            <span class="text-xs">{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}</span>
+                            @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_end_time'])
                         @endif
                     </td>
 
@@ -171,7 +171,7 @@
                                         class="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] leading-none flex items-center justify-center hover:bg-red-600 z-10 shadow-sm">×</button>
                             </div>
                         @else
-                            <span class="text-xs">{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}</span>
+                            @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_start_time'])
                         @endif
                     </td>
 
@@ -187,7 +187,7 @@
                                         class="absolute top-1/2 -translate-y-1/2 right-0 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] leading-none flex items-center justify-center hover:bg-red-600 z-10 shadow-sm">×</button>
                             </div>
                         @else
-                            <span class="text-xs">{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}</span>
+                            @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_end_time'])
                         @endif
                     </td>
 
@@ -195,7 +195,7 @@
                     <td class="border border-gray-200 px-1 py-1.5 text-center">
                         <input type="text" id="actual-total-{{ $entry->id }}"
                                name="entries[{{ $entry->id }}][actual_total_hours]"
-                               value="{{ number_format(abs($entry->actual_total_hours ?? 0), 2) }}"
+                               value="{{ number_format(floor(abs($entry->actual_total_hours ?? 0) * 4) / 4, 2) }}"
                                class="actual-total w-full border-0 text-xs py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
 

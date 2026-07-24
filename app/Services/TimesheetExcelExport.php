@@ -38,6 +38,14 @@ class TimesheetExcelExport
             'approvalLogs.user',
         ]);
 
+        // Get approved OT form total hours for this user/month
+        $approvedOtForm = \App\Models\OtForm::where('user_id', $timesheet->user_id)
+            ->where('month', $timesheet->month)
+            ->where('year', $timesheet->year)
+            ->whereIn('status', ['pending_gm', 'approved'])
+            ->first();
+        $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
+
         $ss    = new Spreadsheet();
         $sheet = $ss->getActiveSheet();
         $sheet->setTitle('TIMESHEET');
@@ -471,8 +479,8 @@ class TimesheetExcelExport
         // Project rows — each project = 4 rows (NORMAL NC, NORMAL COBQ, OT NC, OT COBQ)
         // ══════════════════════════════════════════════════════════════════════
         $firstProjectDataRow = $r; // Track first project data row for coloring
-        // Pad to minimum 5 project slots
-        while (count($projectRowsData) < 5) {
+        // Pad to minimum 4 project slots
+        while (count($projectRowsData) < 4) {
             $emptyHours = [];
             for ($d = 1; $d <= $daysInMonth; $d++) {
                 $emptyHours[$d] = ['normal_nc' => 0, 'normal_cobq' => 0, 'ot_nc' => 0, 'ot_cobq' => 0];
@@ -662,7 +670,7 @@ class TimesheetExcelExport
             }
             $dayWorkingTotal = $adminTotal + $externalTotal;
             $avail = $days[$d]['available_hours'];
-            $dayOvertime = $dayWorkingTotal - $avail;
+            $dayOvertime = max(0, $dayWorkingTotal - $avail);
             $grandTotalOvertime += $dayOvertime;
             $sheet->setCellValue("{$col}{$r}", $dayOvertime);
             $sheet->getStyle("{$col}{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
@@ -673,6 +681,36 @@ class TimesheetExcelExport
         $sheet->getRowDimension($r)->setRowHeight(20);
         $tableRows[] = $r; // Add overtime row to table rows
         $r++;
+
+        // OT Approved by HR and Variance rows
+        if ($otApprovedByHr !== null) {
+            $variance = $otApprovedByHr - $grandTotalOvertime;
+            // OT Approved by HR row
+            $sheet->mergeCells("C{$r}:K{$r}");
+            $sheet->setCellValue("C{$r}", 'OT Approved by HR:');
+            $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle("C{$r}")->getFont()->setBold(true);
+            $sheet->setCellValue("AL{$r}", $otApprovedByHr);
+            $sheet->getStyle("AL{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle("AL{$r}")->getFont()->setBold(true);
+            $this->borders($sheet, "C{$r}:AL{$r}");
+            $sheet->getRowDimension($r)->setRowHeight(18);
+            $r++;
+            // Variance row
+            $sheet->mergeCells("C{$r}:K{$r}");
+            $sheet->setCellValue("C{$r}", 'Variance:');
+            $sheet->getStyle("C{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle("C{$r}")->getFont()->setBold(true);
+            $sheet->setCellValue("AL{$r}", $variance);
+            $sheet->getStyle("AL{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getStyle("AL{$r}")->getFont()->setBold(true);
+            if ($variance < 0) {
+                $sheet->getStyle("AL{$r}")->getFont()->getColor()->setRGB('DC2626');
+            }
+            $this->borders($sheet, "C{$r}:AL{$r}");
+            $sheet->getRowDimension($r)->setRowHeight(18);
+            $r++;
+        }
 
         // ══════════════════════════════════════════════════════════════════════
         // Apply column coloring for weekends (yellow) and public holidays (red)

@@ -41,14 +41,14 @@
                     @if($editMode)
                         <input type="time" name="entries[{{ $entry->id }}][planned_start_time]" value="{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}" class="w-full border rounded px-1 py-0.5 text-xs entry-planned-start">
                     @else
-                        {{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}
+                        @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_start_time'])
                     @endif
                 </td>
                 <td class="border px-2 py-1 text-center">
                     @if($editMode)
                         <input type="time" name="entries[{{ $entry->id }}][planned_end_time]" value="{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}" class="w-full border rounded px-1 py-0.5 text-xs entry-planned-end">
                     @else
-                        {{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}
+                        @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_end_time'])
                     @endif
                 </td>
                 <td class="border px-2 py-1 text-center font-medium entry-planned-total">
@@ -58,18 +58,19 @@
                     @if($editMode)
                         <input type="time" name="entries[{{ $entry->id }}][actual_start_time]" value="{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}" class="w-full border rounded px-1 py-0.5 text-xs entry-actual-start">
                     @else
-                        {{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}
+                        @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_start_time'])
                     @endif
                 </td>
                 <td class="border px-2 py-1 text-center">
                     @if($editMode)
                         <input type="time" name="entries[{{ $entry->id }}][actual_end_time]" value="{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}" class="w-full border rounded px-1 py-0.5 text-xs entry-actual-end">
                     @else
-                        {{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}
+                        @include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_end_time'])
                     @endif
                 </td>
                 <td class="border px-2 py-1 text-center font-medium entry-actual-total">
-                    {{ $entry->actual_total_hours > 0 ? number_format($entry->actual_total_hours, 2) : '' }}
+                    @php $roundedActual = $entry->actual_total_hours > 0 ? floor($entry->actual_total_hours * 4) / 4 : 0; @endphp
+                    {{ $roundedActual > 0 ? number_format($roundedActual, 2) : '' }}
                 </td>
             </tr>
             @endif
@@ -80,7 +81,7 @@
             <td colspan="4" class="border px-2 py-1 text-right font-semibold">TOTAL:</td>
             <td class="border px-2 py-1 text-center font-bold" id="plannedTotal">{{ number_format($otForm->entries->sum('planned_total_hours'), 2) }}</td>
             <td colspan="2" class="border"></td>
-            <td class="border px-2 py-1 text-center font-bold" id="actualTotal">{{ number_format($otForm->entries->sum('actual_total_hours'), 2) }}</td>
+            <td class="border px-2 py-1 text-center font-bold" id="actualTotal">{{ number_format($otForm->entries->sum(fn($e) => $e->actual_total_hours > 0 ? floor($e->actual_total_hours * 4) / 4 : 0), 2) }}</td>
         </tr>
     </tfoot>
 </table>

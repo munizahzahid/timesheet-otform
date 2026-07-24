@@ -66,15 +66,7 @@
                                             class="px-3 py-1.5 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #2563eb !important; color: white !important;">
                                         Edit
                                     </button>
-                                    <button type="button" id="btnOriginalView" onclick="toggleOriginalView()"
-                                            class="px-3 py-1.5 rounded-md text-sm hover:shadow-md transition-all {{ $hasHrCorrections ? '' : 'hidden' }}" style="background-color: #6b7280 !important; color: white !important;">
-                                        View Original
-                                    </button>
-                                    <button type="button" id="btnCurrentView" onclick="toggleOriginalView()"
-                                            class="px-3 py-1.5 rounded-md text-sm hover:shadow-md transition-all hidden" style="background-color: #6b7280 !important; color: white !important;">
-                                        View Current
-                                    </button>
-                                    <button type="button" id="btnSaveEdits" onclick="saveHrEdits()"
+                                    <button type="button" id="btnSaveEdits" onclick="showHrRemarkModal()"
                                             class="px-3 py-1.5 rounded-md text-sm hover:shadow-md transition-all hidden" style="background-color: #16a34a !important; color: white !important;">
                                         Save Changes
                                     </button>
@@ -86,12 +78,17 @@
                             @endif
                         </div>
 
+                        @if($hasHrCorrections)
+                            <div class="mb-3 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span><span class="line-through">Crossed-out</span> times indicate the original values changed by HR.</span>
+                            </div>
+                        @endif
+
                         <div id="currentFormView" class="overflow-x-auto">
                             @include('approvals.ot-forms._entries_table', ['editMode' => false])
-                        </div>
-
-                        <div id="originalFormView" class="overflow-x-auto hidden">
-                            @include('approvals.ot-forms._original_entries_table')
                         </div>
 
                         <div id="editFormView" class="overflow-x-auto hidden">
@@ -236,37 +233,40 @@
         </div>
     </div>
 
+    {{-- HR Remark Modal --}}
+    <div id="hrRemarkModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">HR Correction Remark</h3>
+                <p class="text-sm text-gray-600 mb-4">Please provide a remark explaining the changes made. This will be visible to the staff and CEO.</p>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Remark (required):</label>
+                    <textarea id="hrRemarkText" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Potong rehat sejam"></textarea>
+                    <p id="hrRemarkError" class="text-red-600 text-xs mt-1 hidden">Remark is required</p>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeHrRemarkModal()" class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
+                    <button onclick="confirmSaveHrEdits()" class="px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
     <script>
         let editMode = false;
-        let originalView = false;
-        const hasHrCorrections = {{ $hasHrCorrections ? 'true' : 'false' }};
 
         function toggleEditMode() {
             editMode = !editMode;
             document.getElementById('btnEditMode').classList.toggle('hidden', editMode);
             document.getElementById('btnSaveEdits').classList.toggle('hidden', !editMode);
             document.getElementById('btnCancelEdit').classList.toggle('hidden', !editMode);
-            document.getElementById('btnOriginalView').classList.toggle('hidden', editMode || originalView || !hasHrCorrections);
-            document.getElementById('btnCurrentView').classList.toggle('hidden', true);
 
             document.getElementById('currentFormView').classList.toggle('hidden', editMode);
             document.getElementById('editFormView').classList.toggle('hidden', !editMode);
-            document.getElementById('originalFormView').classList.add('hidden');
-            originalView = false;
 
             const hrReviewActions = document.getElementById('hrReviewActions');
             if (hrReviewActions) hrReviewActions.classList.toggle('hidden', editMode);
-        }
-
-        function toggleOriginalView() {
-            originalView = !originalView;
-            document.getElementById('btnOriginalView').classList.toggle('hidden', originalView);
-            document.getElementById('btnCurrentView').classList.toggle('hidden', !originalView);
-            document.getElementById('btnEditMode').classList.toggle('hidden', originalView);
-
-            document.getElementById('currentFormView').classList.toggle('hidden', originalView);
-            document.getElementById('originalFormView').classList.toggle('hidden', !originalView);
         }
 
         function collectEntriesData() {
@@ -294,15 +294,37 @@
             return entries;
         }
 
-        async function saveHrEdits() {
+        function showHrRemarkModal() {
+            document.getElementById('hrRemarkText').value = '';
+            document.getElementById('hrRemarkError').classList.add('hidden');
+            document.getElementById('hrRemarkModal').classList.remove('hidden');
+            document.getElementById('hrRemarkModal').classList.add('flex');
+        }
+
+        function closeHrRemarkModal() {
+            document.getElementById('hrRemarkModal').classList.add('hidden');
+            document.getElementById('hrRemarkModal').classList.remove('flex');
+        }
+
+        async function confirmSaveHrEdits() {
+            const remark = document.getElementById('hrRemarkText').value.trim();
+            if (!remark) {
+                document.getElementById('hrRemarkError').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('hrRemarkError').classList.add('hidden');
+            closeHrRemarkModal();
+            await saveHrEdits(remark);
+        }
+
+        async function saveHrEdits(remark) {
             const entries = collectEntriesData();
-            if (!confirm('Save HR corrections?')) return;
 
             try {
                 const res = await fetch('{{ route("approvals.ot-forms.hr-edit", $otForm) }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                    body: JSON.stringify({ entries }),
+                    body: JSON.stringify({ entries, hr_remarks: remark }),
                 });
                 const data = await res.json();
                 if (data.success) {

@@ -327,13 +327,14 @@ class OtApprovalController extends Controller
         $request->validate([
             'entries' => 'required|array',
             'entries.*.id' => 'required|integer|exists:ot_form_entries,id',
+            'hr_remarks' => 'nullable|string',
         ]);
 
         $entries = $request->input('entries', []);
         $summaryLines = [];
         $now = now();
 
-        DB::transaction(function () use ($otForm, $entries, $user, $now, &$summaryLines) {
+        DB::transaction(function () use ($otForm, $entries, $user, $now, $request, &$summaryLines) {
             foreach ($entries as $entryData) {
                 $entryId = $entryData['id'] ?? null;
                 if (!$entryId) continue;
@@ -482,12 +483,15 @@ class OtApprovalController extends Controller
                 $entry->update($updateData);
             }
 
-            // Recalculate total OT hours from all entries
-            $totalOtHours = $otForm->entries()->sum('actual_total_hours');
+            // Recalculate total OT hours from all entries (floor to 0.25 increments)
+            $totalOtHours = floor($otForm->entries()->sum('actual_total_hours') * 4) / 4;
+
+            // Use provided HR remark if available, otherwise auto-generate summary
+            $providedRemark = $request->input('hr_remarks');
 
             // Update OT form HR metadata
             $otForm->update([
-                'hr_remarks' => !empty($summaryLines) ? implode("\n", $summaryLines) : null,
+                'hr_remarks' => $providedRemark ?? (!empty($summaryLines) ? implode("\n", $summaryLines) : null),
                 'hr_edited_at' => $now,
                 'hr_edited_by' => $user->id,
                 'total_ot_hours' => $totalOtHours,
@@ -507,7 +511,8 @@ class OtApprovalController extends Controller
         $s = \Carbon\Carbon::parse($start);
         $e = \Carbon\Carbon::parse($end);
         if ($e->lte($s)) $e->addDay();
-        return max(0, round($e->diffInMinutes($s, true) / 60, 2));
+        $hours = max(0, round($e->diffInMinutes($s, true) / 60, 2));
+        return floor($hours * 4) / 4;
     }
 
     /**

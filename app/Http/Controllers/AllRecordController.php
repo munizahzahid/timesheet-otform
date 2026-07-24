@@ -357,8 +357,16 @@ class AllRecordController extends Controller
         $approvalLogs = $timesheet->approvalLogs ? $timesheet->approvalLogs->sortBy('id') : collect();
         $approvalStamps = $this->buildTimesheetApprovalStamps($timesheet, $approvalLogs);
 
+        // Get approved OT form total hours for this user/month
+        $approvedOtForm = \App\Models\OtForm::where('user_id', $timesheet->user_id)
+            ->where('month', $timesheet->month)
+            ->where('year', $timesheet->year)
+            ->whereIn('status', ['pending_gm', 'approved'])
+            ->first();
+        $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
+
         return response()->view('records.timesheet-show', compact(
-            'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows'
+            'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows', 'otApprovedByHr'
         ));
     }
 

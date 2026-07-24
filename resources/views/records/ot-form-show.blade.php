@@ -41,9 +41,20 @@
         </div>
 
         <div class="space-y-6">
+            @php
+                $hasHrCorrections = $otForm->entries->contains(fn ($e) => !empty($e->hr_corrections));
+            @endphp
             <div class="bg-white shadow-sm sm:rounded-lg">
                 <div class="p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('OT Entries') }}</h3>
+                    @if($hasHrCorrections)
+                        <div class="mb-3 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span><span class="line-through">{{ __('Crossed-out') }}</span> {{ __('times indicate the original values changed by HR.') }}</span>
+                        </div>
+                    @endif
                     <div class="overflow-x-auto">
                         <table class="w-full border-collapse border text-xs">
                             <thead>
@@ -74,12 +85,12 @@
                                                 {{ $entry->project_name ? $entry->project_name : '' }}
                                             @endif
                                         </td>
-                                        <td class="border px-2 py-1 text-center">{{ $entry->planned_start_time ? substr($entry->planned_start_time, 0, 5) : '' }}</td>
-                                        <td class="border px-2 py-1 text-center">{{ $entry->planned_end_time ? substr($entry->planned_end_time, 0, 5) : '' }}</td>
+                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_start_time'])</td>
+                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_end_time'])</td>
                                         <td class="border px-2 py-1 text-center font-medium">{{ $entry->planned_total_hours > 0 ? number_format($entry->planned_total_hours, 2) : '' }}</td>
-                                        <td class="border px-2 py-1 text-center">{{ $entry->actual_start_time ? substr($entry->actual_start_time, 0, 5) : '' }}</td>
-                                        <td class="border px-2 py-1 text-center">{{ $entry->actual_end_time ? substr($entry->actual_end_time, 0, 5) : '' }}</td>
-                                        <td class="border px-2 py-1 text-center font-medium">{{ $entry->actual_total_hours > 0 ? number_format($entry->actual_total_hours, 2) : '' }}</td>
+                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_start_time'])</td>
+                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_end_time'])</td>
+                                        <td class="border px-2 py-1 text-center font-medium">{{ ($entry->actual_total_hours > 0 ? number_format(floor($entry->actual_total_hours * 4) / 4, 2) : '') }}</td>
                                     </tr>
                                     @endif
                                 @endforeach
@@ -89,7 +100,7 @@
                                     <td colspan="4" class="border px-2 py-1 text-right font-semibold">{{ __('TOTAL') }}:</td>
                                     <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->entries->sum('planned_total_hours'), 2) }}</td>
                                     <td colspan="2" class="border"></td>
-                                    <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->entries->sum('actual_total_hours'), 2) }}</td>
+                                    <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->entries->sum(fn($e) => $e->actual_total_hours > 0 ? floor($e->actual_total_hours * 4) / 4 : 0), 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>

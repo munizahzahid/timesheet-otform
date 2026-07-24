@@ -355,6 +355,24 @@
             </tbody>
         </table>
 
+        @if($otApprovedByHr !== null)
+        @php
+            $overtimeGrand = $grandOt ?? 0;
+            $variance = $otApprovedByHr - $overtimeGrand;
+        @endphp
+        <div style="float: right; margin-top: 3mm; border: 1px solid #333; width: 55mm;">
+            <div style="display: flex; justify-content: space-between; padding: 1mm 2mm; border-bottom: 1px solid #333;">
+                <span style="font-weight: bold; font-size: 7pt;">OT Approved by HR:</span>
+                <span style="font-size: 7pt;">{{ number_format($otApprovedByHr, 2) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1mm 2mm;">
+                <span style="font-weight: bold; font-size: 7pt;">Variance:</span>
+                <span style="font-size: 7pt; {{ $variance < 0 ? 'color: #dc2626;' : '' }}">{{ number_format($variance, 2) }}</span>
+            </div>
+        </div>
+        <div style="clear: both;"></div>
+        @endif
+
         {{-- SIGNATURES --}}
         <div class="signatures">
             <div class="sig-block">

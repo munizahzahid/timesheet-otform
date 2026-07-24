@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\ApprovalLog;
 use App\Models\OtForm;
+use App\Models\OtFormEntry;
 use App\Models\User;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -304,8 +306,9 @@ class OtFormExcelExport
                 $pStart = $e ? $e->planned_start_time : null;
                 $pEnd   = $e ? $e->planned_end_time : null;
                 $pHours = $e ? ((float)$e->planned_total_hours ?: $this->calcHours($pStart, $pEnd)) : 0;
-                $sheet->setCellValue("I{$r}", $pStart ? substr($pStart, 0, 5) : '');
-                $sheet->setCellValue("J{$r}", $pEnd ? substr($pEnd, 0, 5) : '');
+                $sheet->setCellValue("I{$r}", $this->correctedTimeCell($e, 'planned_start_time') ?? ($pStart ? substr($pStart, 0, 5) : ''));
+                $sheet->setCellValue("J{$r}", $this->correctedTimeCell($e, 'planned_end_time') ?? ($pEnd ? substr($pEnd, 0, 5) : ''));
+                $sheet->getStyle("I{$r}:J{$r}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER);
                 $sheet->setCellValue("K{$r}", $pHours > 0 ? number_format($pHours, 2) : '');
 
                 // Actual times & hours
@@ -313,8 +316,9 @@ class OtFormExcelExport
                 $aEnd   = $e ? $e->actual_end_time : null;
                 $aHours = $e ? ((float)$e->actual_total_hours ?: $this->calcHours($aStart, $aEnd)) : 0;
                 $aHours = floor($aHours * 4) / 4;
-                $sheet->setCellValue("L{$r}", $aStart ? substr($aStart, 0, 5) : '');
-                $sheet->setCellValue("M{$r}", $aEnd ? substr($aEnd, 0, 5) : '');
+                $sheet->setCellValue("L{$r}", $this->correctedTimeCell($e, 'actual_start_time') ?? ($aStart ? substr($aStart, 0, 5) : ''));
+                $sheet->setCellValue("M{$r}", $this->correctedTimeCell($e, 'actual_end_time') ?? ($aEnd ? substr($aEnd, 0, 5) : ''));
+                $sheet->getStyle("L{$r}:M{$r}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER);
                 $sheet->setCellValue("N{$r}", $aHours > 0 ? number_format($aHours, 2) : '');
 
                 $totalPlan += $pHours;
@@ -860,8 +864,9 @@ class OtFormExcelExport
                 $sheet->mergeCells("D{$r}:G{$r}");
                 $sheet->setCellValue("D{$r}", $particulars);
                 $sheet->getStyle("D{$r}")->getAlignment()->setWrapText(true);
-                $sheet->setCellValue("H{$r}", $e && $e->planned_start_time ? substr($e->planned_start_time, 0, 5) : '');
-                $sheet->setCellValue("I{$r}", $e && $e->planned_end_time   ? substr($e->planned_end_time, 0, 5)   : '');
+                $sheet->setCellValue("H{$r}", $this->correctedTimeCell($e, 'planned_start_time') ?? ($e && $e->planned_start_time ? substr($e->planned_start_time, 0, 5) : ''));
+                $sheet->setCellValue("I{$r}", $this->correctedTimeCell($e, 'planned_end_time') ?? ($e && $e->planned_end_time ? substr($e->planned_end_time, 0, 5) : ''));
+                $sheet->getStyle("H{$r}:I{$r}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER);
                 // Compute planned total hours from times if stored value is invalid
                 $plannedHours = $e ? (float)$e->planned_total_hours : 0;
                 if ($plannedHours <= 0 && $e && $e->planned_start_time && $e->planned_end_time) {
@@ -882,8 +887,9 @@ class OtFormExcelExport
                     $sheet->setCellValue("M{$r}", $gmSignerName);
                     $sheet->getStyle("M{$r}")->applyFromArray($blueFont);
                 }
-                $sheet->setCellValue("N{$r}", $e && $e->actual_start_time ? substr($e->actual_start_time, 0, 5) : '');
-                $sheet->setCellValue("O{$r}", $e && $e->actual_end_time   ? substr($e->actual_end_time, 0, 5)   : '');
+                $sheet->setCellValue("N{$r}", $this->correctedTimeCell($e, 'actual_start_time') ?? ($e && $e->actual_start_time ? substr($e->actual_start_time, 0, 5) : ''));
+                $sheet->setCellValue("O{$r}", $this->correctedTimeCell($e, 'actual_end_time') ?? ($e && $e->actual_end_time ? substr($e->actual_end_time, 0, 5) : ''));
+                $sheet->getStyle("N{$r}:O{$r}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER);
                 // Compute actual total hours from times if stored value is invalid
                 $actualHours = $e ? (float)$e->actual_total_hours : 0;
                 if ($actualHours <= 0 && $e && $e->actual_start_time && $e->actual_end_time) {
@@ -1344,5 +1350,35 @@ class OtFormExcelExport
     private function calcHoursFromTimes(?string $start, ?string $end): float
     {
         return $this->calcHours($start, $end);
+    }
+
+    private function correctedTimeCell(?OtFormEntry $entry, string $field): ?RichText
+    {
+        if (!$entry) {
+            return null;
+        }
+
+        $current = $entry->$field ? substr($entry->$field, 0, 5) : '';
+        $original = null;
+        $corrections = $entry->hr_corrections ?? [];
+        if (is_array($corrections)) {
+            $original = $corrections[$field] ?? null;
+        }
+        $originalStr = $original ? substr($original, 0, 5) : '';
+
+        if (!$current && !$originalStr) {
+            return null;
+        }
+
+        $rt = new RichText();
+        if ($current) {
+            $run = $rt->createTextRun($current);
+            $run->getFont()->setSize(10);
+        }
+        if ($originalStr && $originalStr !== $current) {
+            $run = $rt->createTextRun("\n" . $originalStr);
+            $run->getFont()->setSize(9)->setStrikethrough(true)->setColor(['argb' => 'FFFF0000']);
+        }
+        return $rt;
     }
 }

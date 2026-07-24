@@ -473,11 +473,37 @@
                 <tr class="f6 tc">
                     <td class="b f6">{{ $day }}</td>
                     <td class="tl f6" style="padding-left: 3px;">{{ $tugas }}</td>
-                    <td class="f6">{{ $pStart ? substr($pStart, 0, 5) : '' }}</td>
-                    <td class="f6">{{ $pEnd   ? substr($pEnd,   0, 5) : '' }}</td>
+                    @php
+                        $origStart = $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['planned_start_time'] ?? null) : null;
+                        $origEnd   = $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['planned_end_time']   ?? null) : null;
+                        $origAStart= $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['actual_start_time']  ?? null) : null;
+                        $origAEnd  = $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['actual_end_time']    ?? null) : null;
+                    @endphp
+                    <td class="f6">
+                        {{ $pStart ? substr($pStart, 0, 5) : '' }}
+                        @if($origStart && substr($origStart, 0, 5) !== ($pStart ? substr($pStart, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origStart, 0, 5) }}</span>
+                        @endif
+                    </td>
+                    <td class="f6">
+                        {{ $pEnd ? substr($pEnd, 0, 5) : '' }}
+                        @if($origEnd && substr($origEnd, 0, 5) !== ($pEnd ? substr($pEnd, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origEnd, 0, 5) }}</span>
+                        @endif
+                    </td>
                     <td class="f6">{{ $pHours > 0 ? number_format($pHours, 2) : '' }}</td>
-                    <td class="f6">{{ $aStart ? substr($aStart, 0, 5) : '' }}</td>
-                    <td class="f6">{{ $aEnd   ? substr($aEnd,   0, 5) : '' }}</td>
+                    <td class="f6">
+                        {{ $aStart ? substr($aStart, 0, 5) : '' }}
+                        @if($origAStart && substr($origAStart, 0, 5) !== ($aStart ? substr($aStart, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origAStart, 0, 5) }}</span>
+                        @endif
+                    </td>
+                    <td class="f6">
+                        {{ $aEnd ? substr($aEnd, 0, 5) : '' }}
+                        @if($origAEnd && substr($origAEnd, 0, 5) !== ($aEnd ? substr($aEnd, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origAEnd, 0, 5) }}</span>
+                        @endif
+                    </td>
                     <td class="f6">{{ $aHours > 0 ? number_format($aHours, 2) : '' }}</td>
                     <td>{{ $e && $e->meal_break ? '/' : '' }}</td>
                     <td>{{ $e && $e->is_shift   ? '/' : '' }}</td>
@@ -761,10 +787,26 @@
                     $rowIdx++;
                 @endphp
                 <tr class="f6 tc" style="height: 18px;">
+                    @php
+                        $origStart = $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['planned_start_time'] ?? null) : null;
+                        $origEnd   = $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['planned_end_time']   ?? null) : null;
+                        $origAStart= $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['actual_start_time']  ?? null) : null;
+                        $origAEnd  = $e && is_array($e->hr_corrections ?? null) ? ($e->hr_corrections['actual_end_time']    ?? null) : null;
+                    @endphp
                     <td style="height: 18px;">{{ $e ? $e->entry_date->format('d/m/Y') : '' }}</td>
                     <td class="tl" style="height: 18px; padding-left: 3px;">{{ $particulars ?: '' }}</td>
-                    <td>{{ $pStart ? substr($pStart, 0, 5) : '' }}</td>
-                    <td>{{ $pEnd ? substr($pEnd, 0, 5) : '' }}</td>
+                    <td>
+                        {{ $pStart ? substr($pStart, 0, 5) : '' }}
+                        @if($origStart && substr($origStart, 0, 5) !== ($pStart ? substr($pStart, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origStart, 0, 5) }}</span>
+                        @endif
+                    </td>
+                    <td>
+                        {{ $pEnd ? substr($pEnd, 0, 5) : '' }}
+                        @if($origEnd && substr($origEnd, 0, 5) !== ($pEnd ? substr($pEnd, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origEnd, 0, 5) }}</span>
+                        @endif
+                    </td>
                     <td>{{ $pHours > 0 ? number_format($pHours, 2) : '' }}</td>
                     @if($isFilled && !in_array($otForm->status, ['draft']))
                         <td class="blue f6">{{ $staffShortName }}</td>
@@ -781,8 +823,18 @@
                     @else
                         <td></td>
                     @endif
-                    <td>{{ $aStart ? substr($aStart, 0, 5) : '' }}</td>
-                    <td>{{ $aEnd ? substr($aEnd, 0, 5) : '' }}</td>
+                    <td>
+                        {{ $aStart ? substr($aStart, 0, 5) : '' }}
+                        @if($origAStart && substr($origAStart, 0, 5) !== ($aStart ? substr($aStart, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origAStart, 0, 5) }}</span>
+                        @endif
+                    </td>
+                    <td>
+                        {{ $aEnd ? substr($aEnd, 0, 5) : '' }}
+                        @if($origAEnd && substr($origAEnd, 0, 5) !== ($aEnd ? substr($aEnd, 0, 5) : ''))
+                            <span style="color:#dc2626; text-decoration: line-through; display: block; font-size: 5pt;">{{ substr($origAEnd, 0, 5) }}</span>
+                        @endif
+                    </td>
                     <td>{{ $aHours > 0 ? number_format($aHours, 2) : '' }}</td>
                     <td>{{ $otNormal > 0 ? number_format($otNormal, 2) : '' }}</td>
                     <td>{{ $otRest > 0 ? number_format($otRest, 2) : '' }}</td>

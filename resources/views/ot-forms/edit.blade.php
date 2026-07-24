@@ -134,6 +134,10 @@ session(['ot_forms_last_seen' => now()]);
                 @csrf
                 @method('PUT')
 
+                @php
+                    $hasHrCorrections = $otForm->entries->contains(fn ($e) => !empty($e->hr_corrections));
+                @endphp
+
                 <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                     @if($otForm->isExecutive())
                         {{-- Executive Form --}}
@@ -197,6 +201,15 @@ session(['ot_forms_last_seen' => now()]);
                                 @endif
                             </div>
                         </div>
+
+                        @if($hasHrCorrections)
+                            <div class="mb-3 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span><span class="line-through">Crossed-out</span> times indicate the original values changed by HR.</span>
+                            </div>
+                        @endif
 
                         {{-- Main Table --}}
                         @include('ot-forms.partials._executive_plan')
@@ -282,6 +295,15 @@ session(['ot_forms_last_seen' => now()]);
                                 @endif
                             </div>
                         </div>
+
+                        @if($hasHrCorrections)
+                            <div class="mb-3 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span><span class="line-through">Crossed-out</span> times indicate the original values changed by HR.</span>
+                            </div>
+                        @endif
 
                         {{-- Main Table --}}
                         @include('ot-forms.partials._non_executive_plan')

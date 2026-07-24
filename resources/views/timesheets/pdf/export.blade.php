@@ -157,8 +157,8 @@
         ];
     }
 
-    // Pad to minimum 5 project slots
-    while (count($projectRowsData) < 5) {
+    // Pad to minimum 4 project slots
+    while (count($projectRowsData) < 4) {
         $emptyHours = [];
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $emptyHours[$d] = ['normal_nc' => 0, 'normal_cobq' => 0, 'ot_nc' => 0, 'ot_cobq' => 0];
@@ -606,7 +606,7 @@
                 }
                 $dayWorkingTotal = $adminTotal + $externalTotal;
                 $avail = $days[$d]['available_hours'];
-                $dayOvertime = $dayWorkingTotal - $avail;
+                $dayOvertime = max(0, $dayWorkingTotal - $avail);
                 $overtimeDayTotals[$d] = $dayOvertime;
                 $grandTotalOvertime += $dayOvertime;
             }
@@ -619,6 +619,22 @@
             <td class="b">{{ $grandTotalOvertime }}</td>
         </tr>
     </table>
+
+    @if($otApprovedByHr !== null)
+    @php
+        $variance = $otApprovedByHr - $grandTotalOvertime;
+    @endphp
+    <table style="margin-top: 2mm; margin-left: auto; width: 55mm; font-size: 7pt; border-collapse: collapse;" class="bd">
+        <tr>
+            <td class="b" style="padding: 1mm 2mm; border: 1px solid #000;">OT Approved by HR:</td>
+            <td style="padding: 1mm 2mm; text-align: right; border: 1px solid #000;">{{ number_format($otApprovedByHr, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="b" style="padding: 1mm 2mm; border: 1px solid #000;">Variance:</td>
+            <td style="padding: 1mm 2mm; text-align: right; border: 1px solid #000; {{ $variance < 0 ? 'color: #dc2626;' : '' }}">{{ number_format($variance, 2) }}</td>
+        </tr>
+    </table>
+    @endif
 
     {{-- ───── BOTTOM SECTION: NOTES/LEGEND + REMARKS BOX ───── --}}
     <table style="margin-top: 2mm; width: 100%; font-size: 6pt;">
