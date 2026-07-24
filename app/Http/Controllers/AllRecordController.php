@@ -590,6 +590,9 @@ class AllRecordController extends Controller
             ? $entry->projectCode->project_code . '|' . $entry->projectCode->project_name
             : ($entry->project_category ?? 'N/A') . '|' . ($entry->manual_project_code_name ?? $entry->project_name ?? '');
 
+        // Aggregate raw hours by project / user / date, then floor the DAILY total
+        // so each day for each staff is treated as a single 0.25 increment unit.
+        $raw = [];
         foreach ($otForms as $otForm) {
             foreach ($otForm->entries as $entry) {
                 $key = $projectKey($entry);
@@ -603,8 +606,16 @@ class AllRecordController extends Controller
                 if (!isset($projects[$key]['hours'][$otForm->user_id])) {
                     continue;
                 }
-                $floored = floor((float) $entry->actual_total_hours * 4) / 4;
-                $projects[$key]['hours'][$otForm->user_id] += $floored;
+                $date = $entry->entry_date ? $entry->entry_date->format('Y-m-d') : '0000-00-00';
+                $raw[$key][$otForm->user_id][$date] = ($raw[$key][$otForm->user_id][$date] ?? 0) + (float) $entry->actual_total_hours;
+            }
+        }
+
+        foreach ($raw as $key => $users) {
+            foreach ($users as $userId => $dates) {
+                foreach ($dates as $hours) {
+                    $projects[$key]['hours'][$userId] += floor($hours * 4) / 4;
+                }
             }
         }
 
@@ -612,12 +623,11 @@ class AllRecordController extends Controller
             return strcmp($projects[$a]['code'] . $projects[$a]['name'], $projects[$b]['code'] . $projects[$b]['name']);
         });
 
+        // Staff totals are the exact sum of the reconciled project cells.
         $totals = array_fill_keys($staff->pluck('id')->toArray(), 0);
-        // Use the approved OT form's stored total_ot_hours as the source of truth
-        // for each staff's total, so the summary matches the approved OT form.
-        foreach ($otForms as $otForm) {
-            if (isset($totals[$otForm->user_id])) {
-                $totals[$otForm->user_id] += $otForm->total_ot_hours ?? 0;
+        foreach ($projects as $project) {
+            foreach ($project['hours'] as $userId => $hours) {
+                $totals[$userId] += $hours;
             }
         }
 
