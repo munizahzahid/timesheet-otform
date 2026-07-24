@@ -613,9 +613,11 @@ class AllRecordController extends Controller
         });
 
         $totals = array_fill_keys($staff->pluck('id')->toArray(), 0);
-        foreach ($projects as $project) {
-            foreach ($project['hours'] as $userId => $hours) {
-                $totals[$userId] += $hours;
+        // Use the approved OT form's stored total_ot_hours as the source of truth
+        // for each staff's total, so the summary matches the approved OT form.
+        foreach ($otForms as $otForm) {
+            if (isset($totals[$otForm->user_id])) {
+                $totals[$otForm->user_id] += $otForm->total_ot_hours ?? 0;
             }
         }
 
