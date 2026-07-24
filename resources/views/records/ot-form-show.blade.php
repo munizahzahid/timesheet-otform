@@ -100,7 +100,7 @@
                                     <td colspan="4" class="border px-2 py-1 text-right font-semibold">{{ __('TOTAL') }}:</td>
                                     <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->entries->sum('planned_total_hours'), 2) }}</td>
                                     <td colspan="2" class="border"></td>
-                                    <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->entries->sum(fn($e) => $e->actual_total_hours > 0 ? floor($e->actual_total_hours * 4) / 4 : 0), 2) }}</td>
+                                    <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->total_ot_hours, 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>

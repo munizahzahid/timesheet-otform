@@ -89,7 +89,7 @@ class OtAutoFillService
                 // PDF has OT clock data: fill actual hours + project code from timesheet
                 $updateData['actual_start_time'] = $attendance->ot_start_time;
                 $updateData['actual_end_time'] = $attendance->ot_end_time;
-                $updateData['actual_total_hours'] = $attendance->ot_hours;
+                $updateData['actual_total_hours'] = floor($attendance->ot_hours * 4) / 4;
 
                 // Auto-fill project code from timesheet
                 if ($hasTimesheetOt) {
@@ -100,18 +100,19 @@ class OtAutoFillService
                     $updateData['manual_project_code_name'] = $proj['manual_project_code_name'] ?? null;
                 }
 
-                // Set OT type breakdown hours
+                // Set OT type breakdown hours (floor to 0.25 increments)
                 $updateData['ot_type'] = $attendance->ot_type;
+                $flooredHours = floor($attendance->ot_hours * 4) / 4;
                 if ($attendance->ot_type === 'normal_day') {
-                    $updateData['ot_normal_day_hours'] = $attendance->ot_hours;
+                    $updateData['ot_normal_day_hours'] = $flooredHours;
                     $updateData['ot_rest_day_hours'] = 0;
                     $updateData['ot_rest_day_excess_hours'] = 0;
                     $updateData['ot_rest_day_count'] = 0;
                     $updateData['ot_ph_hours'] = 0;
                 } elseif ($attendance->ot_type === 'rest_day') {
                     $updateData['ot_normal_day_hours'] = 0;
-                    $updateData['ot_rest_day_hours'] = min($attendance->ot_hours, 8.0);
-                    $updateData['ot_rest_day_excess_hours'] = max(0, $attendance->ot_hours - 8.0);
+                    $updateData['ot_rest_day_hours'] = floor(min($attendance->ot_hours, 8.0) * 4) / 4;
+                    $updateData['ot_rest_day_excess_hours'] = floor(max(0, $attendance->ot_hours - 8.0) * 4) / 4;
                     $updateData['ot_rest_day_count'] = 1;
                     $updateData['ot_ph_hours'] = 0;
                 } elseif ($attendance->ot_type === 'public_holiday') {
@@ -119,7 +120,7 @@ class OtAutoFillService
                     $updateData['ot_rest_day_hours'] = 0;
                     $updateData['ot_rest_day_excess_hours'] = 0;
                     $updateData['ot_rest_day_count'] = 0;
-                    $updateData['ot_ph_hours'] = $attendance->ot_hours;
+                    $updateData['ot_ph_hours'] = $flooredHours;
                 }
                 $filled++;
             } elseif ($hasTimesheetOt) {
@@ -136,8 +137,8 @@ class OtAutoFillService
             $entry->update($updateData);
         }
 
-        // Update total OT hours on the form
-        $totalOtHours = $otForm->entries()->sum('actual_total_hours');
+        // Update total OT hours on the form (floor to 0.25 increments)
+        $totalOtHours = floor($otForm->entries()->sum('actual_total_hours') * 4) / 4;
         $otForm->update(['total_ot_hours' => $totalOtHours]);
 
         Log::info('OT auto-fill completed', [
