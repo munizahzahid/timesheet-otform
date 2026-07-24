@@ -89,6 +89,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/records/timesheets/summary/export-pdf', [AllRecordController::class, 'exportSummaryPdf'])->name('records.timesheets.summary.export-pdf');
     Route::get('/records/timesheets/{timesheet}', [AllRecordController::class, 'showTimesheet'])->name('records.timesheets.show');
     Route::get('/records/ot-forms', [AllRecordController::class, 'otForms'])->name('records.ot-forms');
+    Route::get('/records/ot-forms/summary', [AllRecordController::class, 'otSummary'])->name('records.ot-forms.summary');
+    Route::get('/records/ot-forms/summary/export-excel', [AllRecordController::class, 'exportOtSummaryExcel'])->name('records.ot-forms.summary.export-excel');
+    Route::get('/records/ot-forms/summary/export-pdf', [AllRecordController::class, 'exportOtSummaryPdf'])->name('records.ot-forms.summary.export-pdf');
     Route::get('/records/ot-forms/{otForm}', [AllRecordController::class, 'showOtForm'])->name('records.ot-forms.show');
 
     // Project code search API

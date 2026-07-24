@@ -45,11 +45,15 @@
                         </a>
                         <a href="{{ route('records.timesheets.summary') }}"
                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.timesheets.summary') ? 'bg-indigo-50 text-indigo-700' : '' }}">
-                            Monthly Summary
+                            Timesheet Summary
                         </a>
                         <a href="{{ route('records.ot-forms') }}"
                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.ot-forms.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
                             OT Form
+                        </a>
+                        <a href="{{ route('records.ot-forms.summary') }}"
+                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 {{ request()->routeIs('records.ot-forms.summary.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
+                            OT Summary
                         </a>
                     </div>
                 </div>

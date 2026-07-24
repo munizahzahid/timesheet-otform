@@ -478,6 +478,150 @@ class AllRecordController extends Controller
         ));
     }
 
+    public function otSummary(Request $request)
+    {
+        if (!Auth::user()->canViewAllRecords()) {
+            abort(403);
+        }
+
+        $month = $request->input('month', (int) date('n'));
+        $year = $request->input('year', (int) date('Y'));
+        $category = $request->input('category', 'all');
+
+        $staffQuery = User::where('is_active', true)->orderBy('name');
+        if ($category !== 'all') {
+            $staffQuery->where('category', $category);
+        }
+        $staff = $staffQuery->get();
+
+        $otForms = OtForm::with(['user', 'entries.projectCode'])
+            ->where('status', 'approved')
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $data = $this->buildOtSummaryData($staff, $otForms);
+
+        return view('records.ot-summary', array_merge(
+            $data,
+            compact('staff', 'month', 'year', 'category')
+        ));
+    }
+
+    public function exportOtSummaryExcel(Request $request, \App\Services\OtSummaryExcelExport $exporter)
+    {
+        if (!Auth::user()->canViewAllRecords()) {
+            abort(403);
+        }
+
+        $month = $request->input('month', (int) date('n'));
+        $year = $request->input('year', (int) date('Y'));
+        $category = $request->input('category', 'all');
+
+        $staffQuery = User::where('is_active', true)->orderBy('name');
+        if ($category !== 'all') {
+            $staffQuery->where('category', $category);
+        }
+        $staff = $staffQuery->get();
+
+        $otForms = OtForm::with(['user', 'entries.projectCode'])
+            ->where('status', 'approved')
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $data = $this->buildOtSummaryData($staff, $otForms);
+
+        $spreadsheet = $exporter->generate($month, $year, $category, $staff, $data['projects'], $data['totals']);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+
+        $monthName = \DateTime::createFromFormat('!m', $month)->format('F');
+        $filename = "OT_Summary_{$category}_{$monthName}_{$year}.xlsx";
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
+    }
+
+    public function exportOtSummaryPdf(Request $request)
+    {
+        if (!Auth::user()->canViewAllRecords()) {
+            abort(403);
+        }
+
+        $month = $request->input('month', (int) date('n'));
+        $year = $request->input('year', (int) date('Y'));
+        $category = $request->input('category', 'all');
+
+        $staffQuery = User::where('is_active', true)->orderBy('name');
+        if ($category !== 'all') {
+            $staffQuery->where('category', $category);
+        }
+        $staff = $staffQuery->get();
+
+        $otForms = OtForm::with(['user', 'entries.projectCode'])
+            ->where('status', 'approved')
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $data = $this->buildOtSummaryData($staff, $otForms);
+
+        $monthName = \DateTime::createFromFormat('!m', $month)->format('F');
+        $filename = "OT_Summary_{$category}_{$monthName}_{$year}.pdf";
+
+        $pdf = \Pdf::loadView('records.ot-summary-pdf', array_merge(
+            $data,
+            ['month' => $month, 'year' => $year, 'category' => $category, 'staff' => $staff]
+        ))
+            ->setPaper('a4', 'landscape')
+            ->setOption(['dpi' => 150, 'defaultFont' => 'Arial']);
+
+        return $pdf->download($filename);
+    }
+
+    private function buildOtSummaryData($staff, $otForms): array
+    {
+        $projects = [];
+        $projectKey = fn($entry) => $entry->projectCode
+            ? $entry->projectCode->project_code . '|' . $entry->projectCode->project_name
+            : ($entry->project_category ?? 'N/A') . '|' . ($entry->manual_project_code_name ?? $entry->project_name ?? '');
+
+        foreach ($otForms as $otForm) {
+            foreach ($otForm->entries as $entry) {
+                $key = $projectKey($entry);
+                if (!isset($projects[$key])) {
+                    $projects[$key] = [
+                        'code' => $entry->projectCode ? $entry->projectCode->project_code : ($entry->project_category ?? 'N/A'),
+                        'name' => $entry->projectCode ? $entry->projectCode->project_name : ($entry->manual_project_code_name ?? $entry->project_name ?? ''),
+                        'hours' => array_fill_keys($staff->pluck('id')->toArray(), 0),
+                    ];
+                }
+                if (!isset($projects[$key]['hours'][$otForm->user_id])) {
+                    continue;
+                }
+                $floored = floor((float) $entry->actual_total_hours * 4) / 4;
+                $projects[$key]['hours'][$otForm->user_id] += $floored;
+            }
+        }
+
+        uksort($projects, function ($a, $b) use ($projects) {
+            return strcmp($projects[$a]['code'] . $projects[$a]['name'], $projects[$b]['code'] . $projects[$b]['name']);
+        });
+
+        $totals = array_fill_keys($staff->pluck('id')->toArray(), 0);
+        foreach ($projects as $project) {
+            foreach ($project['hours'] as $userId => $hours) {
+                $totals[$userId] += $hours;
+            }
+        }
+
+        return compact('projects', 'totals');
+    }
+
     private function getTimesheetApprovedDates($timesheets)
     {
         $ids = $timesheets->pluck('id');

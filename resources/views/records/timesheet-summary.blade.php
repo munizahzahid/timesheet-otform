@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Monthly Timesheet Summary') }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ __('Timesheet Summary') }}</h2>
     </x-slot>
 
     @push('sub-navbar')
@@ -87,7 +87,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div class="text-sm font-bold text-gray-800">{{ __('MONTH') }}: {{ DateTime::createFromFormat('!m', $month)->format('M') }}-{{ substr($year, -2) }}</div>
                     <div class="text-base font-bold text-gray-900 uppercase tracking-wide">
-                        {{ __('Monthly Timesheet Summary') }} - {{ $category === 'all' ? __('All Staff') : strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}
+                        {{ __('Timesheet Summary') }} - {{ $category === 'all' ? __('All Staff') : strtoupper(\App\Models\User::CATEGORIES[$category] ?? $category) }}
                     </div>
                     <div class="flex items-center gap-2">
                         <a href="{{ route('records.timesheets.summary.export-excel', request()->only('month', 'year', 'category')) }}"
