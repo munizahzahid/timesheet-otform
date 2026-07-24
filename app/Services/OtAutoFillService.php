@@ -137,8 +137,12 @@ class OtAutoFillService
             $entry->update($updateData);
         }
 
-        // Update total OT hours on the form (floor to 0.25 increments)
-        $totalOtHours = floor($otForm->entries()->sum('actual_total_hours') * 4) / 4;
+        // Update total OT hours on the form (sum each entry floored to 0.25 increments)
+        $totalOtHours = 0;
+        foreach ($otForm->entries as $entry) {
+            $totalOtHours += floor($entry->actual_total_hours * 4) / 4;
+        }
+        $totalOtHours = floor($totalOtHours * 4) / 4;
         $otForm->update(['total_ot_hours' => $totalOtHours]);
 
         Log::info('OT auto-fill completed', [

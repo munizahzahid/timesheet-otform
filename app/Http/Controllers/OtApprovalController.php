@@ -483,8 +483,12 @@ class OtApprovalController extends Controller
                 $entry->update($updateData);
             }
 
-            // Recalculate total OT hours from all entries (floor to 0.25 increments)
-            $totalOtHours = floor($otForm->entries()->sum('actual_total_hours') * 4) / 4;
+            // Recalculate total OT hours from all entries (sum each entry floored to 0.25 increments)
+            $totalOtHours = 0;
+            foreach ($otForm->entries as $entry) {
+                $totalOtHours += floor($entry->actual_total_hours * 4) / 4;
+            }
+            $totalOtHours = floor($totalOtHours * 4) / 4;
 
             // Use provided HR remark if available, otherwise auto-generate summary
             $providedRemark = $request->input('hr_remarks');
