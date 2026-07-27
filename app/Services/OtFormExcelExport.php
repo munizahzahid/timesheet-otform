@@ -361,11 +361,11 @@ class OtFormExcelExport
                     $isPH = $e->is_public_holiday ?? false;
                     $isRestDay = in_array($dow, [0, 6]);
 
-                    // Use stored OT values if available
-                    $ot1 = (float)($e->ot_normal_day_hours ?? 0);
-                    $ot2 = (float)($e->ot_rest_day_hours ?? 0);
-                    $ot3 = (float)($e->ot_rest_day_excess_hours ?? 0);
-                    $ot4 = (float)($e->ot_ph_hours ?? 0);
+                    // Use stored OT values if available, floored to 0.25 increments
+                    $ot1 = floor((float)($e->ot_normal_day_hours ?? 0) * 4) / 4;
+                    $ot2 = floor((float)($e->ot_rest_day_hours ?? 0) * 4) / 4;
+                    $ot3 = floor((float)($e->ot_rest_day_excess_hours ?? 0) * 4) / 4;
+                    $ot4 = floor((float)($e->ot_ph_hours ?? 0) * 4) / 4;
                     $ot5 = (int)($e->ot_rest_day_count ?? 0);
 
                     if ($ot1 > 0) {
@@ -898,9 +898,9 @@ class OtFormExcelExport
                 $actualHours = floor($actualHours * 4) / 4;
                 $sheet->setCellValue("P{$r}", $actualHours > 0 ? number_format($actualHours, 2) : '');
                 // Distribute OT hours: use stored values, or fallback to actual hours by day type
-                $otNormal = $e ? (float)$e->ot_normal_day_hours : 0;
-                $otRest = $e ? (float)$e->ot_rest_day_hours : 0;
-                $otPH = $e ? (float)$e->ot_ph_hours : 0;
+                $otNormal = floor(($e ? (float)$e->ot_normal_day_hours : 0) * 4) / 4;
+                $otRest = floor(($e ? (float)$e->ot_rest_day_hours : 0) * 4) / 4;
+                $otPH = floor(($e ? (float)$e->ot_ph_hours : 0) * 4) / 4;
                 if ($actualHours > 0 && ($otNormal + $otRest + $otPH) <= 0 && $e) {
                     if ($e->is_public_holiday) {
                         $otPH = $actualHours;

@@ -314,7 +314,7 @@
 
             @if($approvedOtForm)
             <div class="mt-2 flex justify-end">
-                <a href="{{ auth()->id() === $timesheet->user_id ? route('ot-forms.edit', $approvedOtForm) : route('approvals.ot-forms.show', $approvedOtForm) }}"
+                <a href="{{ auth()->id() === $timesheet->user_id ? route('ot-forms.edit', $approvedOtForm) : (auth()->user()->canViewAllRecords() ? route('records.ot-forms.show', $approvedOtForm) : route('approvals.ot-forms.show', $approvedOtForm)) }}"
                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                    target="_blank" rel="noopener noreferrer">
                     View OT Form

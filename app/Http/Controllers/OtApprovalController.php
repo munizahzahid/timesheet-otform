@@ -385,7 +385,7 @@ class OtApprovalController extends Controller
 
                 // Calculate hours from times
                 $newPlannedTotal = $this->calcHoursFromStrings($newValues['planned_start_time'], $newValues['planned_end_time']);
-                $newActualTotal = $this->calcHoursFromStrings($newValues['actual_start_time'], $newValues['actual_end_time']);
+                $newActualTotal = floor($this->calcHoursFromStrings($newValues['actual_start_time'], $newValues['actual_end_time']) * 4) / 4;
 
                 // Recalculate OT category breakdown based on day type
                 // Match PDF/Excel split logic:

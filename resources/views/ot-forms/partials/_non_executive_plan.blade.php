@@ -268,22 +268,22 @@
                     {{-- PENGIRAAN OT: OT 1-5 --}}
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot1-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_normal_day_hours]"
-                               value="{{ number_format($entry->ot_normal_day_hours ?? 0, 2) }}"
+                               value="{{ number_format(floor(($entry->ot_normal_day_hours ?? 0) * 4) / 4, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot2-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_rest_day_hours]"
-                               value="{{ number_format($entry->ot_rest_day_hours ?? 0, 2) }}"
+                               value="{{ number_format(floor(($entry->ot_rest_day_hours ?? 0) * 4) / 4, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot3-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_rest_day_excess_hours]"
-                               value="{{ number_format($entry->ot_rest_day_excess_hours ?? 0, 2) }}"
+                               value="{{ number_format(floor(($entry->ot_rest_day_excess_hours ?? 0) * 4) / 4, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot4-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_ph_hours]"
-                               value="{{ number_format($entry->ot_ph_hours ?? 0, 2) }}"
+                               value="{{ number_format(floor(($entry->ot_ph_hours ?? 0) * 4) / 4, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">

@@ -449,20 +449,20 @@
                         $dow = $e->entry_date->dayOfWeek;
                         $isPH = $e->is_public_holiday ?? false;
                         $isRest = in_array($dow, [0,6]);
-                        $ot1 = (float)($e->ot_normal_day_hours ?? 0);
-                        $ot2 = (float)($e->ot_rest_day_hours ?? 0);
-                        $ot3 = (float)($e->ot_rest_day_excess_hours ?? 0);
-                        $ot4 = (float)($e->ot_ph_hours ?? 0);
+                        $ot1 = floor((float)($e->ot_normal_day_hours ?? 0) * 4) / 4;
+                        $ot2 = floor((float)($e->ot_rest_day_hours ?? 0) * 4) / 4;
+                        $ot3 = floor((float)($e->ot_rest_day_excess_hours ?? 0) * 4) / 4;
+                        $ot4 = floor((float)($e->ot_ph_hours ?? 0) * 4) / 4;
                         $ot5 = (int)($e->ot_rest_day_count ?? 0);
                         if ($ot1 <= 0 && !$isPH && !$isRest) $ot1 = $aHours;
                         if ($isRest && !$isPH) {
                             if ($ot2 <= 0) $ot2 = min($aHours, 7.5);
-                            if ($ot3 <= 0 && $aHours > 7.5) $ot3 = $aHours - 7.5;
+                            if ($ot3 <= 0 && $aHours > 7.5) $ot3 = floor(max($aHours - 7.5, 0) * 4) / 4;
                             if ($ot5 <= 0) $ot5 = 1;
                         }
                         if ($isPH) {
                             if ($ot2 <= 0) $ot2 = min($aHours, 7.5);
-                            if ($ot4 <= 0) $ot4 = max($aHours - 7.5, 0);
+                            if ($ot4 <= 0) $ot4 = floor(max($aHours - 7.5, 0) * 4) / 4;
                         }
                         $totalOt1 += $ot1; $totalOt2 += $ot2; $totalOt3 += $ot3; $totalOt4 += $ot4; $totalOt5 += $ot5;
                     }
