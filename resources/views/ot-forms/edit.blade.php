@@ -57,7 +57,7 @@ session(['ot_forms_last_seen' => now()]);
             @endif
 
             {{-- Guard: No attendance records (PDF not uploaded) --}}
-            @if(!$hasAttendance)
+            @if(!$hasAttendance && $otForm->isEditable())
                 <div id="noAttendanceModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
                         <div class="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
