@@ -55,56 +55,11 @@
                             <span><span class="line-through">{{ __('Crossed-out') }}</span> {{ __('times indicate the original values changed by HR.') }}</span>
                         </div>
                     @endif
-                    <div class="overflow-x-auto">
-                        <table class="w-full border-collapse border text-xs">
-                            <thead>
-                                <tr>
-                                    <th class="border px-2 py-1 text-center">{{ $otForm->isExecutive() ? __('DATE') : __('TARIKH') }}</th>
-                                    <th class="border px-2 py-1 text-left">{{ $otForm->isExecutive() ? __('PARTICULARS') : __('TUGAS') }}</th>
-                                    <th class="border px-2 py-1 text-center bg-blue-50">{{ __('Plan Start') }}</th>
-                                    <th class="border px-2 py-1 text-center bg-blue-50">{{ __('Plan End') }}</th>
-                                    <th class="border px-2 py-1 text-center bg-blue-50">{{ __('Plan Total') }}</th>
-                                    <th class="border px-2 py-1 text-center bg-green-50">{{ __('Actual Start') }}</th>
-                                    <th class="border px-2 py-1 text-center bg-green-50">{{ __('Actual End') }}</th>
-                                    <th class="border px-2 py-1 text-center bg-green-50">{{ __('Actual Total') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($otForm->entries as $entry)
-                                    @php $isFilled = $entry->project_code_id || $entry->project_category || $entry->planned_start_time || $entry->actual_start_time; @endphp
-                                    @if($isFilled)
-                                    <tr>
-                                        <td class="border px-2 py-1 text-center">
-                                            {{ $otForm->isExecutive() ? $entry->entry_date->format('j/n/Y') : $entry->entry_date->day }}
-                                        </td>
-                                        <td class="border px-2 py-1">
-                                            @if($entry->project_category)
-                                                {{ $entry->project_category }}{{ $entry->manual_project_code_name ? ' - ' . $entry->manual_project_code_name : '' }}
-                                            @else
-                                                {{ $entry->projectCode ? $entry->projectCode->code : '' }}
-                                                {{ $entry->project_name ? $entry->project_name : '' }}
-                                            @endif
-                                        </td>
-                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_start_time'])</td>
-                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'planned_end_time'])</td>
-                                        <td class="border px-2 py-1 text-center font-medium">{{ $entry->planned_total_hours > 0 ? number_format($entry->planned_total_hours, 2) : '' }}</td>
-                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_start_time'])</td>
-                                        <td class="border px-2 py-1 text-center">@include('ot-forms.partials._corrected_time', ['entry' => $entry, 'field' => 'actual_end_time'])</td>
-                                        <td class="border px-2 py-1 text-center font-medium">{{ ($entry->actual_total_hours > 0 ? number_format(floor($entry->actual_total_hours * 4) / 4, 2) : '') }}</td>
-                                    </tr>
-                                    @endif
-                                @endforeach
-                            </tbody>
-                            <tfoot class="bg-gray-50">
-                                <tr>
-                                    <td colspan="4" class="border px-2 py-1 text-right font-semibold">{{ __('TOTAL') }}:</td>
-                                    <td class="border px-2 py-1 text-center font-bold">{{ number_format($otForm->entries->sum('planned_total_hours'), 2) }}</td>
-                                    <td colspan="2" class="border"></td>
-                                    <td class="border px-2 py-1 text-center font-bold">{{ number_format(floor($otForm->total_ot_hours * 4) / 4, 2) }}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                    @if($otForm->isExecutive())
+                        @include('ot-forms.partials._executive_plan', ['hideApprovalColumns' => false])
+                    @else
+                        @include('ot-forms.partials._non_executive_plan', ['hideApprovalColumns' => false])
+                    @endif
                 </div>
             </div>
 
