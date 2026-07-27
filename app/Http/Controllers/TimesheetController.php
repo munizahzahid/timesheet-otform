@@ -199,7 +199,7 @@ class TimesheetController extends Controller
 
         return response()->view('timesheets.edit', compact(
             'timesheet', 'days', 'daysInMonth', 'adminData',
-            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit', 'hasAttendance', 'otApprovedByHr'
+            'projectRowsData', 'projectCodes', 'adminTypes', 'approvalStamps', 'excelUpload', 'canUnsubmit', 'hasAttendance', 'otApprovedByHr', 'approvedOtForm'
         ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');

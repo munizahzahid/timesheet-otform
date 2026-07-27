@@ -88,7 +88,11 @@
                         @endif
 
                         <div id="currentFormView" class="overflow-x-auto">
-                            @include('approvals.ot-forms._entries_table', ['editMode' => false])
+                            @if($otForm->isExecutive())
+                                @include('ot-forms.partials._executive_plan', ['hideApprovalColumns' => true])
+                            @else
+                                @include('ot-forms.partials._non_executive_plan', ['hideApprovalColumns' => true])
+                            @endif
                         </div>
 
                         <div id="editFormView" class="overflow-x-auto hidden">

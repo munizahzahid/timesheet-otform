@@ -211,7 +211,7 @@ class TimesheetApprovalController extends Controller
         $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
 
         return response()->view('approvals.timesheets.show', compact(
-            'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows', 'otApprovedByHr'
+            'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows', 'otApprovedByHr', 'approvedOtForm'
         ))->header('Cache-Control', 'no-cache, no-store, must-revalidate')
           ->header('Pragma', 'no-cache')
           ->header('Expires', '0');

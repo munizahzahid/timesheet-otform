@@ -106,7 +106,9 @@ class OtApprovalController extends Controller
      */
     public function show(OtForm $otForm)
     {
-        $otForm->load('entries.projectCode', 'user.department');
+        $otForm->load(['entries' => function ($q) {
+            $q->orderBy('entry_date')->orderBy('id');
+        }, 'entries.projectCode', 'user.department']);
 
         $projectCodes = Project::where('is_active', true)
             ->orderBy('project_code')

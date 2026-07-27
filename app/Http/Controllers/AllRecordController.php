@@ -366,7 +366,7 @@ class AllRecordController extends Controller
         $otApprovedByHr = $approvedOtForm ? floor($approvedOtForm->total_ot_hours * 4) / 4 : null;
 
         return response()->view('records.timesheet-show', compact(
-            'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows', 'otApprovedByHr'
+            'timesheet', 'approvalStamps', 'daysInMonth', 'days', 'adminTypes', 'adminHours', 'projectRowsData', 'flatProjectRows', 'otApprovedByHr', 'approvedOtForm'
         ));
     }
 

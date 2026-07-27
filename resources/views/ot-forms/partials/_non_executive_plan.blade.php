@@ -9,7 +9,9 @@
                 <th colspan="3" class="border px-1 py-0.5 text-center bg-green-50">MASA SEBENAR</th>
                 <th rowspan="2" class="border px-1 py-0.5 text-center w-8">MAKAN<br>(>3 JAM)</th>
                 <th rowspan="2" class="border px-1 py-0.5 text-center w-8">SHIFT</th>
+                @if(empty($hideApprovalColumns))
                 <th colspan="3" class="border px-1 py-0.5 text-center bg-yellow-50">KELULUSAN</th>
+                @endif
                 <th colspan="4" class="border px-1 py-0.5 text-center bg-orange-50">JENIS OT</th>
                 <th colspan="5" class="border px-1 py-0.5 text-center bg-purple-50">PENGIRAAN OT</th>
             </tr>
@@ -20,9 +22,11 @@
                 <th class="border px-0.5 py-0.5 text-center bg-green-50 w-12">MULA</th>
                 <th class="border px-0.5 py-0.5 text-center bg-green-50 w-12">TAMAT</th>
                 <th class="border px-0.5 py-0.5 text-center bg-green-50 w-10">JUMLAH</th>
+                @if(empty($hideApprovalColumns))
                 <th class="border px-0.5 py-0.5 text-center bg-yellow-50 w-10">KAKI-<br>TANGAN</th>
                 <th class="border px-0.5 py-0.5 text-center bg-yellow-50 w-8">HOD</th>
                 <th class="border px-0.5 py-0.5 text-center bg-yellow-50 w-10">DGM/<br>CEO/MD</th>
+                @endif
                 <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">NOR-<br>MAL</th>
                 <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">TRAIN</th>
                 <th class="border px-0.5 py-0.5 text-center bg-orange-50 w-8">KAI-<br>ZEN</th>
@@ -218,6 +222,7 @@
                         @endif
                     </td>
 
+                    @if(empty($hideApprovalColumns))
                     {{-- KELULUSAN: KAKITANGAN --}}
                     <td class="border px-0.5 py-0.5 text-center align-middle">
                         @if($isFilled && !in_array($otForm->status, ['draft']))
@@ -245,6 +250,7 @@
                             </div>
                         @endif
                     </td>
+                    @endif
 
                     {{-- JENIS OT: NORMAL, TRAINING, KAIZEN, 5S --}}
                     @foreach([['jenis_ot_normal','normal'],['jenis_ot_training','training'],['jenis_ot_kaizen','kaizen'],['jenis_ot_5s','5s']] as [$field, $label])
