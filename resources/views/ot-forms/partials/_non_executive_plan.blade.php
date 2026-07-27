@@ -59,6 +59,25 @@
                             $planTimeOptions[] = sprintf('%02d:%02d', $h, $m);
                         }
                     }
+
+                    // Non-exec OT distribution: first 7.5h to OT2; excess to OT3 (rest day) or OT4 (PH)
+                    $actualHours = floor(((float) $entry->actual_total_hours) * 4) / 4;
+                    $ot1 = $ot2 = $ot3 = $ot4 = 0.0;
+                    $ot5 = 0;
+                    if ($actualHours > 0) {
+                        if (!$isPublicHoliday && !$isWeekend) {
+                            $ot1 = $actualHours;
+                        }
+                        if ($isWeekend && !$isPublicHoliday) {
+                            $ot2 = floor(min($actualHours, 7.5) * 4) / 4;
+                            $ot3 = floor(max(0, $actualHours - 7.5) * 4) / 4;
+                            $ot5 = 1;
+                        }
+                        if ($isPublicHoliday) {
+                            $ot2 = floor(min($actualHours, 7.5) * 4) / 4;
+                            $ot4 = floor(max(0, $actualHours - 7.5) * 4) / 4;
+                        }
+                    }
                 @endphp
                 <tr class="entry-row {{ $rowBg }} {{ $isFilled ? 'has-data' : 'empty-row' }}"
                     data-entry-id="{{ $entry->id }}"
@@ -268,27 +287,27 @@
                     {{-- PENGIRAAN OT: OT 1-5 --}}
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot1-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_normal_day_hours]"
-                               value="{{ number_format(floor(($entry->ot_normal_day_hours ?? 0) * 4) / 4, 2) }}"
+                               value="{{ number_format($ot1, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot2-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_rest_day_hours]"
-                               value="{{ number_format(floor(($entry->ot_rest_day_hours ?? 0) * 4) / 4, 2) }}"
+                               value="{{ number_format($ot2, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot3-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_rest_day_excess_hours]"
-                               value="{{ number_format(floor(($entry->ot_rest_day_excess_hours ?? 0) * 4) / 4, 2) }}"
+                               value="{{ number_format($ot3, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot4-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_ph_hours]"
-                               value="{{ number_format(floor(($entry->ot_ph_hours ?? 0) * 4) / 4, 2) }}"
+                               value="{{ number_format($ot4, 2) }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                     <td class="border px-0.5 py-0.5 text-center">
                         <input type="text" id="ot5-{{ $entry->id }}" name="entries[{{ $entry->id }}][ot_rest_day_count]"
-                               value="{{ $entry->ot_rest_day_count ?? 0 }}"
+                               value="{{ $ot5 }}"
                                class="ot-cell w-full border-0 text-[10px] py-0 px-0 text-center bg-transparent focus:ring-0" readonly>
                     </td>
                 </tr>

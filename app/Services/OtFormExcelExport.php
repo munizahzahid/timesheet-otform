@@ -354,24 +354,13 @@ class OtFormExcelExport
                 $sheet->setCellValue("Z{$r}", $e && $e->jenis_ot_5s       ? '/' : '');
 
                 // PENGIRAAN OT: AB=OT1, AC=OT2, AD=OT3, AE=OT4, AF=OT5
-                // Use stored values if available, otherwise calculate
-                 // Non-exec: weekend first 7.5h to OT2, PH first 7.5h to OT2, excess to OT4
+                // Non-exec: first 7.5h to OT2; excess to OT3 (rest day) or OT4 (PH)
                 if ($aHours > 0 && $e) {
                     $dow = $e->entry_date->dayOfWeek; // 0=Sun, 6=Sat
                     $isPH = $e->is_public_holiday ?? false;
                     $isRestDay = in_array($dow, [0, 6]);
 
-                    // Use stored OT values if available, floored to 0.25 increments
-                    $ot1 = floor((float)($e->ot_normal_day_hours ?? 0) * 4) / 4;
-                    $ot2 = floor((float)($e->ot_rest_day_hours ?? 0) * 4) / 4;
-                    $ot3 = floor((float)($e->ot_rest_day_excess_hours ?? 0) * 4) / 4;
-                    $ot4 = floor((float)($e->ot_ph_hours ?? 0) * 4) / 4;
-                    $ot5 = (int)($e->ot_rest_day_count ?? 0);
-
-                    if ($ot1 > 0) {
-                        $sheet->setCellValue("AB{$r}", number_format($ot1, 2));
-                        $totalOt1 += $ot1;
-                    } elseif (!$isPH && !$isRestDay) {
+                    if (!$isPH && !$isRestDay) {
                         // Normal day: OT1 = all hours
                         $sheet->setCellValue("AB{$r}", number_format($aHours, 2));
                         $totalOt1 += $aHours;
@@ -379,46 +368,25 @@ class OtFormExcelExport
 
                     if ($isRestDay && !$isPH) {
                         // Weekend: OT2 = first 7.5h, OT3 = excess, OT5 = 1
-                        if ($ot2 > 0) {
-                            $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
-                            $totalOt2 += $ot2;
-                        } else {
-                            $ot2h = min($aHours, 7.5);
-                            $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
-                            $totalOt2 += $ot2h;
-                        }
-                        if ($ot3 > 0) {
-                            $sheet->setCellValue("AD{$r}", number_format($ot3, 2));
-                            $totalOt3 += $ot3;
-                        } elseif ($aHours > 7.5) {
-                            $ot3h = max($aHours - 7.5, 0);
+                        $ot2h = floor(min($aHours, 7.5) * 4) / 4;
+                        $ot3h = floor(max(0, $aHours - 7.5) * 4) / 4;
+                        $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
+                        $totalOt2 += $ot2h;
+                        if ($ot3h > 0) {
                             $sheet->setCellValue("AD{$r}", number_format($ot3h, 2));
                             $totalOt3 += $ot3h;
                         }
-                        if ($ot5 > 0) {
-                            $sheet->setCellValue("{$lastCol}{$r}", $ot5);
-                            $totalOt5 += $ot5;
-                        } else {
-                            $sheet->setCellValue("{$lastCol}{$r}", '1');
-                            $totalOt5 += 1;
-                        }
+                        $sheet->setCellValue("{$lastCol}{$r}", '1');
+                        $totalOt5 += 1;
                     }
 
                     if ($isPH) {
                         // Public holiday: OT2 = first 7.5h, OT4 = excess
-                        if ($ot2 > 0) {
-                            $sheet->setCellValue("AC{$r}", number_format($ot2, 2));
-                            $totalOt2 += $ot2;
-                        } else {
-                            $ot2h = min($aHours, 7.5);
-                            $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
-                            $totalOt2 += $ot2h;
-                        }
-                        if ($ot4 > 0) {
-                            $sheet->setCellValue("AE{$r}", number_format($ot4, 2));
-                            $totalOt4 += $ot4;
-                        } elseif ($aHours > 7.5) {
-                            $ot4h = max($aHours - 7.5, 0);
+                        $ot2h = floor(min($aHours, 7.5) * 4) / 4;
+                        $ot4h = floor(max(0, $aHours - 7.5) * 4) / 4;
+                        $sheet->setCellValue("AC{$r}", number_format($ot2h, 2));
+                        $totalOt2 += $ot2h;
+                        if ($ot4h > 0) {
                             $sheet->setCellValue("AE{$r}", number_format($ot4h, 2));
                             $totalOt4 += $ot4h;
                         }

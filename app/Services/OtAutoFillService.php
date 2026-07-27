@@ -111,16 +111,16 @@ class OtAutoFillService
                     $updateData['ot_ph_hours'] = 0;
                 } elseif ($attendance->ot_type === 'rest_day') {
                     $updateData['ot_normal_day_hours'] = 0;
-                    $updateData['ot_rest_day_hours'] = floor(min($attendance->ot_hours, 8.0) * 4) / 4;
-                    $updateData['ot_rest_day_excess_hours'] = floor(max(0, $attendance->ot_hours - 8.0) * 4) / 4;
+                    $updateData['ot_rest_day_hours'] = min($flooredHours, 7.5);
+                    $updateData['ot_rest_day_excess_hours'] = floor(max(0, $flooredHours - 7.5) * 4) / 4;
                     $updateData['ot_rest_day_count'] = 1;
                     $updateData['ot_ph_hours'] = 0;
                 } elseif ($attendance->ot_type === 'public_holiday') {
                     $updateData['ot_normal_day_hours'] = 0;
-                    $updateData['ot_rest_day_hours'] = 0;
+                    $updateData['ot_rest_day_hours'] = min($flooredHours, 7.5);
                     $updateData['ot_rest_day_excess_hours'] = 0;
                     $updateData['ot_rest_day_count'] = 0;
-                    $updateData['ot_ph_hours'] = $flooredHours;
+                    $updateData['ot_ph_hours'] = floor(max(0, $flooredHours - 7.5) * 4) / 4;
                 }
                 $filled++;
             } elseif ($hasTimesheetOt) {

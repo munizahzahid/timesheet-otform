@@ -388,31 +388,34 @@ class OtApprovalController extends Controller
                 $newActualTotal = floor($this->calcHoursFromStrings($newValues['actual_start_time'], $newValues['actual_end_time']) * 4) / 4;
 
                 // Recalculate OT category breakdown based on day type
-                // Match PDF/Excel split logic:
-                //   rest day: ot2 = min(8.0, hours), ot3 = max(0, hours - 8.0), ot5 = 1
-                //   normal day: ot1 = hours
-                //   public holiday: ot4 = hours
+                // Non-exec: first 7.5h to OT2; excess to OT3 (rest day) or OT4 (PH)
+                // Executive: all hours go to matching day type bucket
                 $isPH = $entry->is_public_holiday ?? false;
                 $isRest = $entry->entry_date && in_array($entry->entry_date->dayOfWeek, [0, 6]);
                 if ($isPH) {
                     $newValues['ot_type'] = 'public_holiday';
                     $newValues['ot_normal_day_hours'] = 0;
-                    $newValues['ot_rest_day_hours'] = 0;
                     $newValues['ot_rest_day_excess_hours'] = 0;
                     $newValues['ot_rest_day_count'] = 0;
-                    $newValues['ot_ph_hours'] = $newActualTotal;
+                    if ($otForm->isExecutive()) {
+                        $newValues['ot_rest_day_hours'] = 0;
+                        $newValues['ot_ph_hours'] = $newActualTotal;
+                    } else {
+                        $newValues['ot_rest_day_hours'] = min($newActualTotal, 7.5);
+                        $newValues['ot_ph_hours'] = floor(max(0, $newActualTotal - 7.5) * 4) / 4;
+                    }
                 } elseif ($isRest) {
                     $newValues['ot_type'] = 'rest_day';
                     $newValues['ot_normal_day_hours'] = 0;
+                    $newValues['ot_ph_hours'] = 0;
                     if ($otForm->isExecutive()) {
                         $newValues['ot_rest_day_hours'] = $newActualTotal;
                         $newValues['ot_rest_day_excess_hours'] = 0;
                     } else {
-                        $newValues['ot_rest_day_hours'] = min($newActualTotal, 8.0);
-                        $newValues['ot_rest_day_excess_hours'] = max(0, $newActualTotal - 8.0);
+                        $newValues['ot_rest_day_hours'] = min($newActualTotal, 7.5);
+                        $newValues['ot_rest_day_excess_hours'] = floor(max(0, $newActualTotal - 7.5) * 4) / 4;
                     }
                     $newValues['ot_rest_day_count'] = 1;
-                    $newValues['ot_ph_hours'] = 0;
                 } else {
                     $newValues['ot_type'] = 'normal_day';
                     $newValues['ot_normal_day_hours'] = $newActualTotal;
