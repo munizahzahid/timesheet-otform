@@ -41,42 +41,95 @@ class TaskDependencyResolver
         // Check for circular dependency
         $this->detectCycle($task, $allTasks, []);
 
-        // Base dates: use actual if available, then revise, then plan
-        $baseDates = $this->calculateBaseDates($task);
-
-        // If task has a predecessor, calculate dependency-shifted dates
+        $effectiveStart = null;
+        $effectiveEnd = null;
         $dependencyShift = 0;
-        $effectiveDates[$taskId] = [
-            'start_date' => $baseDates['start_date'],
-            'end_date' => $baseDates['end_date'],
-            'dependency_shift_days' => 0,
-            'plan_delay_days' => $this->calculatePlanDelay($task),
-            'revise_delay_days' => $this->calculateReviseDelay($task),
-            'end_date_delay_days' => $this->calculateEndDateDelay($task),
-        ];
 
         if ($task->predecessor_task_id && $task->predecessorTask) {
             $this->resolveTask($task->predecessorTask, $allTasks, $effectiveDates, $visited);
 
-            $predecessorEffectiveEnd = $effectiveDates[$task->predecessor_task_id]['end_date'];
+            $typeParts = $this->parseDependencyType($task->dependency_type);
+            $lane = $typeParts['lane'];
+            $fromSide = $typeParts['from_side'];
+            $baseDates = $this->getLaneBaseDates($task, $lane);
+            $predecessorDates = $this->getLaneBaseDates($task->predecessorTask, $lane);
 
-            if ($predecessorEffectiveEnd && $baseDates['start_date'] && $baseDates['start_date']->lte($predecessorEffectiveEnd)) {
-                $dependencyShift = $predecessorEffectiveEnd->diffInDays($baseDates['start_date']) + 1;
-                $effectiveDates[$taskId]['dependency_shift_days'] = $dependencyShift;
+            $effectiveStart = $baseDates['start_date'];
+            $effectiveEnd = $baseDates['end_date'];
+
+            $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
+
+            if ($drivingDate && $effectiveStart) {
+                if ($fromSide === 'end' && $effectiveStart->lte($drivingDate)) {
+                    $dependencyShift = $drivingDate->diffInDays($effectiveStart) + 1;
+                    $effectiveStart = $drivingDate->copy()->addDay();
+                } elseif ($fromSide === 'start' && $effectiveStart->lt($drivingDate)) {
+                    $dependencyShift = $drivingDate->diffInDays($effectiveStart);
+                    $effectiveStart = $drivingDate->copy();
+                }
+
+                if ($effectiveEnd && $baseDates['start_date'] && $baseDates['end_date']) {
+                    $duration = $baseDates['start_date']->diffInDays($baseDates['end_date']);
+                    $effectiveEnd = $effectiveStart->copy()->addDays($duration);
+                }
             }
-
-            // If task has no actual dates, push effective dates after predecessor
-            if (!$task->start_date_actual && !$task->end_date_actual) {
-                $shiftedStart = $predecessorEffectiveEnd ? $predecessorEffectiveEnd->copy()->addDay() : $baseDates['start_date'];
-                $duration = $baseDates['start_date'] && $baseDates['end_date']
-                    ? $baseDates['start_date']->diffInDays($baseDates['end_date'])
-                    : 0;
-                $shiftedEnd = $shiftedStart->copy()->addDays($duration);
-
-                $effectiveDates[$taskId]['start_date'] = $shiftedStart;
-                $effectiveDates[$taskId]['end_date'] = $shiftedEnd;
-            }
+        } else {
+            $baseDates = $this->calculateBaseDates($task);
+            $effectiveStart = $baseDates['start_date'];
+            $effectiveEnd = $baseDates['end_date'];
         }
+
+        $effectiveDates[$taskId] = [
+            'start_date' => $effectiveStart,
+            'end_date' => $effectiveEnd,
+            'dependency_shift_days' => $dependencyShift,
+            'plan_delay_days' => $this->calculatePlanDelay($task),
+            'revise_delay_days' => $this->calculateReviseDelay($task),
+            'end_date_delay_days' => $this->calculateEndDateDelay($task),
+        ];
+    }
+
+    /**
+     * Parse dependency type into lane and source side (start or end).
+     */
+    protected function parseDependencyType(?string $type): array
+    {
+        if (!$type) {
+            return ['lane' => 'plan', 'from_side' => 'end'];
+        }
+
+        $parts = explode('_', $type);
+
+        // legacy: 'end_to_start' or 'start_to_start' (treat as plan)
+        if (count($parts) === 3) {
+            return ['lane' => in_array($parts[0], ['plan', 'actual']) ? $parts[0] : 'plan', 'from_side' => $parts[1] === 'start' ? 'start' : 'end'];
+        }
+
+        $fromSide = $parts[0] ?? 'end';
+        return ['lane' => 'plan', 'from_side' => $fromSide === 'start' ? 'start' : 'end'];
+    }
+
+    /**
+     * Get the raw start/end dates for a specific date lane (plan or actual).
+     */
+    protected function getLaneBaseDates(ProjectTask $task, string $lane): array
+    {
+        if ($lane === 'actual') {
+            $endDate = $task->end_date_actual;
+            // For ongoing actual tasks without an end date, use today as a provisional end
+            if ($task->start_date_actual && !$endDate) {
+                $endDate = Carbon::today();
+            }
+            return [
+                'start_date' => $task->start_date_actual,
+                'end_date' => $endDate,
+            ];
+        }
+
+        return [
+            'start_date' => $task->start_date_plan,
+            'end_date' => $task->end_date_plan,
+        ];
     }
 
     /**
@@ -189,12 +242,19 @@ class TaskDependencyResolver
             return;
         }
 
-        $predecessorEffectiveEnd = $this->calculateBaseDates($predecessor)['end_date'];
-        if (!$predecessorEffectiveEnd) {
+        $predecessorBaseDates = $this->calculateBaseDates($predecessor);
+        $dependencyType = $task->dependency_type ?? 'end_to_start';
+        $predecessorDrivingDate = $dependencyType === 'start_to_start'
+            ? $predecessorBaseDates['start_date']
+            : $predecessorBaseDates['end_date'];
+
+        if (!$predecessorDrivingDate) {
             return;
         }
 
-        $newReviseStart = $predecessorEffectiveEnd->copy()->addDay();
+        $newReviseStart = $dependencyType === 'start_to_start'
+            ? $predecessorDrivingDate->copy()
+            : $predecessorDrivingDate->copy()->addDay();
         $duration = $task->start_date_plan->diffInDays($task->end_date_plan);
         $newReviseEnd = $newReviseStart->copy()->addDays($duration);
 
@@ -231,14 +291,20 @@ class TaskDependencyResolver
                 continue;
             }
 
-            // Predecessor driving end: actual > revise > plan
-            $predecessorEffectiveEnd = $this->calculateBaseDates($predecessor)['end_date'];
-            if (!$predecessorEffectiveEnd || !$task->start_date_plan || !$task->end_date_plan) {
+            // Predecessor driving date: actual > revise > plan
+            $predecessorBaseDates = $this->calculateBaseDates($predecessor);
+            $dependencyType = $task->dependency_type ?? 'end_to_start';
+            $predecessorDrivingDate = $dependencyType === 'start_to_start'
+                ? $predecessorBaseDates['start_date']
+                : $predecessorBaseDates['end_date'];
+            if (!$predecessorDrivingDate || !$task->start_date_plan || !$task->end_date_plan) {
                 continue;
             }
 
-            // Successor revise dates = predecessor end + 1 day, keeping original duration
-            $newReviseStart = $predecessorEffectiveEnd->copy()->addDay();
+            // Successor revise dates = predecessor driving date (or +1 day for end_to_start), keeping original duration
+            $newReviseStart = $dependencyType === 'start_to_start'
+                ? $predecessorDrivingDate->copy()
+                : $predecessorDrivingDate->copy()->addDay();
             $duration = $task->start_date_plan->diffInDays($task->end_date_plan);
             $newReviseEnd = $newReviseStart->copy()->addDays($duration);
 

@@ -191,6 +191,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
                 Route::delete('/{task}', [ProjectTaskController::class, 'destroy'])->name('destroy');
                 Route::post('/{task}/quick-update', [ProjectTaskController::class, 'quickUpdate'])->name('quick-update');
                 Route::post('/{task}/inline-update', [ProjectTaskController::class, 'inlineUpdate'])->name('inline-update');
+                Route::post('/{task}/dependency', [ProjectTaskController::class, 'updateDependency'])->name('dependency.update');
 
                 // Comments
                 Route::post('/{task}/comments', [ProjectTaskCommentController::class, 'store'])->name('comments.store');

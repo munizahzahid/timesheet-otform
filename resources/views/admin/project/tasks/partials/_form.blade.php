@@ -52,22 +52,6 @@
         </div>
 
         <div>
-            <label for="predecessor_task_id" class="block text-xs font-medium text-gray-600 mb-1">Predecessor Task (dependency)</label>
-            <select name="predecessor_task_id" id="predecessor_task_id"
-                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                <option value="">— No Predecessor —</option>
-                @foreach($tasks as $t)
-                    @if(!$isEdit || $t->id != $task->id)
-                        <option value="{{ $t->id }}" {{ old('predecessor_task_id', $isEdit ? $task->predecessor_task_id : '') == $t->id ? 'selected' : '' }}>
-                            {{ $t->task_name }}
-                        </option>
-                    @endif
-                @endforeach
-            </select>
-            @error('predecessor_task_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-        </div>
-
-        <div>
             <label for="status" class="block text-xs font-medium text-gray-600 mb-1">Status</label>
             <select name="status" id="status"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">

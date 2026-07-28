@@ -118,6 +118,47 @@
         .task-row.hidden {
             display: none;
         }
+        .gantt-dot {
+            position: absolute;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #4b5563;
+            transform: translateY(-50%);
+            cursor: crosshair;
+            z-index: 20;
+            pointer-events: auto;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.8);
+        }
+        .gantt-dot-left {
+            left: -4px;
+            transform: translate(-50%, -50%);
+        }
+        .gantt-dot-right {
+            right: -4px;
+            transform: translate(50%, -50%);
+        }
+        .gantt-dot:hover {
+            background: #4b5563;
+            border-color: #1f2937;
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        .gantt-dot-right:hover {
+            transform: translate(50%, -50%) scale(1.2);
+        }
+        #gantt-dependency-arrows path {
+            pointer-events: stroke;
+            cursor: pointer;
+        }
+        #gantt-dependency-arrows path:hover {
+            stroke: #111827;
+            stroke-width: 2.5;
+        }
+        .gantt-drag-arrow {
+            pointer-events: none;
+        }
     </style>
 
     @if(!empty($dependencyError))
@@ -916,6 +957,33 @@
     });
 
     // --- Dependency Arrows ---
+    function getGanttBarForTask(wrapper, taskId, barType) {
+        var bar = wrapper.querySelector('.gantt-bar[data-task-id="' + taskId + '"][data-bar-type="' + barType + '"]');
+        if (bar) {
+            var rect = bar.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) return bar;
+        }
+        return null;
+    }
+
+    function parseGanttDependencyType(type) {
+        if (!type) return { lane: 'plan', fromSide: 'end', toSide: 'start' };
+        var parts = type.split('_');
+        if (parts.length === 4) {
+            return {
+                lane: (parts[0] === 'actual' ? 'actual' : 'plan'),
+                fromSide: (parts[1] === 'start' ? 'start' : 'end'),
+                toSide: (parts[3] === 'start' ? 'start' : 'end')
+            };
+        }
+        // legacy 'end_to_start' or 'start_to_start' (plan lane)
+        return {
+            lane: 'plan',
+            fromSide: (parts[0] === 'start' ? 'start' : 'end'),
+            toSide: 'start'
+        };
+    }
+
     function drawGanttDependencyArrows() {
         var svg = document.getElementById('gantt-dependency-arrows');
         var wrapper = document.getElementById('gantt-wrapper');
@@ -930,29 +998,36 @@
         var existingPaths = svg.querySelectorAll('path');
         existingPaths.forEach(function(p) { p.remove(); });
 
-        var bars = wrapper.querySelectorAll('.gantt-bar[data-bar-type="plan"][data-task-id]');
-        bars.forEach(function(bar) {
-            var taskId = bar.dataset.taskId;
-            var row = wrapper.querySelector('.task-row[data-task-id="' + taskId + '"]');
-            if (!row) return;
-
+        wrapper.querySelectorAll('.task-row[data-task-id]').forEach(function(row) {
+            var taskId = row.dataset.taskId;
             var predecessorId = row.dataset.predecessorId;
+            var dependencyType = row.dataset.dependencyType || 'end_to_start';
             if (!predecessorId) return;
 
-            var predecessorBar = wrapper.querySelector('.gantt-bar[data-bar-type="plan"][data-task-id="' + predecessorId + '"]');
-            if (!predecessorBar) return;
+            var typeParts = parseGanttDependencyType(dependencyType);
+            var successorBar = getGanttBarForTask(wrapper, taskId, typeParts.lane);
+            var predecessorBar = getGanttBarForTask(wrapper, predecessorId, typeParts.lane);
+            if (!successorBar || !predecessorBar) return;
 
             var fromRect = predecessorBar.getBoundingClientRect();
-            var toRect = bar.getBoundingClientRect();
+            var toRect = successorBar.getBoundingClientRect();
             if (fromRect.width === 0 || fromRect.height === 0 || toRect.width === 0 || toRect.height === 0) return;
 
-            var x1 = fromRect.right - wrapperRect.left;
-            var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
-            var x2 = toRect.left - wrapperRect.left;
+            var x2 = typeParts.toSide === 'start'
+                ? (toRect.left - wrapperRect.left)
+                : (toRect.right - wrapperRect.left);
             var y2 = (toRect.top + toRect.bottom) / 2 - wrapperRect.top;
+            var x1 = typeParts.fromSide === 'start'
+                ? (fromRect.left - wrapperRect.left)
+                : (fromRect.right - wrapperRect.left);
+            var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
 
             var xMid = (x1 + x2) / 2;
             var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
+
+            var label = typeParts.fromSide === 'start'
+                ? 'Start-to-Start (' + typeParts.lane + ')'
+                : 'End-to-Start (' + typeParts.lane + ')';
 
             var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', d);
@@ -960,6 +1035,11 @@
             path.setAttribute('stroke-width', '1.5');
             path.setAttribute('fill', 'none');
             path.setAttribute('marker-end', 'url(#gantt-arrowhead)');
+            path.setAttribute('class', 'gantt-dependency-arrow');
+            path.setAttribute('data-task-id', taskId);
+            path.setAttribute('data-predecessor-id', predecessorId);
+            path.setAttribute('data-dependency-type', dependencyType);
+            path.setAttribute('title', label);
             svg.appendChild(path);
         });
     }
@@ -989,5 +1069,230 @@
         ganttEnterFullscreen = function() { originalGanttEnterFullscreen(); setTimeout(drawGanttDependencyArrows, 50); };
         ganttExitFullscreen = function() { originalGanttExitFullscreen(); setTimeout(drawGanttDependencyArrows, 50); };
     }
+
+    // --- Drag-to-Create Dependency ---
+    var ganttUpdateDependencyUrl = '{{ route("admin.project.projects.tasks.dependency.update", ["project" => $project->id, "task" => ":taskId"]) }}';
+    var ganttDragState = { isDragging: false, startDot: null, tempPath: null };
+
+    function ganttGetWrapperPoint(e) {
+        var wrapper = document.getElementById('gantt-wrapper');
+        var rect = wrapper.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function ganttGetDotPoint(dot) {
+        var wrapper = document.getElementById('gantt-wrapper');
+        var rect = dot.getBoundingClientRect();
+        var wrapperRect = wrapper.getBoundingClientRect();
+        var x = dot.dataset.dotSide === 'left' ? (rect.left - wrapperRect.left) : (rect.right - wrapperRect.left);
+        var y = (rect.top + rect.bottom) / 2 - wrapperRect.top;
+        return { x: x, y: y };
+    }
+
+    function ganttCreateTempArrow(x1, y1, x2, y2) {
+        var svg = document.getElementById('gantt-dependency-arrows');
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'gantt-drag-arrow');
+        path.setAttribute('stroke', '#9ca3af');
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-dasharray', '4 2');
+        ganttUpdateTempArrow(path, x1, y1, x2, y2);
+        svg.appendChild(path);
+        return path;
+    }
+
+    function ganttUpdateTempArrow(path, x1, y1, x2, y2) {
+        var xMid = (x1 + x2) / 2;
+        var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
+        path.setAttribute('d', d);
+    }
+
+    function ganttRemoveTempArrow() {
+        if (ganttDragState.tempPath) {
+            ganttDragState.tempPath.remove();
+            ganttDragState.tempPath = null;
+        }
+    }
+
+    document.querySelectorAll('.gantt-dot').forEach(function(dot) {
+        dot.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var wrapper = document.getElementById('gantt-wrapper');
+            var svg = document.getElementById('gantt-dependency-arrows');
+            if (!wrapper || !svg) return;
+            ganttDragState.isDragging = true;
+            ganttDragState.startDot = dot;
+            var startPoint = ganttGetDotPoint(dot);
+            ganttDragState.tempPath = ganttCreateTempArrow(startPoint.x, startPoint.y, startPoint.x, startPoint.y);
+        });
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!ganttDragState.isDragging || !ganttDragState.tempPath) return;
+        var startPoint = ganttGetDotPoint(ganttDragState.startDot);
+        var endPoint = ganttGetWrapperPoint(e);
+        ganttUpdateTempArrow(ganttDragState.tempPath, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+    });
+
+    document.addEventListener('mouseup', function(e) {
+        if (!ganttDragState.isDragging) return;
+        ganttDragState.isDragging = false;
+
+        var startDot = ganttDragState.startDot;
+        var target = document.elementFromPoint(e.clientX, e.clientY);
+
+        if (target && target.classList && target.classList.contains('gantt-dot') && target !== startDot) {
+            var startSide = startDot.dataset.dotSide;
+            var endSide = target.dataset.dotSide;
+            var startLane = startDot.dataset.barType;
+            var endLane = target.dataset.barType;
+            var dependencyType = null;
+
+            // Only plan-plan or actual-actual dependencies are supported
+            if (startLane && endLane && startLane === endLane && (startLane === 'plan' || startLane === 'actual')) {
+                var sourceSide = startSide === 'left' ? 'start' : 'end';
+                var targetSide = endSide === 'left' ? 'start' : 'end';
+
+                // Valid combinations: end-to-start or start-to-start
+                if (sourceSide === 'end' && targetSide === 'start') {
+                    dependencyType = startLane + '_end_to_start';
+                } else if (sourceSide === 'start' && targetSide === 'start') {
+                    dependencyType = startLane + '_start_to_start';
+                }
+            }
+
+            if (dependencyType) {
+                var predecessorId = startDot.dataset.taskId;
+                var successorId = target.dataset.taskId;
+
+                if (predecessorId && successorId && predecessorId !== successorId) {
+                    var url = ganttUpdateDependencyUrl.replace(':taskId', successorId);
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': gcmCsrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            predecessor_task_id: parseInt(predecessorId, 10),
+                            dependency_type: dependencyType
+                        })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            var row = document.querySelector('.task-row[data-task-id="' + successorId + '"]');
+                            if (row) {
+                                row.dataset.predecessorId = predecessorId;
+                                row.dataset.dependencyType = dependencyType;
+                            }
+                            drawGanttDependencyArrows();
+                        } else {
+                            alert(data.message || 'Failed to create dependency.');
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error(err);
+                        alert('Failed to create dependency.');
+                    });
+                }
+            } else {
+                alert('Invalid dependency connection. Please connect appropriate ends.');
+            }
+        }
+
+        ganttRemoveTempArrow();
+        ganttDragState.startDot = null;
+    });
+
+    // Initial draw in case window.load already fired or is circumvented by SPA
+    setTimeout(drawGanttDependencyArrows, 50);
+
+    // --- Dependency Delete Confirmation ---
+    var ganttDependencyToDelete = null;
+
+    function ganttShowDependencyDeleteModal(taskId, predecessorId) {
+        ganttDependencyToDelete = { taskId: taskId, predecessorId: predecessorId };
+        document.getElementById('gantt-dependency-delete-modal').classList.remove('hidden');
+    }
+
+    function ganttHideDependencyDeleteModal() {
+        document.getElementById('gantt-dependency-delete-modal').classList.add('hidden');
+        ganttDependencyToDelete = null;
+    }
+
+    var ganttDependencyArrowsSvg = document.getElementById('gantt-dependency-arrows');
+    if (ganttDependencyArrowsSvg) {
+        ganttDependencyArrowsSvg.addEventListener('click', function(e) {
+            var path = e.target.closest ? e.target.closest('path.gantt-dependency-arrow') : null;
+            if (!path) return;
+            var taskId = path.dataset.taskId;
+            var predecessorId = path.dataset.predecessorId;
+            if (taskId) ganttShowDependencyDeleteModal(taskId, predecessorId);
+        });
+    }
+
+    var ganttDepDeleteCancel = document.getElementById('gantt-dep-delete-cancel');
+    var ganttDepDeleteConfirm = document.getElementById('gantt-dep-delete-confirm');
+    if (ganttDepDeleteCancel) {
+        ganttDepDeleteCancel.addEventListener('click', ganttHideDependencyDeleteModal);
+    }
+    if (ganttDepDeleteConfirm) {
+        ganttDepDeleteConfirm.addEventListener('click', function() {
+            if (!ganttDependencyToDelete) return;
+            var taskId = ganttDependencyToDelete.taskId;
+            var url = ganttUpdateDependencyUrl.replace(':taskId', taskId);
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': gcmCsrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    predecessor_task_id: null,
+                    dependency_type: 'end_to_start'
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var row = document.querySelector('.task-row[data-task-id="' + taskId + '"]');
+                    if (row) {
+                        row.dataset.predecessorId = '';
+                        row.dataset.dependencyType = 'end_to_start';
+                    }
+                    drawGanttDependencyArrows();
+                } else {
+                    alert(data.message || 'Failed to delete dependency.');
+                }
+                ganttHideDependencyDeleteModal();
+            })
+            .catch(function(err) {
+                console.error(err);
+                alert('Failed to delete dependency.');
+                ganttHideDependencyDeleteModal();
+            });
+        });
+    }
 </script>
+
+{{-- Dependency Delete Confirmation Modal --}}
+<div id="gantt-dependency-delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-lg shadow-xl w-80 max-w-full mx-4 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h4 class="text-sm font-semibold text-gray-800">Delete Dependency?</h4>
+        </div>
+        <div class="px-4 py-3">
+            <p class="text-xs text-gray-600">Remove this dependency link?</p>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 flex justify-end gap-2">
+            <button id="gantt-dep-delete-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
+            <button id="gantt-dep-delete-confirm" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition">Delete</button>
+        </div>
+    </div>
+</div>
 </div>

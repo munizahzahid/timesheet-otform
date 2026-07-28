@@ -30,7 +30,7 @@
     $dayWidth = isset($dayWidth) ? $dayWidth : 30; // pixels per day
 @endphp
 
-<tr class="hover:bg-gray-50 task-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-predecessor-id="{{ $task->predecessor_task_id }}">
+<tr class="hover:bg-gray-50 task-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-predecessor-id="{{ $task->predecessor_task_id }}" data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}">
     <td class="sticky left-0 bg-white z-10 px-4 py-2 border-r border-gray-200 pl-8">
         <div class="flex items-center gap-2">
             <div class="gantt-menu">
@@ -92,15 +92,19 @@
                 <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
                      style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: #60a5fa; border: 1px solid #3b82f6; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                      title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }}">
+                    <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
+                    <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
                 </div>
             @endif
 
             {{-- Revise lane (row 2) --}}
             <div class="absolute" style="left: 0; right: 0; top: 26px; height: 18px; background-color: rgba(251, 146, 60, 0.08); border-radius: 4px;"></div>
             @if($reviseStartOffset !== null && $reviseDuration !== null)
-                <div class="gantt-bar absolute" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
+                <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
                      style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                      title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }}">
+                    <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
+                    <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
                 </div>
             @endif
 
@@ -117,9 +121,11 @@
                         ? "background-color: #86efac; border: 1px solid #22c55e; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                         : "background-color: #22c55e; border: 1px solid #16a34a; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
                 @endphp
-                <div class="gantt-bar absolute" data-start-offset="{{ $actualStartOffset }}" data-duration="{{ $actualDuration }}" data-bar-type="actual"
+                <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $actualStartOffset }}" data-duration="{{ $actualDuration }}" data-bar-type="actual"
                      style="left: {{ $actualStartOffset * $dayWidth }}px; top: 48px; width: {{ max($actualDuration * $dayWidth, 4) }}px; height: 18px; {{ $actualStyle }}"
                      title="{{ $actualTitle }}">
+                    <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="actual" title="Drag to create dependency"></div>
+                    <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="actual" title="Drag to create dependency"></div>
                 </div>
             @endif
         </div>

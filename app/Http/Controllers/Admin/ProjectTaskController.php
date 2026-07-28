@@ -41,7 +41,6 @@ class ProjectTaskController extends Controller
     {
         $validated = $request->validate([
             'phase_id' => 'nullable|exists:project_phases,id',
-            'predecessor_task_id' => 'nullable|exists:project_tasks,id',
             'task_name' => 'required|string|max:255',
             'task_order' => 'required|integer|min:1',
             'assigned_to' => 'nullable|exists:users,id',
@@ -66,20 +65,7 @@ class ProjectTaskController extends Controller
 
         $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], null);
 
-        // Validate no cycle if predecessor is set
-        if (!empty($validated['predecessor_task_id'])) {
-            $resolver = new TaskDependencyResolver();
-            $task = new ProjectTask($validated);
-            $resolver->validatePredecessor($task, $validated['predecessor_task_id'], $project->tasks);
-        }
-
         $task = ProjectTask::create($validated);
-
-        // If the new task has a predecessor, calculate its revised dates based on predecessor
-        if (!empty($validated['predecessor_task_id'])) {
-            $resolver = new TaskDependencyResolver();
-            $resolver->recalculateTaskReviseDates($task);
-        }
 
         (new ProjectProgressCalculator())->recalculateFromTask($task);
 
@@ -119,7 +105,6 @@ class ProjectTaskController extends Controller
     {
         $validated = $request->validate([
             'phase_id' => 'nullable|exists:project_phases,id',
-            'predecessor_task_id' => 'nullable|exists:project_tasks,id|not_in:' . $task->id,
             'task_name' => 'required|string|max:255',
             'task_order' => 'required|integer|min:1',
             'assigned_to' => 'nullable|exists:users,id',
@@ -143,36 +128,11 @@ class ProjectTaskController extends Controller
 
         $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], $task->id);
 
-        // Validate no cycle if predecessor is set
-        if (!empty($validated['predecessor_task_id'])) {
-            $resolver = new TaskDependencyResolver();
-            $tempTask = clone $task;
-            $tempTask->predecessor_task_id = $validated['predecessor_task_id'];
-            $resolver->validatePredecessor($tempTask, $validated['predecessor_task_id'], $project->tasks);
-        }
-
-        $oldPredecessorId = $task->predecessor_task_id;
         $oldActualEnd = $task->end_date_actual ? $task->end_date_actual->format('Y-m-d') : null;
         $oldReviseEnd = $task->end_date_revise ? $task->end_date_revise->format('Y-m-d') : null;
         $oldPhaseId = $task->phase_id;
 
         $task->update($validated);
-
-        $resolver = new TaskDependencyResolver();
-
-        // If predecessor changed or set, recalculate this task's own revised dates
-        if (!empty($validated['predecessor_task_id']) || $oldPredecessorId != ($validated['predecessor_task_id'] ?? null)) {
-            $task->refresh();
-            $resolver->recalculateTaskReviseDates($task);
-        }
-
-        // If this task's end dates changed, cascade revised dates to successors
-        $newActualEnd = $validated['end_date_actual'] ?? null;
-        $newReviseEnd = $validated['end_date_revise'] ?? null;
-        if ($oldActualEnd !== $newActualEnd || $oldReviseEnd !== $newReviseEnd) {
-            $task->refresh();
-            $resolver->cascadeReviseDates($project, $task);
-        }
 
         // Recalculate progress for affected phase(s) and project
         $calculator = new ProjectProgressCalculator();
@@ -228,15 +188,6 @@ class ProjectTaskController extends Controller
             (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
         }
 
-        // If actual or revise end dates changed, cascade revised dates to successors
-        $newActualEnd = $validated['end_date_actual'] ?? null;
-        $newReviseEnd = $validated['end_date_revise'] ?? null;
-        if ($oldValues['end_date_actual'] !== $newActualEnd || $oldValues['end_date_revise'] !== $newReviseEnd) {
-            $task->refresh();
-            $resolver = new TaskDependencyResolver();
-            $resolver->cascadeReviseDates($project, $task);
-        }
-
         // Log changes for each field
         $fieldsToLog = ['progress_actual', 'status', 'start_date_actual', 'end_date_actual', 'start_date_revise', 'end_date_revise'];
         foreach ($fieldsToLog as $field) {
@@ -290,14 +241,7 @@ class ProjectTaskController extends Controller
         }
 
         if (array_key_exists('end_date_revise', $validated)) {
-            $oldReviseEnd = $task->end_date_revise ? $task->end_date_revise->format('Y-m-d') : null;
             $task->update(['end_date_revise' => $validated['end_date_revise']]);
-            $newReviseEnd = $validated['end_date_revise'] ? \Carbon\Carbon::parse($validated['end_date_revise'])->format('Y-m-d') : null;
-            if ($oldReviseEnd !== $newReviseEnd) {
-                $task->refresh();
-                $resolver = new TaskDependencyResolver();
-                $resolver->cascadeReviseDates($project, $task);
-            }
         }
 
         $task->refresh();
@@ -311,6 +255,46 @@ class ProjectTaskController extends Controller
                 'end_date_revise' => $task->end_date_revise?->format('M d'),
                 'end_date_revise_raw' => $task->end_date_revise?->format('Y-m-d'),
             ],
+        ]);
+    }
+
+    /**
+     * Update a task dependency (set or remove predecessor) via drag-and-drop
+     */
+    public function updateDependency(Request $request, Project $project, ProjectTask $task)
+    {
+        $validated = $request->validate([
+            'predecessor_task_id' => 'nullable|integer|exists:project_tasks,id',
+            'dependency_type' => 'required_with:predecessor_task_id|string|in:plan_end_to_start,actual_end_to_start,plan_start_to_start,actual_start_to_start,end_to_start,start_to_start',
+        ]);
+
+        $predecessorTaskId = $validated['predecessor_task_id'] ?? null;
+        $dependencyType = $validated['dependency_type'] ?? 'end_to_start';
+
+        if ($predecessorTaskId) {
+            $resolver = new TaskDependencyResolver();
+            $allTasks = $project->tasks()->get();
+
+            try {
+                $resolver->validatePredecessor($task, $predecessorTaskId, $allTasks);
+            } catch (\InvalidArgumentException | \RuntimeException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+        }
+
+        $task->update([
+            'predecessor_task_id' => $predecessorTaskId,
+            'dependency_type' => $predecessorTaskId ? $dependencyType : 'end_to_start',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'task_id' => $task->id,
+            'predecessor_task_id' => $predecessorTaskId,
+            'dependency_type' => $predecessorTaskId ? $dependencyType : 'end_to_start',
         ]);
     }
 

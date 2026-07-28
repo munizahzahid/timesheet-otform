@@ -12,6 +12,7 @@ class ProjectTask extends Model
         'project_id',
         'phase_id',
         'predecessor_task_id',
+        'dependency_type',
         'task_name',
         'task_order',
         'assigned_to',
