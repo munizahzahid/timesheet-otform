@@ -1216,12 +1216,22 @@
 
     function ganttShowDependencyDeleteModal(taskId, predecessorId) {
         ganttDependencyToDelete = { taskId: taskId, predecessorId: predecessorId };
-        document.getElementById('gantt-dependency-delete-modal').classList.remove('hidden');
+        var modal = document.getElementById('gantt-dependency-delete-modal');
+        if (modal) {
+            document.body.appendChild(modal);
+            modal.classList.remove('hidden');
+        }
+        if (ganttDependencyArrowsSvg) {
+            ganttDependencyArrowsSvg.style.pointerEvents = 'none';
+        }
     }
 
     function ganttHideDependencyDeleteModal() {
         document.getElementById('gantt-dependency-delete-modal').classList.add('hidden');
         ganttDependencyToDelete = null;
+        if (ganttDependencyArrowsSvg) {
+            ganttDependencyArrowsSvg.style.pointerEvents = '';
+        }
     }
 
     var ganttDependencyArrowsSvg = document.getElementById('gantt-dependency-arrows');
@@ -1235,13 +1245,14 @@
         });
     }
 
-    var ganttDepDeleteCancel = document.getElementById('gantt-dep-delete-cancel');
-    var ganttDepDeleteConfirm = document.getElementById('gantt-dep-delete-confirm');
-    if (ganttDepDeleteCancel) {
-        ganttDepDeleteCancel.addEventListener('click', ganttHideDependencyDeleteModal);
-    }
-    if (ganttDepDeleteConfirm) {
-        ganttDepDeleteConfirm.addEventListener('click', function() {
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('#gantt-dep-delete-cancel')) {
+            e.preventDefault();
+            ganttHideDependencyDeleteModal();
+            return;
+        }
+        if (e.target.closest('#gantt-dep-delete-confirm')) {
+            e.preventDefault();
             if (!ganttDependencyToDelete) return;
             var taskId = ganttDependencyToDelete.taskId;
             var url = ganttUpdateDependencyUrl.replace(':taskId', taskId);
@@ -1276,12 +1287,12 @@
                 alert('Failed to delete dependency.');
                 ganttHideDependencyDeleteModal();
             });
-        });
-    }
+        }
+    });
 </script>
 
 {{-- Dependency Delete Confirmation Modal --}}
-<div id="gantt-dependency-delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+<div id="gantt-dependency-delete-modal" class="hidden fixed inset-0 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5); pointer-events: auto; z-index: 9999;">
     <div class="bg-white rounded-lg shadow-xl w-80 max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h4 class="text-sm font-semibold text-gray-800">Delete Dependency?</h4>
