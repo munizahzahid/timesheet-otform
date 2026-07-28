@@ -72,6 +72,30 @@
                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
             @error('weight') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
         </div>
+
+        <div>
+            <label for="predecessor_task_id" class="block text-xs font-medium text-gray-600 mb-1">Predecessor Task</label>
+            <select name="predecessor_task_id" id="predecessor_task_id"
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <option value="">— No Predecessor —</option>
+                @foreach($tasks as $predecessor)
+                    <option value="{{ $predecessor->id }}" {{ old('predecessor_task_id', $isEdit ? $task->predecessor_task_id : '') == $predecessor->id ? 'selected' : '' }}>
+                        {{ $predecessor->task_name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('predecessor_task_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        </div>
+
+        <div>
+            <label for="dependency_type" class="block text-xs font-medium text-gray-600 mb-1">Dependency Type</label>
+            <select name="dependency_type" id="dependency_type"
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                <option value="end_to_start" {{ old('dependency_type', $isEdit ? $task->dependency_type : 'end_to_start') === 'end_to_start' ? 'selected' : '' }}>End-to-Start</option>
+                <option value="start_to_start" {{ old('dependency_type', $isEdit ? $task->dependency_type : 'end_to_start') === 'start_to_start' ? 'selected' : '' }}>Start-to-Start</option>
+            </select>
+            @error('dependency_type') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+        </div>
     </div>
 </div>
 

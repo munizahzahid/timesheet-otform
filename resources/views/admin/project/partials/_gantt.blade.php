@@ -967,21 +967,51 @@
     }
 
     function parseGanttDependencyType(type) {
-        if (!type) return { lane: 'plan', fromSide: 'end', toSide: 'start' };
-        var parts = type.split('_');
-        if (parts.length === 4) {
-            return {
-                lane: (parts[0] === 'actual' ? 'actual' : 'plan'),
-                fromSide: (parts[1] === 'start' ? 'start' : 'end'),
-                toSide: (parts[3] === 'start' ? 'start' : 'end')
-            };
+        if (type && type.indexOf('start_to_start') !== -1) {
+            return { fromSide: 'start', toSide: 'start' };
         }
-        // legacy 'end_to_start' or 'start_to_start' (plan lane)
-        return {
-            lane: 'plan',
-            fromSide: (parts[0] === 'start' ? 'start' : 'end'),
-            toSide: 'start'
-        };
+        return { fromSide: 'end', toSide: 'start' };
+    }
+
+    function drawGanttDependencyArrowForLane(wrapper, svg, wrapperRect, taskId, predecessorId, dependencyType, lane) {
+        var typeParts = parseGanttDependencyType(dependencyType);
+        var successorBar = getGanttBarForTask(wrapper, taskId, lane);
+        var predecessorBar = getGanttBarForTask(wrapper, predecessorId, lane);
+        if (!successorBar || !predecessorBar) return;
+
+        var fromRect = predecessorBar.getBoundingClientRect();
+        var toRect = successorBar.getBoundingClientRect();
+        if (fromRect.width === 0 || fromRect.height === 0 || toRect.width === 0 || toRect.height === 0) return;
+
+        var x2 = typeParts.toSide === 'start'
+            ? (toRect.left - wrapperRect.left)
+            : (toRect.right - wrapperRect.left);
+        var y2 = (toRect.top + toRect.bottom) / 2 - wrapperRect.top;
+        var x1 = typeParts.fromSide === 'start'
+            ? (fromRect.left - wrapperRect.left)
+            : (fromRect.right - wrapperRect.left);
+        var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
+
+        var xMid = (x1 + x2) / 2;
+        var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
+
+        var label = typeParts.fromSide === 'start'
+            ? 'Start-to-Start (' + lane + ')'
+            : 'End-to-Start (' + lane + ')';
+
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('stroke', lane === 'actual' ? '#16a34a' : '#6b7280');
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('marker-end', 'url(#gantt-arrowhead)');
+        path.setAttribute('class', 'gantt-dependency-arrow');
+        path.setAttribute('data-task-id', taskId);
+        path.setAttribute('data-predecessor-id', predecessorId);
+        path.setAttribute('data-dependency-type', dependencyType);
+        path.setAttribute('data-lane', lane);
+        path.setAttribute('title', label);
+        svg.appendChild(path);
     }
 
     function drawGanttDependencyArrows() {
@@ -1004,43 +1034,8 @@
             var dependencyType = row.dataset.dependencyType || 'end_to_start';
             if (!predecessorId) return;
 
-            var typeParts = parseGanttDependencyType(dependencyType);
-            var successorBar = getGanttBarForTask(wrapper, taskId, typeParts.lane);
-            var predecessorBar = getGanttBarForTask(wrapper, predecessorId, typeParts.lane);
-            if (!successorBar || !predecessorBar) return;
-
-            var fromRect = predecessorBar.getBoundingClientRect();
-            var toRect = successorBar.getBoundingClientRect();
-            if (fromRect.width === 0 || fromRect.height === 0 || toRect.width === 0 || toRect.height === 0) return;
-
-            var x2 = typeParts.toSide === 'start'
-                ? (toRect.left - wrapperRect.left)
-                : (toRect.right - wrapperRect.left);
-            var y2 = (toRect.top + toRect.bottom) / 2 - wrapperRect.top;
-            var x1 = typeParts.fromSide === 'start'
-                ? (fromRect.left - wrapperRect.left)
-                : (fromRect.right - wrapperRect.left);
-            var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
-
-            var xMid = (x1 + x2) / 2;
-            var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
-
-            var label = typeParts.fromSide === 'start'
-                ? 'Start-to-Start (' + typeParts.lane + ')'
-                : 'End-to-Start (' + typeParts.lane + ')';
-
-            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', d);
-            path.setAttribute('stroke', '#6b7280');
-            path.setAttribute('stroke-width', '1.5');
-            path.setAttribute('fill', 'none');
-            path.setAttribute('marker-end', 'url(#gantt-arrowhead)');
-            path.setAttribute('class', 'gantt-dependency-arrow');
-            path.setAttribute('data-task-id', taskId);
-            path.setAttribute('data-predecessor-id', predecessorId);
-            path.setAttribute('data-dependency-type', dependencyType);
-            path.setAttribute('title', label);
-            svg.appendChild(path);
+            drawGanttDependencyArrowForLane(wrapper, svg, wrapperRect, taskId, predecessorId, dependencyType, 'plan');
+            drawGanttDependencyArrowForLane(wrapper, svg, wrapperRect, taskId, predecessorId, dependencyType, 'actual');
         });
     }
 
@@ -1157,9 +1152,9 @@
 
                 // Valid combinations: end-to-start or start-to-start
                 if (sourceSide === 'end' && targetSide === 'start') {
-                    dependencyType = startLane + '_end_to_start';
+                    dependencyType = 'end_to_start';
                 } else if (sourceSide === 'start' && targetSide === 'start') {
-                    dependencyType = startLane + '_start_to_start';
+                    dependencyType = 'start_to_start';
                 }
             }
 
@@ -1168,6 +1163,15 @@
                 var successorId = target.dataset.taskId;
 
                 if (predecessorId && successorId && predecessorId !== successorId) {
+                    var successorRow = document.querySelector('.task-row[data-task-id="' + successorId + '"]');
+                    if (successorRow && successorRow.dataset.predecessorId && successorRow.dataset.predecessorId !== predecessorId) {
+                        if (!confirm('This task already has a predecessor. Replace it with the new dependency?')) {
+                            ganttRemoveTempArrow();
+                            ganttDragState.startDot = null;
+                            return;
+                        }
+                    }
+
                     var url = ganttUpdateDependencyUrl.replace(':taskId', successorId);
                     fetch(url, {
                         method: 'POST',
@@ -1184,10 +1188,9 @@
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         if (data.success) {
-                            var row = document.querySelector('.task-row[data-task-id="' + successorId + '"]');
-                            if (row) {
-                                row.dataset.predecessorId = predecessorId;
-                                row.dataset.dependencyType = dependencyType;
+                            if (successorRow) {
+                                successorRow.dataset.predecessorId = predecessorId;
+                                successorRow.dataset.dependencyType = dependencyType;
                             }
                             drawGanttDependencyArrows();
                         } else {

@@ -28,6 +28,7 @@ class ProjectTask extends Model
         'end_date_revise',
         'status',
         'remarks',
+        'is_actual_start_manual',
     ];
 
     protected function casts(): array
@@ -39,6 +40,7 @@ class ProjectTask extends Model
             'end_date_actual' => 'date',
             'start_date_revise' => 'date',
             'end_date_revise' => 'date',
+            'is_actual_start_manual' => 'boolean',
         ];
     }
 

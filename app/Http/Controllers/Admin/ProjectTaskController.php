@@ -56,17 +56,31 @@ class ProjectTaskController extends Controller
             'end_date_revise' => 'nullable|date',
             'status' => 'nullable|string|in:not_started,in_progress,completed,on_hold,cancelled',
             'remarks' => 'nullable|string',
+            'predecessor_task_id' => 'nullable|integer|exists:project_tasks,id',
+            'dependency_type' => 'required_with:predecessor_task_id|string|in:end_to_start,start_to_start',
         ]);
 
         $validated['project_id'] = $project->id;
         $validated['progress_plan'] = $validated['progress_plan'] ?? 0;
         $validated['progress_actual'] = $validated['progress_actual'] ?? 0;
         $validated['weight'] = $validated['weight'] ?? 0;
+        $validated['is_actual_start_manual'] = !empty($validated['start_date_actual']);
 
         $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], null);
 
+        $resolver = new TaskDependencyResolver();
+        if (!empty($validated['predecessor_task_id'])) {
+            $tempTask = new ProjectTask($validated);
+            try {
+                $resolver->validatePredecessor($tempTask, $validated['predecessor_task_id'], $project->tasks);
+            } catch (\InvalidArgumentException | \RuntimeException $e) {
+                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        }
+
         $task = ProjectTask::create($validated);
 
+        $resolver->cascadeActualStartDates($project, $task);
         (new ProjectProgressCalculator())->recalculateFromTask($task);
 
         return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
@@ -120,19 +134,42 @@ class ProjectTaskController extends Controller
             'end_date_revise' => 'nullable|date',
             'status' => 'nullable|string|in:not_started,in_progress,completed,on_hold,cancelled',
             'remarks' => 'nullable|string',
+            'predecessor_task_id' => 'nullable|integer|exists:project_tasks,id|not_in:' . $task->id,
+            'dependency_type' => 'required_with:predecessor_task_id|string|in:end_to_start,start_to_start',
         ]);
 
         $validated['progress_plan'] = $validated['progress_plan'] ?? 0;
         $validated['progress_actual'] = $validated['progress_actual'] ?? 0;
         $validated['weight'] = $validated['weight'] ?? 0;
+        $validated['is_actual_start_manual'] = !empty($validated['start_date_actual']);
 
         $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], $task->id);
 
+        $resolver = new TaskDependencyResolver();
+        if (!empty($validated['predecessor_task_id'])) {
+            $tempTask = clone $task;
+            $tempTask->predecessor_task_id = $validated['predecessor_task_id'];
+            $tempTask->dependency_type = $validated['dependency_type'] ?? 'end_to_start';
+            try {
+                $resolver->validatePredecessor($tempTask, $validated['predecessor_task_id'], $project->tasks);
+            } catch (\InvalidArgumentException | \RuntimeException $e) {
+                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        }
+
+        $oldPlanStart = $task->start_date_plan ? $task->start_date_plan->copy() : null;
+        $oldPlanEnd = $task->end_date_plan ? $task->end_date_plan->copy() : null;
         $oldActualEnd = $task->end_date_actual ? $task->end_date_actual->format('Y-m-d') : null;
         $oldReviseEnd = $task->end_date_revise ? $task->end_date_revise->format('Y-m-d') : null;
         $oldPhaseId = $task->phase_id;
 
         $task->update($validated);
+
+        // Propagate plan date changes to successor tasks, then recalculate actual starts
+        $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
+
+        $task->refresh();
+        $resolver->cascadeActualStartDates($project, $task);
 
         // Recalculate progress for affected phase(s) and project
         $calculator = new ProjectProgressCalculator();
@@ -179,9 +216,14 @@ class ProjectTaskController extends Controller
             'end_date_actual' => $validated['end_date_actual'],
             'start_date_revise' => $validated['start_date_revise'],
             'end_date_revise' => $validated['end_date_revise'],
+            'is_actual_start_manual' => !empty($validated['start_date_actual']),
         ];
 
         $task->update($updateData);
+
+        $resolver = new TaskDependencyResolver();
+        $task->refresh();
+        $resolver->cascadeActualStartDates($project, $task);
 
         // Recalculate progress when progress changes
         if ($oldValues['progress_actual'] !== $validated['progress_actual']) {
@@ -265,7 +307,7 @@ class ProjectTaskController extends Controller
     {
         $validated = $request->validate([
             'predecessor_task_id' => 'nullable|integer|exists:project_tasks,id',
-            'dependency_type' => 'required_with:predecessor_task_id|string|in:plan_end_to_start,actual_end_to_start,plan_start_to_start,actual_start_to_start,end_to_start,start_to_start',
+            'dependency_type' => 'required_with:predecessor_task_id|string|in:end_to_start,start_to_start',
         ]);
 
         $predecessorTaskId = $validated['predecessor_task_id'] ?? null;
@@ -289,6 +331,10 @@ class ProjectTaskController extends Controller
             'predecessor_task_id' => $predecessorTaskId,
             'dependency_type' => $predecessorTaskId ? $dependencyType : 'end_to_start',
         ]);
+
+        $resolver = new TaskDependencyResolver();
+        $task->refresh();
+        $resolver->cascadeActualStartDates($project, $task);
 
         return response()->json([
             'success' => true,

@@ -41,47 +41,73 @@ class TaskDependencyResolver
         // Check for circular dependency
         $this->detectCycle($task, $allTasks, []);
 
-        $effectiveStart = null;
-        $effectiveEnd = null;
+        $planStart = $task->start_date_plan;
+        $planEnd = $task->end_date_plan;
+        $actualStart = $task->start_date_actual;
+        $actualEnd = $task->end_date_actual;
         $dependencyShift = 0;
 
         if ($task->predecessor_task_id && $task->predecessorTask) {
             $this->resolveTask($task->predecessorTask, $allTasks, $effectiveDates, $visited);
 
-            $typeParts = $this->parseDependencyType($task->dependency_type);
-            $lane = $typeParts['lane'];
-            $fromSide = $typeParts['from_side'];
-            $baseDates = $this->getLaneBaseDates($task, $lane);
-            $predecessorDates = $this->getLaneBaseDates($task->predecessorTask, $lane);
+            $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
 
-            $effectiveStart = $baseDates['start_date'];
-            $effectiveEnd = $baseDates['end_date'];
+            $predecessorPlanDates = $this->getLaneBaseDates($task->predecessorTask, 'plan');
+            $predecessorActualDates = $this->getLaneBaseDates($task->predecessorTask, 'actual');
 
-            $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
+            // Resolve plan lane
+            if ($planStart) {
+                $drivingDate = $fromSide === 'end' ? $predecessorPlanDates['end_date'] : $predecessorPlanDates['start_date'];
+                if ($drivingDate) {
+                    if ($fromSide === 'end' && $planStart->lte($drivingDate)) {
+                        $planStart = $drivingDate->copy()->addDay();
+                    } elseif ($fromSide === 'start' && $planStart->lt($drivingDate)) {
+                        $planStart = $drivingDate->copy();
+                    }
 
-            if ($drivingDate && $effectiveStart) {
-                if ($fromSide === 'end' && $effectiveStart->lte($drivingDate)) {
-                    $dependencyShift = $drivingDate->diffInDays($effectiveStart) + 1;
-                    $effectiveStart = $drivingDate->copy()->addDay();
-                } elseif ($fromSide === 'start' && $effectiveStart->lt($drivingDate)) {
-                    $dependencyShift = $drivingDate->diffInDays($effectiveStart);
-                    $effectiveStart = $drivingDate->copy();
-                }
-
-                if ($effectiveEnd && $baseDates['start_date'] && $baseDates['end_date']) {
-                    $duration = $baseDates['start_date']->diffInDays($baseDates['end_date']);
-                    $effectiveEnd = $effectiveStart->copy()->addDays($duration);
+                    if ($planStart && $task->start_date_plan && $task->end_date_plan) {
+                        $duration = $task->start_date_plan->diffInDays($task->end_date_plan);
+                        $planEnd = $planStart->copy()->addDays($duration);
+                    }
                 }
             }
-        } else {
-            $baseDates = $this->calculateBaseDates($task);
-            $effectiveStart = $baseDates['start_date'];
-            $effectiveEnd = $baseDates['end_date'];
+
+            // Resolve actual lane (skip shifting if the user has manually locked the actual start)
+            if ($actualStart && !$task->is_actual_start_manual) {
+                $drivingDate = $fromSide === 'end' ? $predecessorActualDates['end_date'] : $predecessorActualDates['start_date'];
+                if ($drivingDate) {
+                    if ($fromSide === 'end' && $actualStart->lte($drivingDate)) {
+                        $actualStart = $drivingDate->copy()->addDay();
+                    } elseif ($fromSide === 'start' && $actualStart->lt($drivingDate)) {
+                        $actualStart = $drivingDate->copy();
+                    }
+
+                    if ($actualStart && $task->start_date_actual && $task->end_date_actual) {
+                        $duration = $task->start_date_actual->diffInDays($task->end_date_actual);
+                        $actualEnd = $actualStart->copy()->addDays($duration);
+                    }
+                }
+            }
+
+            // Dependency shift based on the effective lane (actual if present, otherwise plan)
+            $baseStart = $task->start_date_actual ?? $task->start_date_plan;
+            $resolvedStart = $actualStart ?? $planStart;
+            if ($baseStart && $resolvedStart) {
+                $dependencyShift = $resolvedStart->diffInDays($baseStart);
+            }
         }
+
+        // Effective fallback: actual > plan (revise is manual and never cascades)
+        $effectiveStart = $actualStart ?? $planStart;
+        $effectiveEnd = $actualEnd ?? $planEnd;
 
         $effectiveDates[$taskId] = [
             'start_date' => $effectiveStart,
             'end_date' => $effectiveEnd,
+            'plan_start_date' => $planStart,
+            'plan_end_date' => $planEnd,
+            'actual_start_date' => $actualStart,
+            'actual_end_date' => $actualEnd,
             'dependency_shift_days' => $dependencyShift,
             'plan_delay_days' => $this->calculatePlanDelay($task),
             'revise_delay_days' => $this->calculateReviseDelay($task),
@@ -90,23 +116,19 @@ class TaskDependencyResolver
     }
 
     /**
-     * Parse dependency type into lane and source side (start or end).
+     * Parse dependency type into the driving source side (start or end).
+     * Supports simple logical types: end_to_start, start_to_start.
+     * Legacy lane-prefixed types are also accepted and normalized.
      */
     protected function parseDependencyType(?string $type): array
     {
-        if (!$type) {
-            return ['lane' => 'plan', 'from_side' => 'end'];
+        $type = $type ?? 'end_to_start';
+
+        if (str_contains($type, 'start_to_start')) {
+            return ['from_side' => 'start'];
         }
 
-        $parts = explode('_', $type);
-
-        // legacy: 'end_to_start' or 'start_to_start' (treat as plan)
-        if (count($parts) === 3) {
-            return ['lane' => in_array($parts[0], ['plan', 'actual']) ? $parts[0] : 'plan', 'from_side' => $parts[1] === 'start' ? 'start' : 'end'];
-        }
-
-        $fromSide = $parts[0] ?? 'end';
-        return ['lane' => 'plan', 'from_side' => $fromSide === 'start' ? 'start' : 'end'];
+        return ['from_side' => 'end'];
     }
 
     /**
@@ -333,6 +355,184 @@ class TaskDependencyResolver
             // Enqueue successors of this task for cascading
             foreach ($successorsByPredecessor->get($task->id, collect()) as $nextSuccessor) {
                 $queue->enqueue($nextSuccessor);
+            }
+        }
+    }
+
+    /**
+     * Cascade actual start dates through successor tasks after a task's actual dates change.
+     * Only writes to successors where is_actual_start_manual is false.
+     */
+    public function cascadeActualStartDates(Project $project, ProjectTask $changedTask): void
+    {
+        $tasks = $project->tasks()->with('predecessorTask')->get();
+        $successorsByPredecessor = $tasks->groupBy('predecessor_task_id');
+
+        // Use fresh in-memory values for the changed task in case it has just been updated
+        $changedInCollection = $tasks->firstWhere('id', $changedTask->id);
+        if ($changedInCollection) {
+            $changedInCollection->start_date_actual = $changedTask->start_date_actual;
+            $changedInCollection->end_date_actual = $changedTask->end_date_actual;
+            $changedInCollection->predecessor_task_id = $changedTask->predecessor_task_id;
+            $changedInCollection->dependency_type = $changedTask->dependency_type;
+        }
+
+        $queue = new \SplQueue();
+        $queue->enqueue($changedTask);
+        $queued = [$changedTask->id => true];
+
+        while (!$queue->isEmpty()) {
+            $task = $queue->dequeue();
+
+            // Skip shifting if the user has explicitly overridden this task's actual start
+            $shouldRecompute = !$task->is_actual_start_manual;
+
+            if ($shouldRecompute) {
+                $predecessor = $tasks->firstWhere('id', $task->predecessor_task_id);
+                if ($predecessor) {
+                    // Use the existing actual start if there is one, otherwise fall back to the planned start,
+                    // but never let the auto-computed date be earlier than the planned start.
+                    $newStart = $task->start_date_actual ?? $task->start_date_plan;
+                    if ($newStart && $task->start_date_plan && $newStart->lt($task->start_date_plan)) {
+                        $newStart = $task->start_date_plan->copy();
+                    }
+
+                    if ($newStart) {
+                        $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
+                        $predecessorDates = $this->getLaneBaseDates($predecessor, 'actual');
+                        $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
+
+                        if ($drivingDate) {
+                            if ($fromSide === 'end' && $newStart->lte($drivingDate)) {
+                                $newStart = $drivingDate->copy()->addDay();
+                            } elseif ($fromSide === 'start' && $newStart->lt($drivingDate)) {
+                                $newStart = $drivingDate->copy();
+                            }
+
+                            $currentStart = $task->start_date_actual;
+                            if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
+                                $task->updateQuietly(['start_date_actual' => $newStart]);
+                                $task->start_date_actual = $newStart;
+
+                                // Refresh the task instance in the collection so deeper cascades see the new dates
+                                $taskInCollection = $tasks->firstWhere('id', $task->id);
+                                if ($taskInCollection) {
+                                    $taskInCollection->start_date_actual = $newStart;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Enqueue successors of this task for cascading
+            foreach ($successorsByPredecessor->get($task->id, collect()) as $nextSuccessor) {
+                if (!isset($queued[$nextSuccessor->id])) {
+                    $queued[$nextSuccessor->id] = true;
+                    $queue->enqueue($nextSuccessor);
+                }
+            }
+        }
+    }
+
+    /**
+     * Cascade plan start/end dates through successor tasks after a task's plan dates change.
+     * The successor's plan start shifts by the same number of days the predecessor's driving
+     * plan date changed, keeping the original duration intact.
+     */
+    public function cascadePlanDates(Project $project, ProjectTask $changedTask, ?Carbon $oldPlanStart, ?Carbon $oldPlanEnd): void
+    {
+        // Only run if there is a real plan-date change to propagate
+        $changedInCollection = $project->tasks()->with('predecessorTask')->get()->firstWhere('id', $changedTask->id);
+        if (!$changedInCollection) {
+            return;
+        }
+
+        $newPlanStart = $changedInCollection->start_date_plan;
+        $newPlanEnd = $changedInCollection->end_date_plan;
+        if (
+            optional($oldPlanStart)->format('Y-m-d') === optional($newPlanStart)->format('Y-m-d') &&
+            optional($oldPlanEnd)->format('Y-m-d') === optional($newPlanEnd)->format('Y-m-d')
+        ) {
+            return;
+        }
+
+        $tasks = $project->tasks()->with('predecessorTask')->get();
+        $successorsByPredecessor = $tasks->groupBy('predecessor_task_id');
+
+        $originalDates = [
+            $changedTask->id => [
+                'start_date' => $oldPlanStart,
+                'end_date' => $oldPlanEnd,
+            ],
+        ];
+
+        $queue = new \SplQueue();
+        $queued = [];
+        foreach ($successorsByPredecessor->get($changedTask->id, collect()) as $successor) {
+            $queued[$successor->id] = true;
+            $queue->enqueue($successor);
+        }
+
+        while (!$queue->isEmpty()) {
+            $task = $queue->dequeue();
+
+            if (!isset($originalDates[$task->id])) {
+                $originalDates[$task->id] = [
+                    'start_date' => $task->start_date_plan,
+                    'end_date' => $task->end_date_plan,
+                ];
+            }
+
+            if (!$task->start_date_plan || !$task->end_date_plan) {
+                continue;
+            }
+
+            $predecessor = $tasks->firstWhere('id', $task->predecessor_task_id);
+            if (!$predecessor || !isset($originalDates[$predecessor->id])) {
+                continue;
+            }
+
+            $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
+            $predecessorOriginal = $originalDates[$predecessor->id];
+            $oldDriving = $fromSide === 'end' ? $predecessorOriginal['end_date'] : $predecessorOriginal['start_date'];
+            $newDriving = $fromSide === 'end' ? $predecessor->end_date_plan : $predecessor->start_date_plan;
+
+            if (!$oldDriving || !$newDriving || $oldDriving->format('Y-m-d') === $newDriving->format('Y-m-d')) {
+                continue;
+            }
+
+            $delta = $newDriving->greaterThan($oldDriving)
+                ? $oldDriving->diffInDays($newDriving)
+                : -$newDriving->diffInDays($oldDriving);
+
+            $newStart = $task->start_date_plan->copy()->addDays($delta);
+            $duration = $task->start_date_plan->diffInDays($task->end_date_plan);
+            $newEnd = $newStart->copy()->addDays($duration);
+
+            if (
+                optional($task->start_date_plan)->format('Y-m-d') !== $newStart->format('Y-m-d') ||
+                optional($task->end_date_plan)->format('Y-m-d') !== $newEnd->format('Y-m-d')
+            ) {
+                $task->updateQuietly([
+                    'start_date_plan' => $newStart,
+                    'end_date_plan' => $newEnd,
+                ]);
+                $task->start_date_plan = $newStart;
+                $task->end_date_plan = $newEnd;
+
+                $taskInCollection = $tasks->firstWhere('id', $task->id);
+                if ($taskInCollection) {
+                    $taskInCollection->start_date_plan = $newStart;
+                    $taskInCollection->end_date_plan = $newEnd;
+                }
+            }
+
+            foreach ($successorsByPredecessor->get($task->id, collect()) as $nextSuccessor) {
+                if (!isset($queued[$nextSuccessor->id])) {
+                    $queued[$nextSuccessor->id] = true;
+                    $queue->enqueue($nextSuccessor);
+                }
             }
         }
     }
