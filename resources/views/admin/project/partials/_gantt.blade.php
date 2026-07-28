@@ -399,6 +399,13 @@
                     @endif
                 </tbody>
             </table>
+            <svg id="gantt-dependency-arrows" class="absolute top-0 left-0 pointer-events-none z-30" style="overflow: visible;" width="1" height="1">
+                <defs>
+                    <marker id="gantt-arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#6b7280"/>
+                    </marker>
+                </defs>
+            </svg>
             </div>
         </div>
         <button id="gantt-exit-fullscreen" class="hidden fixed top-4 right-4 z-[60] inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 shadow-lg text-gray-700 hover:bg-gray-50 transition" title="Exit Fullscreen">
@@ -907,5 +914,80 @@
             ganttExitFullscreen();
         }
     });
+
+    // --- Dependency Arrows ---
+    function drawGanttDependencyArrows() {
+        var svg = document.getElementById('gantt-dependency-arrows');
+        var wrapper = document.getElementById('gantt-wrapper');
+        var table = wrapper ? wrapper.querySelector('table') : null;
+        if (!svg || !wrapper || !table) return;
+
+        var wrapperRect = wrapper.getBoundingClientRect();
+        svg.setAttribute('width', wrapper.scrollWidth);
+        svg.setAttribute('height', wrapper.scrollHeight);
+        svg.setAttribute('viewBox', '0 0 ' + wrapper.scrollWidth + ' ' + wrapper.scrollHeight);
+
+        var existingPaths = svg.querySelectorAll('path');
+        existingPaths.forEach(function(p) { p.remove(); });
+
+        var bars = wrapper.querySelectorAll('.gantt-bar[data-bar-type="plan"][data-task-id]');
+        bars.forEach(function(bar) {
+            var taskId = bar.dataset.taskId;
+            var row = wrapper.querySelector('.task-row[data-task-id="' + taskId + '"]');
+            if (!row) return;
+
+            var predecessorId = row.dataset.predecessorId;
+            if (!predecessorId) return;
+
+            var predecessorBar = wrapper.querySelector('.gantt-bar[data-bar-type="plan"][data-task-id="' + predecessorId + '"]');
+            if (!predecessorBar) return;
+
+            var fromRect = predecessorBar.getBoundingClientRect();
+            var toRect = bar.getBoundingClientRect();
+            if (fromRect.width === 0 || fromRect.height === 0 || toRect.width === 0 || toRect.height === 0) return;
+
+            var x1 = fromRect.right - wrapperRect.left;
+            var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
+            var x2 = toRect.left - wrapperRect.left;
+            var y2 = (toRect.top + toRect.bottom) / 2 - wrapperRect.top;
+
+            var xMid = (x1 + x2) / 2;
+            var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
+
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', '#6b7280');
+            path.setAttribute('stroke-width', '1.5');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('marker-end', 'url(#gantt-arrowhead)');
+            svg.appendChild(path);
+        });
+    }
+
+    var originalGanttApplyZoom = ganttApplyZoom;
+    ganttApplyZoom = function(zoomLevel) {
+        originalGanttApplyZoom(zoomLevel);
+        if (typeof requestAnimationFrame !== 'undefined') {
+            requestAnimationFrame(function() { drawGanttDependencyArrows(); });
+        } else {
+            setTimeout(drawGanttDependencyArrows, 0);
+        }
+    };
+
+    document.querySelectorAll('.phase-toggle-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            setTimeout(drawGanttDependencyArrows, 50);
+        });
+    });
+
+    window.addEventListener('load', drawGanttDependencyArrows);
+    window.addEventListener('resize', drawGanttDependencyArrows);
+
+    if (typeof ganttEnterFullscreen === 'function' && typeof ganttExitFullscreen === 'function') {
+        var originalGanttEnterFullscreen = ganttEnterFullscreen;
+        var originalGanttExitFullscreen = ganttExitFullscreen;
+        ganttEnterFullscreen = function() { originalGanttEnterFullscreen(); setTimeout(drawGanttDependencyArrows, 50); };
+        ganttExitFullscreen = function() { originalGanttExitFullscreen(); setTimeout(drawGanttDependencyArrows, 50); };
+    }
 </script>
 </div>

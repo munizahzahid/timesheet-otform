@@ -98,6 +98,23 @@
             </div>
         </div>
 
+        {{-- Staff Project Involvement --}}
+        <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Staff Project Involvement</h3>
+            @if(count($staffInvolvement) > 0)
+                <div style="height: 320px;">
+                    <canvas id="staffInvolvementChart"></canvas>
+                </div>
+            @else
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <p class="text-sm text-gray-400 mt-2">No staff project assignments yet.</p>
+                </div>
+            @endif
+        </div>
+
         {{-- Recent Project Updates --}}
         <div class="bg-white border border-gray-200 rounded-lg">
             <div class="px-5 py-4 border-b border-gray-100">
@@ -139,4 +156,76 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const staffInvolvementData = @json($staffInvolvement);
+            const labels = staffInvolvementData.map(d => d.name);
+            const data = staffInvolvementData.map(d => d.project_count);
+
+            const staffInvolvementUrlTemplate = "{{ route('admin.project.staff-involvement', ['user' => '__USER_ID__']) }}";
+
+            new Chart(document.getElementById('staffInvolvementChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Projects Involved',
+                        data: data,
+                        backgroundColor: '#3B82F6',
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onHover: function(event, chartElements) {
+                        event.native.target.style.cursor = chartElements.length ? 'pointer' : 'default';
+                    },
+                    onClick: function(event, chartElements) {
+                        if (chartElements.length > 0) {
+                            const index = chartElements[0].index;
+                            const userId = staffInvolvementData[index].id;
+                            if (userId) {
+                                window.location.href = staffInvolvementUrlTemplate.replace('__USER_ID__', userId);
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' project' + (context.parsed.y !== 1 ? 's' : '');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Projects'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+    @endpush
 </x-app-layout>

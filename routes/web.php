@@ -160,6 +160,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/', [ProjectController::class, 'dashboard'])->name('dashboard');
         Route::get('/calendar', [ProjectController::class, 'calendar'])->name('calendar');
         Route::get('/assigned-tasks/{user}', [ProjectController::class, 'assignedTasks'])->name('assigned-tasks');
+        Route::get('/staff-involvement/{user}', [ProjectController::class, 'staffInvolvement'])->name('staff-involvement');
         Route::prefix('projects')->name('projects.')->group(function () {
             Route::get('/', [ProjectController::class, 'index'])->name('index');
             Route::get('/create', [ProjectController::class, 'create'])->name('create');

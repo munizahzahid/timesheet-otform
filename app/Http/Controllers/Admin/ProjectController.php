@@ -11,6 +11,7 @@ use App\Services\DesknetSyncService;
 use App\Services\TaskDependencyResolver;
 use DateTime;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProjectController extends Controller
@@ -31,13 +32,57 @@ class ProjectController extends Controller
             ->take(10)
             ->get();
 
+        // Staff involvement: unique projects per staff (PM, deskman, or task assigned)
+        $pmUsers = DB::table('pm_projects')
+            ->join('users', 'pm_projects.project_manager_staff_id', '=', 'users.staff_no')
+            ->whereNotNull('pm_projects.project_manager_staff_id')
+            ->whereNotNull('users.staff_no')
+            ->select('users.id', 'users.name', 'pm_projects.id as project_id')
+            ->get();
+
+        $deskman1Users = DB::table('pm_projects')
+            ->join('users', 'pm_projects.deskman_1_staff_id', '=', 'users.staff_no')
+            ->whereNotNull('pm_projects.deskman_1_staff_id')
+            ->whereNotNull('users.staff_no')
+            ->select('users.id', 'users.name', 'pm_projects.id as project_id')
+            ->get();
+
+        $deskman2Users = DB::table('pm_projects')
+            ->join('users', 'pm_projects.deskman_2_staff_id', '=', 'users.staff_no')
+            ->whereNotNull('pm_projects.deskman_2_staff_id')
+            ->whereNotNull('users.staff_no')
+            ->select('users.id', 'users.name', 'pm_projects.id as project_id')
+            ->get();
+
+        $taskUsers = DB::table('project_tasks')
+            ->join('users', 'project_tasks.assigned_to', '=', 'users.id')
+            ->whereNotNull('project_tasks.assigned_to')
+            ->select('users.id', 'users.name', 'project_tasks.project_id')
+            ->get();
+
+        $allInvolvements = $pmUsers->concat($deskman1Users)->concat($deskman2Users)->concat($taskUsers);
+
+        $staffInvolvement = $allInvolvements
+            ->groupBy('id')
+            ->map(function($items) {
+                return [
+                    'id' => $items->first()->id,
+                    'name' => $items->first()->name,
+                    'project_count' => $items->pluck('project_id')->unique()->count(),
+                ];
+            })
+            ->sortByDesc('project_count')
+            ->values()
+            ->all();
+
         return view('admin.project.dashboard', compact(
             'totalProjects',
             'activeProjects',
             'completedProjects',
             'delayedProjects',
             'projects',
-            'recentLogs'
+            'recentLogs',
+            'staffInvolvement'
         ));
     }
 
@@ -561,6 +606,52 @@ class ProjectController extends Controller
             ->get();
 
         return view('admin.project.assigned-tasks', compact('user', 'tasks'));
+    }
+
+    /**
+     * Show projects a staff is involved in (PM, deskman, or task assigned)
+     */
+    public function staffInvolvement(User $user)
+    {
+        $projects = Project::query()
+            ->where(function ($query) use ($user) {
+                $query->where('project_manager_staff_id', $user->staff_no)
+                    ->orWhere('deskman_1_staff_id', $user->staff_no)
+                    ->orWhere('deskman_2_staff_id', $user->staff_no);
+            })
+            ->orWhereHas('tasks', function ($query) use ($user) {
+                $query->where('assigned_to', $user->id);
+            })
+            ->with(['tasks' => function ($query) use ($user) {
+                $query->where('assigned_to', $user->id);
+            }])
+            ->orderBy('project_name')
+            ->get();
+
+        $projectData = $projects->map(function (Project $project) use ($user) {
+            $roles = [];
+
+            if ($project->project_manager_staff_id == $user->staff_no) {
+                $roles[] = 'Project Manager';
+            }
+            if ($project->deskman_1_staff_id == $user->staff_no) {
+                $roles[] = 'Deskman 1';
+            }
+            if ($project->deskman_2_staff_id == $user->staff_no) {
+                $roles[] = 'Deskman 2';
+            }
+            if ($project->tasks->isNotEmpty()) {
+                $roles[] = 'Task Assigned';
+            }
+
+            return [
+                'project' => $project,
+                'roles' => array_unique($roles),
+                'tasks' => $project->tasks,
+            ];
+        });
+
+        return view('admin.project.staff_involvement', compact('user', 'projectData'));
     }
 
 }

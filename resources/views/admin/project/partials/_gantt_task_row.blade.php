@@ -30,7 +30,7 @@
     $dayWidth = isset($dayWidth) ? $dayWidth : 30; // pixels per day
 @endphp
 
-<tr class="hover:bg-gray-50 task-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}">
+<tr class="hover:bg-gray-50 task-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-predecessor-id="{{ $task->predecessor_task_id }}">
     <td class="sticky left-0 bg-white z-10 px-4 py-2 border-r border-gray-200 pl-8">
         <div class="flex items-center gap-2">
             <div class="gantt-menu">
@@ -89,7 +89,7 @@
             {{-- Plan lane (row 1) --}}
             <div class="absolute" style="left: 0; right: 0; top: 4px; height: 18px; background-color: rgba(59, 130, 246, 0.08); border-radius: 4px;"></div>
             @if($planStartOffset !== null && $planDuration !== null)
-                <div class="gantt-bar absolute" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
+                <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
                      style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: #60a5fa; border: 1px solid #3b82f6; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                      title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }}">
                 </div>
