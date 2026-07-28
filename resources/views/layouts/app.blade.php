@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <link rel="icon" type="image/jpeg" href="{{ asset('images/TS.png') }}">
+        <link rel="icon" type="image/jpeg" href="{{ asset('images/Portal Logo.png') }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -17,13 +17,31 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <style>
             [x-cloak] { display: none !important; }
+            #main-content { transition: margin-left 0.3s ease-in-out; }
             @media (min-width: 1024px) {
-                #main-content { margin-left: 16rem !important; }
+                body > #main-content { margin-left: 16rem !important; }
+                body > #main-content.collapsed-main { margin-left: 5rem !important; }
             }
+            .sidebar-collapsed .nav-label,
+            .sidebar-collapsed .section-label,
+            .sidebar-collapsed .profile-detail { display: none !important; }
+            .sidebar-collapsed .badge-count { display: none !important; }
+            .sidebar-collapsed .badge-dot { display: inline-flex !important; }
+            .badge-dot { display: none; }
+            .sidebar-collapsed nav a,
+            .sidebar-collapsed nav button { justify-content: center !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+            .sidebar-collapsed .brand-block { display: none !important; }
+            .sidebar-collapsed .profile-card > div { justify-content: center !important; }
+            #main-content main .max-w-7xl,
+            #main-content main .max-w-6xl,
+            #main-content main .max-w-5xl,
+            #main-content main .max-w-4xl { max-width: none !important; width: 100% !important; }
         </style>
         @stack('styles')
     </head>
-    <body class="font-sans antialiased bg-gray-50" x-data="{ sidebarOpen: false }">
+    <body class="font-sans antialiased bg-gray-50"
+          x-data="{ sidebarOpen: false, collapsed: localStorage.getItem('sidebarCollapsed') === 'true', adminOpen: {{ request()->routeIs('admin.*') ? 'true' : 'false' }}, settingsOpen: {{ request()->routeIs('profile.*') ? 'true' : 'false' }} }"
+          x-init="$watch('collapsed', value => localStorage.setItem('sidebarCollapsed', value))">
         {{-- Sidebar (fixed position) --}}
         @include('layouts.sidebar')
 
@@ -36,7 +54,8 @@
              class="fixed inset-0 bg-black/50 z-20 lg:hidden"></div>
 
         {{-- Main Content Area (pushed right on desktop) --}}
-        <div id="main-content" class="min-h-screen flex flex-col">
+        <div id="main-content" class="min-h-screen flex flex-col"
+             :class="collapsed ? 'collapsed-main' : ''">
                 {{-- Top Navbar --}}
                 <header class="bg-white border-b border-gray-200 relative z-20 shadow-sm">
                     <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3">
@@ -85,7 +104,7 @@
                 @stack('sub-navbar')
 
             {{-- Page Content --}}
-            <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1920px] mx-auto w-full">
+            <main class="flex-1 w-full p-4 sm:p-6 lg:p-8">
                 {{-- Page Title Section --}}
                 @isset($pageTitle)
                     <div class="mb-6">
