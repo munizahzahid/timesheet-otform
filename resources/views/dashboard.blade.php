@@ -32,37 +32,37 @@
         {{-- Main dashboard grid --}}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {{-- Stat cards --}}
-            <div class="lg:col-span-3 flex flex-nowrap gap-3 overflow-x-auto">
+            <div class="lg:col-span-3 flex flex-nowrap gap-2 overflow-x-auto">
                 @if(Auth::user()->isAdmin())
-                    <a href="{{ route('admin.users.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                    <a href="{{ route('admin.users.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-2 hover:shadow-md transition">
                         <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Users</h4>
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\User::where('is_active', true)->count() }}</p>
-                        <p class="text-[10px] text-gray-400">Active users</p>
+                        <p class="text-lg font-bold text-gray-900 leading-tight">{{ \App\Models\User::where('is_active', true)->count() }}</p>
+                        <p class="text-[9px] text-gray-400 leading-tight">Active users</p>
                     </a>
-                    <a href="{{ route('admin.project-codes.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                    <a href="{{ route('admin.project-codes.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-2 hover:shadow-md transition">
                         <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Project Codes</h4>
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\Project::where('is_active', true)->count() }}</p>
-                        <p class="text-[10px] text-gray-400">Active projects</p>
+                        <p class="text-lg font-bold text-gray-900 leading-tight">{{ \App\Models\Project::where('is_active', true)->count() }}</p>
+                        <p class="text-[9px] text-gray-400 leading-tight">Active projects</p>
                     </a>
-                    <a href="{{ route('admin.desknet-sync.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                    <a href="{{ route('admin.desknet-sync.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-2 hover:shadow-md transition">
                         <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Last Sync</h4>
                         @php $lastSync = \App\Models\DesknetSyncLog::where('status','success')->orderByDesc('completed_at')->first(); @endphp
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $lastSync ? $lastSync->completed_at->diffForHumans() : 'Never' }}</p>
-                        <p class="text-[10px] text-gray-400">Desknet sync status</p>
+                        <p class="text-lg font-bold text-gray-900 leading-tight">{{ $lastSync ? $lastSync->completed_at->diffForHumans() : 'Never' }}</p>
+                        <p class="text-[9px] text-gray-400 leading-tight">Desknet sync status</p>
                     </a>
                 @endif
                 @if($canApproveTimesheets)
-                    <a href="{{ route('approvals.timesheets.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
-                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Pending Timesheet Approvals</h4>
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $pendingTimesheetApprovalCount }}</p>
-                        <p class="text-[10px] text-gray-400">Awaiting your approval</p>
+                    <a href="{{ route('approvals.timesheets.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-2 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide leading-tight">Pending Timesheet Approvals</h4>
+                        <p class="text-lg font-bold text-gray-900 leading-tight">{{ $pendingTimesheetApprovalCount }}</p>
+                        <p class="text-[9px] text-gray-400 leading-tight">Awaiting your approval</p>
                     </a>
                 @endif
                 @if($canApproveOtForms)
-                    <a href="{{ route('approvals.ot-forms.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
-                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Pending OT Approvals</h4>
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $pendingOtApprovalCount }}</p>
-                        <p class="text-[10px] text-gray-400">Awaiting your approval</p>
+                    <a href="{{ route('approvals.ot-forms.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-2 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide leading-tight">Pending OT Approvals</h4>
+                        <p class="text-lg font-bold text-gray-900 leading-tight">{{ $pendingOtApprovalCount }}</p>
+                        <p class="text-[9px] text-gray-400 leading-tight">Awaiting your approval</p>
                     </a>
                 @endif
             </div>
@@ -109,40 +109,40 @@
             @endif
 
             @if($availableMonths->isNotEmpty())
-                {{-- OT Hours by Project Donut Chart (2 cols) --}}
-                <div class="lg:col-span-2 bg-white overflow-hidden shadow-sm rounded-lg">
+                {{-- OT Hours by Project Donut Chart (2 cols, 2 rows) --}}
+                <div class="lg:col-span-2 lg:row-span-2 bg-white overflow-hidden shadow-sm rounded-lg">
                     <div class="p-3 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Project</h4>
                         <p class="text-xs text-gray-400">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
                     </div>
                     <div class="p-3">
-                        <div class="h-52 flex items-center justify-center">
+                        <div class="h-80 flex items-center justify-center">
                             <canvas id="projectOtChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                {{-- Monthly OT Hours Bar Chart (1 col) --}}
+                {{-- Monthly OT Hours Bar Chart (top right) --}}
                 <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                     <div class="p-3 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Total OT Hours by Month</h4>
                         <p class="text-xs text-gray-400">All approved OT forms</p>
                     </div>
                     <div class="p-3">
-                        <div class="h-52">
+                        <div class="h-36">
                             <canvas id="monthlyOtChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                {{-- OT Hours by Staff Bar Chart (1 col) --}}
+                {{-- OT Hours by Staff Bar Chart (bottom right) --}}
                 <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                     <div class="p-3 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Staff</h4>
                         <p class="text-xs text-gray-400">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
                     </div>
                     <div class="p-3">
-                        <div class="h-44">
+                        <div class="h-36">
                             <canvas id="staffOtChart"></canvas>
                         </div>
                     </div>
