@@ -25,6 +25,10 @@ session(['timesheets_last_seen' => now()]);
         </div>
     </x-slot>
 
+    @push('top-left-actions')
+        <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
+    @endpush
+
     @push('sub-navbar')
         @include('layouts._hr-sub-navbar')
     @endpush
@@ -350,8 +354,7 @@ session(['timesheets_last_seen' => now()]);
 
             {{-- Save Button --}}
             @if(in_array($timesheet->status, ['draft', 'rejected_hod', 'rejected_l1']))
-                <div class="mt-4 flex justify-between items-center">
-                    <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
+                <div class="mt-4 flex justify-end items-center">
                     <div class="flex items-center gap-3">
                         <a href="{{ route('timesheets.export-excel', $timesheet) }}"
                            class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">
@@ -367,8 +370,7 @@ session(['timesheets_last_seen' => now()]);
                     </div>
                 </div>
             @else
-                <div class="mt-4 flex justify-between items-center">
-                    <a href="{{ route('timesheets.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
+                <div class="mt-4 flex justify-end items-center">
                     <div class="flex items-center gap-3">
                         <a href="{{ route('timesheets.export-excel', $timesheet) }}"
                            class="px-4 py-2 rounded-md text-sm hover:shadow-md transition-all" style="background-color: #16a34a !important; color: white !important;">

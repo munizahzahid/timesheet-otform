@@ -4,169 +4,162 @@
     </x-slot>
 
     <div class="max-w-7xl mx-auto">
-        <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-4">
-            <div class="p-4">
-                <h3 class="text-base font-medium text-gray-900">Welcome, {{ Auth::user()->name }}</h3>
-                <p class="text-sm text-gray-500">
-                    Role: <span class="font-medium">{{ str_replace('_', ' ', ucfirst(Auth::user()->role)) }}</span>
-                    @if(Auth::user()->department)
-                        | Department: <span class="font-medium">{{ Auth::user()->department->name }}</span>
-                    @endif
-                </p>
-            </div>
-        </div>
-
-        @if(Auth::user()->isAdmin())
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <a href="{{ route('admin.users.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">
-                    <h4 class="text-xs font-medium text-gray-500 uppercase">Users</h4>
-                    <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\User::where('is_active', true)->count() }}</p>
-                    <p class="text-xs text-gray-400">Active users</p>
-                </a>
-                <a href="{{ route('admin.project-codes.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">
-                    <h4 class="text-xs font-medium text-gray-500 uppercase">Project Codes</h4>
-                    <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\Project::where('is_active', true)->count() }}</p>
-                    <p class="text-xs text-gray-400">Active projects</p>
-                </a>
-                <a href="{{ route('admin.desknet-sync.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">
-                    <h4 class="text-xs font-medium text-gray-500 uppercase">Last Sync</h4>
-                    @php $lastSync = \App\Models\DesknetSyncLog::where('status','success')->orderByDesc('completed_at')->first(); @endphp
-                    <p class="text-xl font-bold text-gray-900 mt-1">{{ $lastSync ? $lastSync->completed_at->diffForHumans() : 'Never' }}</p>
-                    <p class="text-xs text-gray-400">Desknet sync status</p>
-                </a>
-            </div>
-        @endif
-
-        @if($canApproveTimesheets || $canApproveOtForms)
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                @if($canApproveTimesheets)
-                    <a href="{{ route('approvals.timesheets.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">
-                        <h4 class="text-xs font-medium text-gray-500 uppercase">Pending Timesheet Approvals</h4>
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $pendingTimesheetApprovalCount }}</p>
-                        <p class="text-xs text-gray-400">Awaiting your approval</p>
-                    </a>
-                @endif
-                @if($canApproveOtForms)
-                    <a href="{{ route('approvals.ot-forms.index') }}" class="bg-white overflow-hidden shadow-sm rounded-lg p-4 hover:shadow-md transition">
-                        <h4 class="text-xs font-medium text-gray-500 uppercase">Pending OT Approvals</h4>
-                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $pendingOtApprovalCount }}</p>
-                        <p class="text-xs text-gray-400">Awaiting your approval</p>
-                    </a>
-                @endif
-            </div>
-        @endif
-
-        {{-- Active Training Sessions --}}
-        @if($activeTrainingSessions->isNotEmpty())
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-4">
-                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <div>
-                        <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Training Sessions</h4>
-                        <p class="text-xs text-gray-400">Active training sessions available for attendance</p>
-                    </div>
-                    <a href="{{ route('training-attendance.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View All</a>
+        {{-- Compact top bar with welcome and filter --}}
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-3">
+            <div class="p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-900">Welcome, {{ Auth::user()->name }}</h3>
+                    <p class="text-xs text-gray-500">
+                        Role: <span class="font-medium">{{ str_replace('_', ' ', ucfirst(Auth::user()->role)) }}</span>
+                        @if(Auth::user()->department)
+                            | Department: <span class="font-medium">{{ Auth::user()->department->name }}</span>
+                        @endif
+                    </p>
                 </div>
-                <div class="p-4 space-y-3">
-                    @foreach($activeTrainingSessions as $session)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm font-medium text-gray-900">{{ $session->name }}</span>
-                                    @if($session->is_active)
-                                        <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Active</span>
-                                    @else
-                                        <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">Inactive</span>
-                                    @endif
-                                </div>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ $session->training_date->format('d M Y') }} &middot;
-                                    {{ $session->time_in->format('H:i') }} - {{ $session->time_out->format('H:i') }} &middot;
-                                    {{ $session->venue }}
-                                </p>
-                            </div>
-                            <div>
-                                @if($session->is_active && ! $session->attended)
-                                    <a href="{{ route('training-attendance.index') }}" class="px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700">Mark Attendance</a>
-                                @elseif($session->attended)
-                                    <span class="px-3 py-1.5 bg-green-100 text-green-800 rounded text-xs font-medium">Attended</span>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        {{-- OT Analytics Filter --}}
-        @if($availableMonths->isNotEmpty())
-            <div class="bg-white overflow-hidden shadow-sm rounded-lg mb-4">
-                <div class="p-4">
-                    <form method="GET" action="{{ route('dashboard') }}" class="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <label for="month" class="text-xs font-medium text-gray-700">Filter OT charts by month:</label>
-                        <select id="month" name="month" onchange="this.form.submit()" class="block w-full sm:w-56 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-xs">
+                @if($availableMonths->isNotEmpty())
+                    <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2">
+                        <label for="month" class="text-xs font-medium text-gray-700">Filter OT charts:</label>
+                        <select id="month" name="month" onchange="this.form.submit()" class="block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-xs py-1">
                             @foreach($availableMonths as $m)
                                 <option value="{{ $m->value }}" {{ $selectedMonth === $m->value ? 'selected' : '' }}>{{ $m->label }}</option>
                             @endforeach
                         </select>
                     </form>
-                </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Main dashboard grid --}}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            {{-- Stat cards --}}
+            <div class="lg:col-span-3 flex flex-nowrap gap-3 overflow-x-auto">
+                @if(Auth::user()->isAdmin())
+                    <a href="{{ route('admin.users.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Users</h4>
+                        <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\User::where('is_active', true)->count() }}</p>
+                        <p class="text-[10px] text-gray-400">Active users</p>
+                    </a>
+                    <a href="{{ route('admin.project-codes.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Project Codes</h4>
+                        <p class="text-xl font-bold text-gray-900 mt-1">{{ \App\Models\Project::where('is_active', true)->count() }}</p>
+                        <p class="text-[10px] text-gray-400">Active projects</p>
+                    </a>
+                    <a href="{{ route('admin.desknet-sync.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Last Sync</h4>
+                        @php $lastSync = \App\Models\DesknetSyncLog::where('status','success')->orderByDesc('completed_at')->first(); @endphp
+                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $lastSync ? $lastSync->completed_at->diffForHumans() : 'Never' }}</p>
+                        <p class="text-[10px] text-gray-400">Desknet sync status</p>
+                    </a>
+                @endif
+                @if($canApproveTimesheets)
+                    <a href="{{ route('approvals.timesheets.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Pending Timesheet Approvals</h4>
+                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $pendingTimesheetApprovalCount }}</p>
+                        <p class="text-[10px] text-gray-400">Awaiting your approval</p>
+                    </a>
+                @endif
+                @if($canApproveOtForms)
+                    <a href="{{ route('approvals.ot-forms.index') }}" class="flex-1 min-w-0 bg-white overflow-hidden shadow-sm rounded-lg p-3 hover:shadow-md transition">
+                        <h4 class="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Pending OT Approvals</h4>
+                        <p class="text-xl font-bold text-gray-900 mt-1">{{ $pendingOtApprovalCount }}</p>
+                        <p class="text-[10px] text-gray-400">Awaiting your approval</p>
+                    </a>
+                @endif
             </div>
 
-            {{-- OT Analytics Charts --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                {{-- OT Hours by Project Donut Chart --}}
-                <div class="bg-white overflow-hidden shadow-sm rounded-lg lg:row-span-2">
-                    <div class="p-4 border-b border-gray-200">
+            {{-- Active Training Sessions --}}
+            @if($activeTrainingSessions->isNotEmpty())
+                <div class="lg:col-span-3 bg-white overflow-hidden shadow-sm rounded-lg">
+                    <div class="p-3 border-b border-gray-200 flex items-center justify-between">
+                        <div>
+                            <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Training Sessions</h4>
+                            <p class="text-xs text-gray-400">Active training sessions available for attendance</p>
+                        </div>
+                        <a href="{{ route('training-attendance.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View All</a>
+                    </div>
+                    <div class="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($activeTrainingSessions as $session)
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium text-gray-900">{{ $session->name }}</span>
+                                        @if($session->is_active)
+                                            <span class="px-1.5 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Active</span>
+                                        @else
+                                            <span class="px-1.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                                        @endif
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {{ $session->training_date->format('d M Y') }} &middot;
+                                        {{ $session->time_in->format('H:i') }} - {{ $session->time_out->format('H:i') }} &middot;
+                                        {{ $session->venue }}
+                                    </p>
+                                </div>
+                                <div>
+                                    @if($session->is_active && ! $session->attended)
+                                        <a href="{{ route('training-attendance.index') }}" class="px-2 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700">Mark</a>
+                                    @elseif($session->attended)
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">Attended</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($availableMonths->isNotEmpty())
+                {{-- OT Hours by Project Donut Chart (2 cols) --}}
+                <div class="lg:col-span-2 bg-white overflow-hidden shadow-sm rounded-lg">
+                    <div class="p-3 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Project</h4>
                         <p class="text-xs text-gray-400">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
                     </div>
-                    <div class="p-4">
-                        <div class="h-64 lg:h-96 flex items-center justify-center">
+                    <div class="p-3">
+                        <div class="h-52 flex items-center justify-center">
                             <canvas id="projectOtChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                {{-- Monthly OT Hours Bar Chart --}}
+                {{-- Monthly OT Hours Bar Chart (1 col) --}}
                 <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-4 border-b border-gray-200">
+                    <div class="p-3 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Total OT Hours by Month</h4>
                         <p class="text-xs text-gray-400">All approved OT forms</p>
                     </div>
-                    <div class="p-4">
-                        <div class="h-44">
+                    <div class="p-3">
+                        <div class="h-52">
                             <canvas id="monthlyOtChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                {{-- OT Hours by Staff Bar Chart --}}
+                {{-- OT Hours by Staff Bar Chart (1 col) --}}
                 <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                    <div class="p-4 border-b border-gray-200">
+                    <div class="p-3 border-b border-gray-200">
                         <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">OT Hours by Staff</h4>
                         <p class="text-xs text-gray-400">{{ date('F Y', mktime(0, 0, 0, $selectedMonthNumber, 1, $selectedYear)) }}</p>
                     </div>
-                    <div class="p-4">
+                    <div class="p-3">
                         <div class="h-44">
                             <canvas id="staffOtChart"></canvas>
                         </div>
                     </div>
                 </div>
-            </div>
-        @endif
+            @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {{-- Recent Actions --}}
+            {{-- Recent Actions (1 col) --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                <div class="p-4 border-b border-gray-200">
+                <div class="p-3 border-b border-gray-200">
                     <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Recent Actions</h4>
                     <p class="text-xs text-gray-400">Your recent Timesheet / OT Form activity</p>
                 </div>
-                <div class="p-4">
+                <div class="p-3 h-44 overflow-y-auto">
                     @if($recentActions->isEmpty())
                         <p class="text-xs text-gray-500">No recent actions.</p>
                     @else
-                        <ul class="space-y-3">
+                        <ul class="space-y-2">
                             @foreach($recentActions as $action)
                                 <li class="flex items-start gap-3">
                                     <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -192,17 +185,17 @@
                 </div>
             </div>
 
-            {{-- Recent Updates --}}
+            {{-- Recent Updates (1 col) --}}
             <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-                <div class="p-4 border-b border-gray-200">
+                <div class="p-3 border-b border-gray-200">
                     <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Recent Updates</h4>
                     <p class="text-xs text-gray-400">Status changes on your Timesheets / OT Forms</p>
                 </div>
-                <div class="p-4">
+                <div class="p-3 h-44 overflow-y-auto">
                     @if($recentUpdates->isEmpty())
                         <p class="text-xs text-gray-500">No recent updates.</p>
                     @else
-                        <ul class="space-y-3">
+                        <ul class="space-y-2">
                             @foreach($recentUpdates as $update)
                                 <li class="flex items-start gap-3">
                                     <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">

@@ -4,9 +4,12 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('View Timesheet') }} — {{ $timesheet->user->name }}
             </h2>
-            <a href="{{ route('records.timesheets') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; {{ __('Back to list') }}</a>
         </div>
     </x-slot>
+
+    @push('top-left-actions')
+        <a href="{{ route('records.timesheets') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; {{ __('Back to list') }}</a>
+    @endpush
 
     <div class="max-w-full mx-auto">
         @include('timesheets.partials._header')

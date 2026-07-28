@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">Training Attendance Report</x-slot>
 
+    @push('top-left-actions')
+        <a href="{{ route('training-attendance.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium">Back to List</a>
+    @endpush
+
     @push('sub-navbar')
         @include('layouts._hr-sub-navbar')
     @endpush
@@ -108,7 +112,6 @@
         </div>
 
         <div class="mb-6 flex items-center gap-3">
-            <a href="{{ route('training-attendance.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium">Back to List</a>
             <a href="{{ route('training-attendance.export-pdf', $session) }}" target="_blank" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium">Export PDF</a>
         </div>
     </div>

@@ -4,9 +4,12 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 Review OT Form — {{ $otForm->user->name }}
             </h2>
-            <a href="{{ route('approvals.ot-forms.index') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Back to list</a>
         </div>
     </x-slot>
+
+    @push('top-left-actions')
+        <a href="{{ route('approvals.ot-forms.index') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Back to list</a>
+    @endpush
 
     <div class="max-w-7xl mx-auto">
 

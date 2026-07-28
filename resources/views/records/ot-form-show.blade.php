@@ -4,9 +4,12 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('View OT Form') }} — {{ $otForm->user->name }}
             </h2>
-            <a href="{{ route('records.ot-forms') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; {{ __('Back to list') }}</a>
         </div>
     </x-slot>
+
+    @push('top-left-actions')
+        <a href="{{ route('records.ot-forms') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; {{ __('Back to list') }}</a>
+    @endpush
 
     <div class="max-w-7xl mx-auto">
         <div class="bg-white shadow-sm sm:rounded-lg mb-6">
