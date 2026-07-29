@@ -340,7 +340,9 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        $projects = Project::orderByDesc('start_date_plan')->get();
+        $projects = Project::where('year', '>=', 2025)
+            ->orderByDesc('start_date_plan')
+            ->get();
         return view('admin.project.index', compact('projects'));
     }
 

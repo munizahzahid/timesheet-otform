@@ -31,7 +31,7 @@ class ProjectTaskController extends Controller
     {
         $phases = $project->phases()->orderBy('phase_order')->get();
         $tasks = $project->tasks()->orderBy('task_order')->get();
-        $users = \App\Models\User::all();
+        $users = \App\Models\User::where('is_active', true)->get();
         $defaultPhaseId = $request->query('phase_id');
         return view('admin.project.tasks.create', compact('project', 'phases', 'tasks', 'users', 'defaultPhaseId'));
     }
@@ -131,7 +131,7 @@ class ProjectTaskController extends Controller
     {
         $phases = $project->phases()->orderBy('phase_order')->get();
         $tasks = $project->tasks()->where('id', '!=', $task->id)->orderBy('task_order')->get();
-        $users = \App\Models\User::all();
+        $users = \App\Models\User::where('is_active', true)->get();
         return view('admin.project.tasks.edit', compact('project', 'task', 'phases', 'tasks', 'users'));
     }
 

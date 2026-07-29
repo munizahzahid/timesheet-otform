@@ -16,7 +16,8 @@ class ProjectCodeSearchController extends Controller
     {
         $query = $request->input('q', '');
 
-        $builder = Project::where('is_active', true);
+        $builder = Project::where('is_active', true)
+            ->where('year', '>=', 2025);
 
         if ($query !== '') {
             $builder->where(function ($q) use ($query) {
