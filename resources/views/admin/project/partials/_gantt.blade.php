@@ -210,7 +210,7 @@
                class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                 Add Phase
             </a>
-            <a href="{{ route('admin.project.projects.tasks.create', $project) }}"
+            <a href="{{ route('admin.project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
                class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
                 Add Task
             </a>
@@ -1292,6 +1292,124 @@
             });
         }
     });
+
+    // Gantt task row drag-and-drop reorder
+    var ganttDraggedRow = null;
+    var ganttDraggedOrder = null;
+    var ganttDraggedPhaseId = null;
+    var ganttDraggedUpdateUrl = null;
+    var ganttLastOverRow = null;
+
+    document.querySelectorAll('.gantt-drag-handle').forEach(function(handle) {
+        handle.draggable = true;
+        handle.addEventListener('dragstart', function(e) {
+            e.stopPropagation();
+            var row = this.closest('.gantt-draggable-row');
+            if (!row) return;
+            ganttDraggedRow = row;
+            ganttDraggedOrder = parseInt(row.dataset.taskOrder, 10);
+            ganttDraggedPhaseId = row.dataset.phaseId;
+            ganttDraggedUpdateUrl = row.dataset.updateUrl;
+            row.classList.add('opacity-50');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', row.dataset.taskId);
+        });
+        handle.addEventListener('dragend', function(e) {
+            e.stopPropagation();
+            if (ganttDraggedRow) ganttDraggedRow.classList.remove('opacity-50');
+            document.querySelectorAll('.gantt-draggable-row').forEach(function(r) {
+                r.style.borderTop = '';
+                r.style.borderBottom = '';
+            });
+            ganttDraggedRow = null;
+            ganttDraggedOrder = null;
+            ganttDraggedPhaseId = null;
+            ganttDraggedUpdateUrl = null;
+            ganttLastOverRow = null;
+        });
+    });
+
+    document.querySelectorAll('.gantt-draggable-row').forEach(function(row) {
+        row.addEventListener('dragover', function(e) {
+            if (!ganttDraggedRow || this === ganttDraggedRow) return;
+            if (ganttDraggedPhaseId !== this.dataset.phaseId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            var rect = this.getBoundingClientRect();
+            var mid = rect.top + rect.height / 2;
+            if (ganttLastOverRow && ganttLastOverRow !== this) {
+                ganttLastOverRow.style.borderTop = '';
+                ganttLastOverRow.style.borderBottom = '';
+            }
+            ganttLastOverRow = this;
+            if (e.clientY < mid) {
+                this.style.borderTop = '2px solid #4f46e5';
+                this.style.borderBottom = '';
+            } else {
+                this.style.borderTop = '';
+                this.style.borderBottom = '2px solid #4f46e5';
+            }
+        });
+
+        row.addEventListener('dragleave', function(e) {
+            this.style.borderTop = '';
+            this.style.borderBottom = '';
+        });
+
+        row.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!ganttDraggedRow || this === ganttDraggedRow) return;
+            if (ganttDraggedPhaseId !== this.dataset.phaseId) {
+                alert('Tasks can only be reordered within the same phase.');
+                return;
+            }
+            var rect = this.getBoundingClientRect();
+            var after = e.clientY >= rect.top + rect.height / 2;
+            var targetOrder = parseInt(this.dataset.taskOrder, 10);
+            var newOrder;
+
+            if (after) {
+                newOrder = targetOrder + (ganttDraggedOrder > targetOrder ? 1 : 0);
+            } else {
+                var siblings = Array.from(this.parentElement.children).filter(function(c) {
+                    return c.classList.contains('gantt-draggable-row') && c !== ganttDraggedRow;
+                });
+                var targetIndex = siblings.indexOf(this);
+                var prevRow = targetIndex > 0 ? siblings[targetIndex - 1] : null;
+                if (prevRow) {
+                    var prevOrder = parseInt(prevRow.dataset.taskOrder, 10);
+                    newOrder = prevOrder + (ganttDraggedOrder > prevOrder ? 1 : 0);
+                } else {
+                    newOrder = 1;
+                }
+            }
+
+            if (newOrder !== ganttDraggedOrder && ganttDraggedUpdateUrl) {
+                var formData = new FormData();
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+                formData.append('task_order', newOrder);
+                fetch(ganttDraggedUpdateUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data && data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data && data.message ? data.message : 'Reordering failed.');
+                    }
+                })
+                .catch(function(err) {
+                    console.error(err);
+                    alert('Reordering failed.');
+                });
+            }
+        });
+    });
+
 </script>
 
 {{-- Dependency Delete Confirmation Modal --}}

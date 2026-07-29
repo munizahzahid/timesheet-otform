@@ -28,14 +28,52 @@
     $reviseDuration = $task->start_date_revise && $task->end_date_revise ? $task->start_date_revise->diffInDays($task->end_date_revise) + 1 : null;
 
     $dayWidth = isset($dayWidth) ? $dayWidth : 30; // pixels per day
+
+    // Progress percentages to display inside bars
+    $today = now('Asia/Kuala_Lumpur')->copy()->startOfDay();
+    $planProgress = 0;
+    if ($task->start_date_plan && $task->end_date_plan) {
+        if ($today->lte($task->start_date_plan)) {
+            $planProgress = 0;
+        } elseif ($today->gte($task->end_date_plan)) {
+            $planProgress = 100;
+        } else {
+            $total = $task->start_date_plan->diffInDays($task->end_date_plan);
+            $elapsed = $task->start_date_plan->diffInDays($today);
+            $planProgress = min(100, max(0, round(($elapsed / max(1, $total)) * 100)));
+        }
+    }
+    $reviseProgress = null;
+    if ($task->start_date_revise && $task->end_date_revise) {
+        if ($today->lte($task->start_date_revise)) {
+            $reviseProgress = 0;
+        } elseif ($today->gte($task->end_date_revise)) {
+            $reviseProgress = 100;
+        } else {
+            $total = $task->start_date_revise->diffInDays($task->end_date_revise);
+            $elapsed = $task->start_date_revise->diffInDays($today);
+            $reviseProgress = min(100, max(0, round(($elapsed / max(1, $total)) * 100)));
+        }
+    }
+    $actualProgress = $task->progress_actual ?? 0;
 @endphp
 
-<tr class="hover:bg-gray-50 task-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-predecessor-id="{{ $task->predecessor_task_id }}" data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}">
+<tr class="hover:bg-gray-50 task-row gantt-draggable-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-task-order="{{ $task->task_order }}" data-predecessor-id="{{ $task->predecessor_task_id }}" data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}" data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}">
     <td class="sticky left-0 bg-white z-10 px-4 py-2 border-r border-gray-200 pl-8">
         <div class="flex items-center gap-2">
+            <div class="gantt-drag-handle text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100 cursor-grab" draggable="true" title="Drag to reorder">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="9" cy="6" r="2"/>
+                    <circle cx="15" cy="6" r="2"/>
+                    <circle cx="9" cy="12" r="2"/>
+                    <circle cx="15" cy="12" r="2"/>
+                    <circle cx="9" cy="18" r="2"/>
+                    <circle cx="15" cy="18" r="2"/>
+                </svg>
+            </div>
             <div class="gantt-menu">
                 <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Task actions"
-                        data-edit-url="{{ route('admin.project.projects.tasks.edit', [$project, $task]) }}"
+                        data-edit-url="{{ route('admin.project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
                         data-delete-action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}"
                         data-delete-confirm="Delete this task?">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +129,8 @@
             @if($planStartOffset !== null && $planDuration !== null)
                 <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
                      style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: #60a5fa; border: 1px solid #3b82f6; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
-                     title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }}">
+                     title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }} ({{ $planProgress }}%)">
+                    <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $planProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
                     <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
                 </div>
@@ -102,7 +141,8 @@
             @if($reviseStartOffset !== null && $reviseDuration !== null)
                 <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
                      style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
-                     title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }}">
+                     title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }} ({{ $reviseProgress }}%)">
+                    <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
                     <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
                 </div>
@@ -123,7 +163,8 @@
                 @endphp
                 <div class="gantt-bar absolute" data-task-id="{{ $task->id }}" data-start-offset="{{ $actualStartOffset }}" data-duration="{{ $actualDuration }}" data-bar-type="actual"
                      style="left: {{ $actualStartOffset * $dayWidth }}px; top: 48px; width: {{ max($actualDuration * $dayWidth, 4) }}px; height: 18px; {{ $actualStyle }}"
-                     title="{{ $actualTitle }}">
+                     title="{{ $actualTitle }} ({{ $actualProgress }}%)">
+                    <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $actualProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="actual" title="Drag to create dependency"></div>
                     <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="actual" title="Drag to create dependency"></div>
                 </div>

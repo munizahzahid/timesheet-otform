@@ -33,7 +33,7 @@
                         Kanban
                     </a>
                 </div>
-                <a href="{{ route('admin.project.projects.tasks.create', $project) }}"
+                <a href="{{ route('admin.project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}"
                    class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                     Add Task
                 </a>
@@ -131,7 +131,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                    <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                     <form action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this task?')">
                                         @csrf
                                         @method('DELETE')
@@ -166,12 +166,12 @@
                                             <span class="text-sm font-semibold text-gray-900 line-clamp-2">{{ $task->task_name }}</span>
                                             <div class="relative kanban-menu">
                                                 <button type="button" class="kanban-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
                                                     </svg>
                                                 </button>
                                                 <div class="kanban-menu-dropdown hidden absolute right-0 mt-1 w-28 bg-white rounded-md shadow-lg border border-gray-200 z-20 py-1">
-                                                    <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) }}" class="block px-4 py-2 text-xs text-gray-700 hover:bg-gray-100">Edit</a>
+                                                    <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}" class="block px-4 py-2 text-xs text-gray-700 hover:bg-gray-100">Edit</a>
                                                     <form action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}" method="POST" onsubmit="return confirm('Delete this task?')">
                                                         @csrf
                                                         @method('DELETE')
@@ -336,6 +336,7 @@
                         }
                     });
                 });
+
             });
         </script>
     @endpush

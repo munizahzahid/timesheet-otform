@@ -44,9 +44,7 @@ class ProjectTaskController extends Controller
             'task_name' => 'required|string|max:255',
             'task_order' => 'required|integer|min:1',
             'assigned_to' => 'nullable|exists:users,id',
-            'progress_plan' => 'nullable|integer|min:0|max:100',
             'progress_actual' => 'nullable|integer|min:0|max:100',
-            'progress_revise' => 'nullable|integer|min:0|max:100',
             'weight' => 'required|integer|min:0|max:100',
             'start_date_plan' => 'nullable|date',
             'end_date_plan' => 'nullable|date',
@@ -61,12 +59,19 @@ class ProjectTaskController extends Controller
         ]);
 
         $validated['project_id'] = $project->id;
-        $validated['progress_plan'] = $validated['progress_plan'] ?? 0;
         $validated['progress_actual'] = $validated['progress_actual'] ?? 0;
         $validated['weight'] = $validated['weight'] ?? 0;
         $validated['is_actual_start_manual'] = !empty($validated['start_date_actual']);
 
         $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], null);
+
+        $validated['task_order'] = $this->reorderTasksForOrder(
+            $project,
+            null,
+            null,
+            $validated['phase_id'] ?? null,
+            (int) $validated['task_order']
+        );
 
         $resolver = new TaskDependencyResolver();
         if (!empty($validated['predecessor_task_id'])) {
@@ -83,7 +88,11 @@ class ProjectTaskController extends Controller
         $resolver->cascadeActualStartDates($project, $task);
         (new ProjectProgressCalculator())->recalculateFromTask($task);
 
-        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
+        $query = ['tab' => $request->input('tab', 'tasks')];
+        if ($request->input('view')) {
+            $query['view'] = $request->input('view');
+        }
+        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Task created successfully.');
     }
 
@@ -122,9 +131,7 @@ class ProjectTaskController extends Controller
             'task_name' => 'required|string|max:255',
             'task_order' => 'required|integer|min:1',
             'assigned_to' => 'nullable|exists:users,id',
-            'progress_plan' => 'nullable|integer|min:0|max:100',
             'progress_actual' => 'nullable|integer|min:0|max:100',
-            'progress_revise' => 'nullable|integer|min:0|max:100',
             'weight' => 'required|integer|min:0|max:100',
             'start_date_plan' => 'nullable|date',
             'end_date_plan' => 'nullable|date',
@@ -138,7 +145,6 @@ class ProjectTaskController extends Controller
             'dependency_type' => 'required_with:predecessor_task_id|string|in:end_to_start,start_to_start',
         ]);
 
-        $validated['progress_plan'] = $validated['progress_plan'] ?? 0;
         $validated['progress_actual'] = $validated['progress_actual'] ?? 0;
         $validated['weight'] = $validated['weight'] ?? 0;
         $validated['is_actual_start_manual'] = !empty($validated['start_date_actual']);
@@ -162,6 +168,15 @@ class ProjectTaskController extends Controller
         $oldActualEnd = $task->end_date_actual ? $task->end_date_actual->format('Y-m-d') : null;
         $oldReviseEnd = $task->end_date_revise ? $task->end_date_revise->format('Y-m-d') : null;
         $oldPhaseId = $task->phase_id;
+        $oldOrder = $task->task_order;
+
+        $validated['task_order'] = $this->reorderTasksForOrder(
+            $project,
+            $oldPhaseId,
+            $oldOrder,
+            $validated['phase_id'] ?? null,
+            (int) $validated['task_order']
+        );
 
         $task->update($validated);
 
@@ -181,7 +196,11 @@ class ProjectTaskController extends Controller
         }
         $calculator->recalculateFromTask($task->refresh());
 
-        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
+        $query = ['tab' => $request->input('tab', 'tasks')];
+        if ($request->input('view')) {
+            $query['view'] = $request->input('view');
+        }
+        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Task updated successfully.');
     }
 
@@ -262,6 +281,7 @@ class ProjectTaskController extends Controller
             'status' => 'sometimes|required|string|in:not_started,in_progress,completed,on_hold,cancelled',
             'weight' => 'sometimes|required|integer|min:0|max:100',
             'end_date_revise' => 'sometimes|nullable|date',
+            'task_order' => 'sometimes|required|integer|min:1',
         ]);
 
         if (array_key_exists('status', $validated)) {
@@ -284,6 +304,17 @@ class ProjectTaskController extends Controller
 
         if (array_key_exists('end_date_revise', $validated)) {
             $task->update(['end_date_revise' => $validated['end_date_revise']]);
+        }
+
+        if (array_key_exists('task_order', $validated)) {
+            $newOrder = $this->reorderTasksForOrder(
+                $project,
+                $task->phase_id,
+                $task->task_order,
+                $task->phase_id,
+                (int) $validated['task_order']
+            );
+            $task->update(['task_order' => $newOrder]);
         }
 
         $task->refresh();
@@ -362,6 +393,76 @@ class ProjectTaskController extends Controller
 
         return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
             ->with('success', 'Task deleted successfully.');
+    }
+
+    /**
+     * Reorder task_order values so the sequence stays consecutive with no duplicates
+     * within the same project/phase when a task is created, moved, or updated.
+     */
+    private function reorderTasksForOrder(Project $project, ?int $oldPhaseId, ?int $oldOrder, ?int $newPhaseId, int $newOrder): int
+    {
+        $newOrder = max(1, $newOrder);
+
+        // New task: shift existing tasks to make room
+        if ($oldOrder === null) {
+            $count = ProjectTask::where('project_id', $project->id)
+                ->where('phase_id', $newPhaseId)
+                ->count();
+            if ($newOrder > $count + 1) {
+                $newOrder = $count + 1;
+            }
+            ProjectTask::where('project_id', $project->id)
+                ->where('phase_id', $newPhaseId)
+                ->where('task_order', '>=', $newOrder)
+                ->increment('task_order', 1);
+            return $newOrder;
+        }
+
+        // Same phase: shift tasks between old and new order
+        if ($oldPhaseId == $newPhaseId) {
+            if ($oldOrder == $newOrder) {
+                return $newOrder;
+            }
+            $count = ProjectTask::where('project_id', $project->id)
+                ->where('phase_id', $newPhaseId)
+                ->count();
+            if ($newOrder > $count) {
+                $newOrder = $count;
+            }
+            if ($newOrder > $oldOrder) {
+                ProjectTask::where('project_id', $project->id)
+                    ->where('phase_id', $newPhaseId)
+                    ->where('task_order', '>', $oldOrder)
+                    ->where('task_order', '<=', $newOrder)
+                    ->decrement('task_order', 1);
+            } else {
+                ProjectTask::where('project_id', $project->id)
+                    ->where('phase_id', $newPhaseId)
+                    ->where('task_order', '>=', $newOrder)
+                    ->where('task_order', '<', $oldOrder)
+                    ->increment('task_order', 1);
+            }
+            return $newOrder;
+        }
+
+        // Phase changed: remove from old phase, then insert into new phase
+        ProjectTask::where('project_id', $project->id)
+            ->where('phase_id', $oldPhaseId)
+            ->where('task_order', '>', $oldOrder)
+            ->decrement('task_order', 1);
+
+        $count = ProjectTask::where('project_id', $project->id)
+            ->where('phase_id', $newPhaseId)
+            ->count();
+        if ($newOrder > $count + 1) {
+            $newOrder = $count + 1;
+        }
+        ProjectTask::where('project_id', $project->id)
+            ->where('phase_id', $newPhaseId)
+            ->where('task_order', '>=', $newOrder)
+            ->increment('task_order', 1);
+
+        return $newOrder;
     }
 
     /**

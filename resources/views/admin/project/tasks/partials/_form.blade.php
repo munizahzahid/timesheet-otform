@@ -1,5 +1,8 @@
 @php $isEdit = isset($task); @endphp
 
+<input type="hidden" name="tab" value="{{ old('tab', request('tab', 'tasks')) }}">
+<input type="hidden" name="view" value="{{ old('view', request('view')) }}">
+
 {{-- Task Name --}}
 <div class="mb-5">
     <label for="task_name" class="block text-sm font-medium text-gray-700 mb-1">Task Name <span class="text-red-500">*</span></label>
@@ -162,26 +165,25 @@
 {{-- Progress --}}
 <div class="bg-gray-50 rounded-lg border border-gray-200 p-5 mb-5">
     <h4 class="text-sm font-semibold text-gray-700 mb-4">Progress</h4>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div>
-            <label for="progress_actual" class="block text-xs font-medium text-gray-600 mb-1">Actual Progress (%)</label>
-            <input type="number" name="progress_actual" id="progress_actual" min="0" max="100"
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
+        <div class="md:col-span-3">
+            <label for="progress_actual" class="block text-xs font-medium text-gray-600 mb-2">Actual Progress: <span id="progress_actual_value">{{ old('progress_actual', $isEdit ? $task->progress_actual : 0) }}%</span></label>
+            <input type="range" name="progress_actual" id="progress_actual" min="0" max="100"
                    value="{{ old('progress_actual', $isEdit ? $task->progress_actual : 0) }}"
-                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-        </div>
-        <div>
-            <label for="progress_plan" class="block text-xs font-medium text-gray-600 mb-1">Plan Progress (%)</label>
-            <input type="number" name="progress_plan" id="progress_plan" min="0" max="100"
-                   value="{{ old('progress_plan', $isEdit ? $task->progress_plan : 0) }}"
-                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-        </div>
-        <div>
-            <label for="progress_revise" class="block text-xs font-medium text-gray-600 mb-1">Revise Progress (%)</label>
-            <input type="number" name="progress_revise" id="progress_revise" min="0" max="100"
-                   value="{{ old('progress_revise', $isEdit ? $task->progress_revise : '') }}"
-                   class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
         </div>
     </div>
+    <script>
+        (function() {
+            var slider = document.getElementById('progress_actual');
+            var output = document.getElementById('progress_actual_value');
+            if (slider && output) {
+                slider.addEventListener('input', function() {
+                    output.textContent = slider.value + '%';
+                });
+            }
+        })();
+    </script>
 </div>
 
 {{-- Remarks --}}
@@ -195,7 +197,7 @@
 
 {{-- Form Actions --}}
 <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-    <a href="{{ route('admin.project.projects.show', $project) }}?tab=tasks"
+    <a href="{{ route('admin.project.projects.show', $project) . '?' . http_build_query(array_filter(['tab' => old('tab', request('tab', 'tasks')), 'view' => old('view', request('view'))])) }}"
        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
         Cancel
     </a>
