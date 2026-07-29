@@ -272,22 +272,23 @@ class ProjectTaskController extends Controller
     }
 
     /**
-     * Inline update a single field on a task (status, weight, end_date_revise)
-     * Called via AJAX from the Kanban board
+     * Inline update task fields (dates, progress, status, weight, end_date_revise)
+     * Called via AJAX from the Gantt and Kanban boards
      */
     public function inlineUpdate(Request $request, Project $project, ProjectTask $task)
     {
         $validated = $request->validate([
-            'status' => 'sometimes|required|string|in:not_started,in_progress,completed,on_hold,cancelled',
-            'weight' => 'sometimes|required|integer|min:0|max:100',
+            'status' => 'sometimes|nullable|string|in:not_started,in_progress,completed,on_hold,cancelled',
+            'weight' => 'sometimes|nullable|integer|min:0|max:100',
             'end_date_revise' => 'sometimes|nullable|date',
+            'start_date_plan' => 'sometimes|nullable|date',
+            'end_date_plan' => 'sometimes|nullable|date',
+            'start_date_revise' => 'sometimes|nullable|date',
+            'start_date_actual' => 'sometimes|nullable|date',
+            'end_date_actual' => 'sometimes|nullable|date',
+            'progress_actual' => 'sometimes|nullable|integer|min:0|max:100',
             'task_order' => 'sometimes|required|integer|min:1',
         ]);
-
-        if (array_key_exists('status', $validated)) {
-            $task->update(['status' => $validated['status']]);
-            (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
-        }
 
         if (array_key_exists('weight', $validated)) {
             try {
@@ -298,12 +299,25 @@ class ProjectTaskController extends Controller
                     'message' => 'Exceed weight percentage. ' . collect($e->errors())->flatten()->first(),
                 ], 422);
             }
-            $task->update(['weight' => $validated['weight']]);
-            (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
         }
 
-        if (array_key_exists('end_date_revise', $validated)) {
-            $task->update(['end_date_revise' => $validated['end_date_revise']]);
+        $oldPlanStart = $task->start_date_plan ? $task->start_date_plan->copy() : null;
+        $oldPlanEnd = $task->end_date_plan ? $task->end_date_plan->copy() : null;
+
+        $dateFields = [
+            'status', 'weight', 'end_date_revise',
+            'start_date_plan', 'end_date_plan', 'start_date_revise',
+            'start_date_actual', 'end_date_actual', 'progress_actual',
+        ];
+        $updateData = [];
+        foreach ($dateFields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $updateData[$field] = $validated[$field];
+            }
+        }
+
+        if (array_key_exists('start_date_actual', $validated) && !empty($validated['start_date_actual'])) {
+            $updateData['is_actual_start_manual'] = true;
         }
 
         if (array_key_exists('task_order', $validated)) {
@@ -314,10 +328,33 @@ class ProjectTaskController extends Controller
                 $task->phase_id,
                 (int) $validated['task_order']
             );
-            $task->update(['task_order' => $newOrder]);
+            $updateData['task_order'] = $newOrder;
+        }
+
+        if (!empty($updateData)) {
+            $task->update($updateData);
         }
 
         $task->refresh();
+
+        $resolver = new TaskDependencyResolver();
+
+        if (array_key_exists('start_date_plan', $updateData) || array_key_exists('end_date_plan', $updateData)) {
+            $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
+        }
+
+        if (array_key_exists('start_date_actual', $updateData)) {
+            $resolver->cascadeActualStartDates($project, $task);
+        }
+
+        $shouldRecalc = array_key_exists('progress_actual', $updateData)
+            || array_key_exists('status', $updateData)
+            || array_key_exists('start_date_actual', $updateData)
+            || array_key_exists('end_date_actual', $updateData);
+
+        if ($shouldRecalc) {
+            (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
+        }
 
         return response()->json([
             'success' => true,

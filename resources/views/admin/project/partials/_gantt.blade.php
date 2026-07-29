@@ -148,6 +148,18 @@
         .gantt-dot-right:hover {
             transform: translate(50%, -50%) scale(1.2);
         }
+        .gantt-resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 10px;
+            z-index: 10;
+            cursor: ew-resize;
+            border-radius: 4px;
+        }
+        .gantt-resize-handle-left { left: -5px; }
+        .gantt-resize-handle-right { right: -5px; }
+        .gantt-resize-handle:hover { background-color: rgba(255,255,255,0.35); }
         #gantt-dependency-arrows path {
             pointer-events: stroke;
             cursor: pointer;
@@ -193,10 +205,20 @@
                 </div>
             </div>
             <div class="flex items-center gap-1 mr-2">
-                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition" data-zoom="day">Day</button>
-                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="week">Week</button>
-                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="month">Month</button>
-                <button type="button" class="gantt-zoom-btn px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="year">Year</button>
+                <div class="relative" id="gantt-zoom-toggle">
+                    <button type="button" id="gantt-zoom-trigger" class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        <span id="gantt-zoom-trigger-label" class="w-10 text-center">Day</span>
+                        <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div id="gantt-zoom-menu" class="hidden absolute right-0 mt-1 w-20 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-1">
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="day">Day</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="week">Week</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="month">Month</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="year">Year</button>
+                    </div>
+                </div>
             </div>
             <button type="button" id="gantt-fullscreen-btn" class="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition mr-2" title="Fullscreen">
                 <svg id="gantt-icon-expand" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +229,7 @@
                 </svg>
             </button>
             <div class="relative mr-2" id="gantt-display-toggle">
-                <button type="button" id="gantt-display-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
+                <button type="button" id="gantt-display-btn" class="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -237,13 +259,20 @@
                 </div>
             </div>
             <a href="{{ route('admin.project.projects.phases.create', $project) }}"
-               class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
+               class="inline-flex items-center px-2 py-1 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-indigo-700 transition">
                 Add Phase
             </a>
             <a href="{{ route('admin.project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
-               class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
+               class="inline-flex items-center px-2 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition">
                 Add Task
             </a>
+        </div>
+    </div>
+    <div id="gantt-pending-actions" class="hidden px-6 py-2 bg-yellow-50 border-b border-yellow-100 flex items-center justify-between">
+        <span id="gantt-pending-text" class="text-xs text-yellow-800">Unsaved changes</span>
+        <div class="flex items-center gap-2">
+            <button id="gantt-pending-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
+            <button id="gantt-pending-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save</button>
         </div>
     </div>
 
@@ -890,6 +919,7 @@
     }
 
     function ganttApplyZoom(zoomLevel) {
+        window.ganttCurrentZoom = zoomLevel;
         ganttRenderHeader(zoomLevel);
         ganttUpdateBars(zoomLevel);
         ganttUpdateGridLines(zoomLevel);
@@ -897,6 +927,10 @@
         ganttUpdateTodayLine(zoomLevel);
         positionTodayLine();
 
+        var zoomTriggerLabel = document.getElementById('gantt-zoom-trigger-label');
+        if (zoomTriggerLabel) {
+            zoomTriggerLabel.textContent = zoomLevel.charAt(0).toUpperCase() + zoomLevel.slice(1);
+        }
         document.querySelectorAll('.gantt-zoom-btn').forEach(function(btn) {
             if (btn.dataset.zoom === zoomLevel) {
                 btn.classList.add('bg-indigo-50', 'border-indigo-300', 'text-indigo-700');
@@ -918,6 +952,20 @@
     }
 
     ganttInitZoom();
+
+    var ganttZoomTrigger = document.getElementById('gantt-zoom-trigger');
+    var ganttZoomMenu = document.getElementById('gantt-zoom-menu');
+    if (ganttZoomTrigger && ganttZoomMenu) {
+        ganttZoomTrigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            ganttZoomMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', function(e) {
+            if (!ganttZoomMenu.contains(e.target) && !ganttZoomTrigger.contains(e.target)) {
+                ganttZoomMenu.classList.add('hidden');
+            }
+        });
+    }
 
     // --- Fullscreen Toggle ---
     var ganttFullscreenBtn = document.getElementById('gantt-fullscreen-btn');
@@ -1503,6 +1551,323 @@
         });
     })();
 
+    // --- Gantt Bar Resize and Progress Popup ---
+    (function() {
+        var ganttResizing = null;
+        var ganttPending = null;
+        var ganttProgressData = null;
+
+        function ganttGetTimelineInfo() {
+            var header = document.getElementById('gantt-timeline-header');
+            var zoom = window.ganttCurrentZoom || 'day';
+            var config = GANTT_ZOOM[zoom] || GANTT_ZOOM.day;
+            return {
+                timelineStart: header ? header.dataset.timelineStart : null,
+                pixelsPerDay: config.pixelsPerDay,
+                totalDays: header ? parseInt(header.dataset.totalDays, 10) : 0
+            };
+        }
+
+        function ganttDateFromOffset(offset) {
+            var info = ganttGetTimelineInfo();
+            if (!info.timelineStart) return null;
+            var parts = info.timelineStart.split('-');
+            var date = new Date(parts[0], parts[1] - 1, parts[2]);
+            date.setDate(date.getDate() + Math.round(offset));
+            var y = date.getFullYear();
+            var m = ('0' + (date.getMonth() + 1)).slice(-2);
+            var d = ('0' + date.getDate()).slice(-2);
+            return y + '-' + m + '-' + d;
+        }
+
+        function ganttGetAreaX(clientX) {
+            var bar = ganttResizing ? ganttResizing.bar : null;
+            var area = bar && bar.closest ? bar.closest('.gantt-timeline-area') : document.querySelector('.gantt-timeline-area');
+            if (!area) return 0;
+            var rect = area.getBoundingClientRect();
+            return clientX - rect.left;
+        }
+
+        function ganttUpdateBarPreview(bar, newStartOffset, newDuration, pixelsPerDay) {
+            bar.style.left = (newStartOffset * pixelsPerDay) + 'px';
+            bar.style.width = (newDuration * pixelsPerDay) + 'px';
+        }
+
+        function ganttShowPendingActions(text) {
+            var panel = document.getElementById('gantt-pending-actions');
+            var label = document.getElementById('gantt-pending-text');
+            if (!panel) return;
+            if (label && text) label.textContent = text;
+            panel.classList.remove('hidden');
+        }
+
+        function ganttHidePendingActions() {
+            var panel = document.getElementById('gantt-pending-actions');
+            if (panel) panel.classList.add('hidden');
+        }
+
+        function ganttRevertBar() {
+            if (!ganttPending) return;
+            var bar = ganttPending.bar;
+            bar.style.left = ganttPending.originalLeft;
+            bar.style.width = ganttPending.originalWidth;
+            bar.dataset.startOffset = ganttPending.originalStartOffset;
+            bar.dataset.duration = ganttPending.originalDuration;
+            ganttHidePendingActions();
+            ganttPending = null;
+        }
+
+        document.querySelectorAll('.gantt-resize-handle').forEach(function(handle) {
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (ganttPending) {
+                    alert('Please save or cancel the current change first.');
+                    return;
+                }
+                var bar = handle.closest ? handle.closest('.gantt-bar') : null;
+                if (!bar) return;
+                var info = ganttGetTimelineInfo();
+                ganttResizing = {
+                    bar: bar,
+                    side: handle.dataset.resizeSide,
+                    startX: ganttGetAreaX(e.clientX),
+                    startOffset: parseFloat(bar.dataset.startOffset) || 0,
+                    duration: parseFloat(bar.dataset.duration) || 1,
+                    originalLeft: bar.style.left,
+                    originalWidth: bar.style.width,
+                    originalStartOffset: bar.dataset.startOffset,
+                    originalDuration: bar.dataset.duration,
+                    pixelsPerDay: info.pixelsPerDay,
+                    moved: false,
+                    currentStart: parseFloat(bar.dataset.startOffset) || 0,
+                    currentDuration: parseFloat(bar.dataset.duration) || 1
+                };
+            });
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!ganttResizing) return;
+            var x = ganttGetAreaX(e.clientX);
+            var delta = x - ganttResizing.startX;
+            var pixelsPerDay = ganttResizing.pixelsPerDay || ganttGetTimelineInfo().pixelsPerDay;
+            var dayDelta = Math.round(delta / pixelsPerDay);
+            if (Math.abs(dayDelta) > 0) ganttResizing.moved = true;
+
+            var startOffset = ganttResizing.startOffset;
+            var duration = ganttResizing.duration;
+            var newStart = startOffset;
+            var newDuration = duration;
+
+            if (ganttResizing.side === 'left') {
+                newStart = Math.max(0, startOffset + dayDelta);
+                newDuration = Math.max(1, startOffset + duration - newStart);
+            } else {
+                newDuration = Math.max(1, duration + dayDelta);
+            }
+
+            ganttResizing.currentStart = newStart;
+            ganttResizing.currentDuration = newDuration;
+            ganttUpdateBarPreview(ganttResizing.bar, newStart, newDuration, pixelsPerDay);
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            if (!ganttResizing) return;
+            if (!ganttResizing.moved) {
+                ganttResizing.bar.style.left = ganttResizing.originalLeft;
+                ganttResizing.bar.style.width = ganttResizing.originalWidth;
+                ganttResizing = null;
+                return;
+            }
+
+            var bar = ganttResizing.bar;
+            var startOffset = ganttResizing.currentStart;
+            var duration = ganttResizing.currentDuration;
+            var endOffset = startOffset + duration - 1;
+            var startDate = ganttDateFromOffset(startOffset);
+            var endDate = ganttDateFromOffset(endOffset);
+            var barType = bar.dataset.barType;
+            var taskId = bar.dataset.taskId;
+            var row = document.querySelector('.task-row[data-task-id="' + taskId + '"]');
+
+            ganttPending = {
+                taskId: taskId,
+                bar: bar,
+                barType: barType,
+                side: ganttResizing.side,
+                startDate: startDate,
+                endDate: endDate,
+                startOffset: startOffset,
+                duration: duration,
+                originalLeft: ganttResizing.originalLeft,
+                originalWidth: ganttResizing.originalWidth,
+                originalStartOffset: ganttResizing.originalStartOffset,
+                originalDuration: ganttResizing.originalDuration,
+                updateUrl: row ? row.dataset.updateUrl : ''
+            };
+
+            bar.dataset.startOffset = startOffset;
+            bar.dataset.duration = duration;
+            ganttShowPendingActions('Unsaved changes to ' + barType + ' bar (' + startDate + ' — ' + endDate + ')');
+            ganttResizing = null;
+        });
+
+        var ganttPendingCancel = document.getElementById('gantt-pending-cancel');
+        if (ganttPendingCancel) {
+            ganttPendingCancel.addEventListener('click', function() {
+                ganttRevertBar();
+            });
+        }
+
+        var ganttPendingSave = document.getElementById('gantt-pending-save');
+        if (ganttPendingSave) {
+            ganttPendingSave.addEventListener('click', function() {
+                if (!ganttPending) return;
+                var p = ganttPending;
+                var body = {};
+                if (p.barType === 'plan') {
+                    body.start_date_plan = p.startDate;
+                    body.end_date_plan = p.endDate;
+                } else if (p.barType === 'revise') {
+                    body.start_date_revise = p.startDate;
+                    body.end_date_revise = p.endDate;
+                } else if (p.barType === 'actual') {
+                    if (p.side === 'left') {
+                        body.start_date_actual = p.startDate;
+                    } else if (p.side === 'right') {
+                        body.end_date_actual = p.endDate;
+                    }
+                }
+                fetch(p.updateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': gcmCsrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Failed to save changes.');
+                    }
+                })
+                .catch(function(err) {
+                    console.error(err);
+                    alert('Failed to save changes.');
+                });
+            });
+        }
+
+        // Click on actual bar opens progress popup
+        document.querySelectorAll('.gantt-effective-bar').forEach(function(bar) {
+            bar.addEventListener('click', function(e) {
+                if (e.target.closest && e.target.closest('.gantt-dot, .gantt-resize-handle')) return;
+                if (ganttPending) {
+                    alert('Please save or cancel the current change first.');
+                    return;
+                }
+                var taskId = bar.dataset.taskId;
+                var row = document.querySelector('.task-row[data-task-id="' + taskId + '"]');
+                var progressText = bar.querySelector('.gantt-progress-text');
+                var currentProgress = parseInt(progressText ? progressText.textContent : '0', 10) || 0;
+                ganttProgressData = {
+                    taskId: taskId,
+                    updateUrl: row ? row.dataset.updateUrl : '',
+                    currentProgress: currentProgress
+                };
+                var modal = document.getElementById('gantt-progress-modal');
+                var slider = document.getElementById('gantt-progress-slider');
+                var value = document.getElementById('gantt-progress-value');
+                var big = document.getElementById('gantt-progress-big');
+                var info = document.getElementById('gantt-progress-complete-info');
+                if (slider) slider.value = currentProgress;
+                if (value) value.textContent = currentProgress + '%';
+                if (big) big.textContent = currentProgress + '%';
+                if (info) info.classList.add('hidden');
+                if (modal) modal.classList.remove('hidden');
+            });
+        });
+
+        window.addEventListener('load', function() {
+            var ganttProgressSlider = document.getElementById('gantt-progress-slider');
+            if (ganttProgressSlider) {
+                ganttProgressSlider.addEventListener('input', function() {
+                    var value = document.getElementById('gantt-progress-value');
+                    var big = document.getElementById('gantt-progress-big');
+                    var info = document.getElementById('gantt-progress-complete-info');
+                    if (value) value.textContent = this.value + '%';
+                    if (big) big.textContent = this.value + '%';
+                    if (info) info.classList.add('hidden');
+                });
+            }
+
+            var ganttProgressComplete = document.getElementById('gantt-progress-complete');
+            if (ganttProgressComplete) {
+                ganttProgressComplete.addEventListener('click', function() {
+                    var slider = document.getElementById('gantt-progress-slider');
+                    var value = document.getElementById('gantt-progress-value');
+                    var big = document.getElementById('gantt-progress-big');
+                    var info = document.getElementById('gantt-progress-complete-info');
+                    if (slider) slider.value = 100;
+                    if (value) value.textContent = '100%';
+                    if (big) big.textContent = '100%';
+                    if (info) info.classList.remove('hidden');
+                });
+            }
+
+            var ganttProgressCancel = document.getElementById('gantt-progress-cancel');
+            if (ganttProgressCancel) {
+                ganttProgressCancel.addEventListener('click', function() {
+                    var modal = document.getElementById('gantt-progress-modal');
+                    if (modal) modal.classList.add('hidden');
+                    ganttProgressData = null;
+                });
+            }
+
+            var ganttProgressSave = document.getElementById('gantt-progress-save');
+            if (ganttProgressSave) {
+                ganttProgressSave.addEventListener('click', function() {
+                    if (!ganttProgressData) return;
+                    var slider = document.getElementById('gantt-progress-slider');
+                    var progress = slider ? parseInt(slider.value, 10) : ganttProgressData.currentProgress;
+                    var body = {
+                        progress_actual: progress,
+                        status: progress >= 100 ? 'completed' : 'in_progress'
+                    };
+                    if (progress >= 100) {
+                        var today = new Date();
+                        body.end_date_actual = today.toISOString().split('T')[0];
+                    }
+                    fetch(ganttProgressData.updateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': gcmCsrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Failed to save progress.');
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error(err);
+                        alert('Failed to save progress.');
+                    });
+                });
+            }
+        });
+    })();
+
 </script>
 
 {{-- Dependency Delete Confirmation Modal --}}
@@ -1517,6 +1882,34 @@
         <div class="px-4 py-3 bg-gray-50 flex justify-end gap-2">
             <button id="gantt-dep-delete-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
             <button id="gantt-dep-delete-confirm" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition">Delete</button>
+        </div>
+    </div>
+</div>
+
+{{-- Progress Update Modal --}}
+<div id="gantt-progress-modal" class="hidden fixed inset-0 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5); pointer-events: auto; z-index: 9999;">
+    <div class="bg-white rounded-lg shadow-xl w-80 max-w-full mx-4 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+            <h4 class="text-sm font-semibold text-gray-800">Update Progress</h4>
+        </div>
+        <div class="px-4 py-3">
+            <div class="text-center mb-2">
+                <span id="gantt-progress-big" class="text-2xl font-bold text-indigo-600">0%</span>
+            </div>
+            <input type="range" id="gantt-progress-slider" min="0" max="100" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mb-3">
+            <div class="flex items-center justify-between text-xs text-gray-600">
+                <span>0%</span>
+                <span id="gantt-progress-value" class="font-semibold">0%</span>
+                <span>100%</span>
+            </div>
+            <div id="gantt-progress-complete-info" class="hidden mt-2 text-xs text-green-700">Completing will set the end date to today.</div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 flex justify-between gap-2">
+            <button id="gantt-progress-complete" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition">Complete</button>
+            <div class="flex gap-2">
+                <button id="gantt-progress-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
+                <button id="gantt-progress-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save</button>
+            </div>
         </div>
     </div>
 </div>
