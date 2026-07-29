@@ -1941,7 +1941,7 @@
         });
 
         // --- Recent Gantt Changes ---
-        (function() {
+        document.addEventListener('DOMContentLoaded', function() {
             var container = document.getElementById('gantt-chart-container');
             var url = container ? container.dataset.recentChangesUrl : '';
             var list = document.getElementById('gantt-changes-list');
@@ -2017,7 +2017,7 @@
             }
 
             loadChanges(1);
-        })();
+        });
     })();
 
 </script>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectPhase;
+use App\Models\GanttChangeLog;
 use App\Models\ProjectProgressLog;
 use App\Models\ProjectTask;
 use App\Services\GanttChangeLogger;
