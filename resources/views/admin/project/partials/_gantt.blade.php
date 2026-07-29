@@ -206,6 +206,36 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4M4 10V6m0 0h4M4 6l5 5m11-5l-5 5m5-5V6m0 0h-4"/>
                 </svg>
             </button>
+            <div class="relative mr-2" id="gantt-display-toggle">
+                <button type="button" id="gantt-display-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    <span>Show/Hide</span>
+                    <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div id="gantt-display-menu" class="hidden absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-2">
+                    <label class="flex items-center gap-2 text-xs text-gray-700 py-1 cursor-pointer hover:bg-gray-50 px-1 rounded">
+                        <input type="checkbox" class="gantt-visibility-toggle rounded text-indigo-600 focus:ring-indigo-500" data-target="plan" checked>
+                        <span>Plan</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-700 py-1 cursor-pointer hover:bg-gray-50 px-1 rounded">
+                        <input type="checkbox" class="gantt-visibility-toggle rounded text-indigo-600 focus:ring-indigo-500" data-target="revise" checked>
+                        <span>Revise</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-700 py-1 cursor-pointer hover:bg-gray-50 px-1 rounded">
+                        <input type="checkbox" class="gantt-visibility-toggle rounded text-indigo-600 focus:ring-indigo-500" data-target="actual" checked>
+                        <span>Actual</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-700 py-1 cursor-pointer hover:bg-gray-50 px-1 rounded">
+                        <input type="checkbox" class="gantt-visibility-toggle rounded text-indigo-600 focus:ring-indigo-500" data-target="dependencies" checked>
+                        <span>Dependencies</span>
+                    </label>
+                </div>
+            </div>
             <a href="{{ route('admin.project.projects.phases.create', $project) }}"
                class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                 Add Phase
@@ -1409,6 +1439,69 @@
             }
         });
     });
+
+    // --- Gantt Bar/Dependency Visibility Toggle ---
+    (function() {
+        var storageKey = 'gantt-visibility';
+        var defaultVisibility = { plan: true, revise: true, actual: true, dependencies: true };
+        var stored = localStorage.getItem(storageKey);
+        var visibility = Object.assign({}, defaultVisibility, stored ? JSON.parse(stored) : {});
+
+        function applyVisibility() {
+            ['plan', 'revise', 'actual'].forEach(function(type) {
+                var show = !!visibility[type];
+                document.querySelectorAll('.gantt-bar[data-bar-type="' + type + '"], .gantt-lane[data-bar-type="' + type + '"]').forEach(function(el) {
+                    el.classList.toggle('hidden', !show);
+                });
+            });
+            var arrowSvg = document.getElementById('gantt-dependency-arrows');
+            if (arrowSvg) {
+                arrowSvg.classList.toggle('hidden', !visibility.dependencies);
+            }
+        }
+
+        function saveVisibility() {
+            localStorage.setItem(storageKey, JSON.stringify(visibility));
+        }
+
+        var displayBtn = document.getElementById('gantt-display-btn');
+        var displayMenu = document.getElementById('gantt-display-menu');
+        if (displayBtn && displayMenu) {
+            displayBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                displayMenu.classList.toggle('hidden');
+            });
+            document.addEventListener('click', function(e) {
+                if (!displayMenu.contains(e.target) && !displayBtn.contains(e.target)) {
+                    displayMenu.classList.add('hidden');
+                }
+            });
+        }
+
+        document.querySelectorAll('.gantt-visibility-toggle').forEach(function(toggle) {
+            var type = toggle.dataset.target;
+            if (type) {
+                toggle.checked = !!visibility[type];
+            }
+            toggle.addEventListener('change', function() {
+                var target = this.dataset.target;
+                if (!target) return;
+                visibility[target] = this.checked;
+                saveVisibility();
+                applyVisibility();
+                if (['plan', 'revise', 'actual'].indexOf(target) !== -1 && typeof drawGanttDependencyArrows === 'function') {
+                    drawGanttDependencyArrows();
+                }
+            });
+        });
+
+        window.addEventListener('load', function() {
+            applyVisibility();
+            if (typeof drawGanttDependencyArrows === 'function') {
+                drawGanttDependencyArrows();
+            }
+        });
+    })();
 
 </script>
 
