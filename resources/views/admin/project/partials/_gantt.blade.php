@@ -163,6 +163,8 @@
         #gantt-dependency-arrows path {
             pointer-events: stroke;
             cursor: pointer;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         #gantt-dependency-arrows path:hover {
             stroke: #111827;
@@ -299,19 +301,19 @@
                 <table id="gantt-table" class="border-collapse">
                 <thead>
                     <tr class="bg-gray-50">
-                        <th class="sticky left-0 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-64">
+                        <th class="sticky left-0 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-64">
                             Task
                         </th>
-                        <th class="sticky left-64 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
+                        <th class="sticky left-64 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
                             Assigned To
                         </th>
-                        <th class="sticky left-88 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-20">
+                        <th class="sticky left-88 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-20">
                             Progress
                         </th>
-                        <th class="sticky left-108 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
+                        <th class="sticky left-108 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
                             Start
                         </th>
-                        <th class="sticky left-140 bg-gray-50 z-10 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
+                        <th class="sticky left-140 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
                             End
                         </th>
                         {{-- Timeline Header --}}
@@ -321,11 +323,11 @@
                     </tr>
                     {{-- Timeline Date Header Row --}}
                     <tr class="bg-gray-50">
-                        <th class="sticky left-0 bg-gray-50 z-10 border-r border-gray-200"></th>
-                        <th class="sticky left-64 bg-gray-50 z-10 border-r border-gray-200"></th>
-                        <th class="sticky left-88 bg-gray-50 z-10 border-r border-gray-200"></th>
-                        <th class="sticky left-108 bg-gray-50 z-10 border-r border-gray-200"></th>
-                        <th class="sticky left-140 bg-gray-50 z-10 border-r border-gray-200"></th>
+                        <th class="sticky left-0 bg-gray-50 z-30 border-r border-gray-200"></th>
+                        <th class="sticky left-64 bg-gray-50 z-30 border-r border-gray-200"></th>
+                        <th class="sticky left-88 bg-gray-50 z-30 border-r border-gray-200"></th>
+                        <th class="sticky left-108 bg-gray-50 z-30 border-r border-gray-200"></th>
+                        <th class="sticky left-140 bg-gray-50 z-30 border-r border-gray-200"></th>
                         <th class="px-0 py-0 border-b border-gray-200">
                             <div id="gantt-timeline-header" class="relative" data-timeline-start="{{ $timelineStart->format('Y-m-d') }}" data-timeline-end="{{ $timelineEnd->format('Y-m-d') }}" data-total-days="{{ $totalDays }}" data-timeline-left-offset="{{ $timelineLeftOffset }}" data-today-offset="{{ $todayOffset }}" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                 {{-- Year row --}}
@@ -366,7 +368,7 @@
                     @foreach($phases as $phase)
                         {{-- Phase Row --}}
                         <tr class="bg-gray-100 phase-row" data-phase-id="{{ $phase->id }}">
-                            <td class="sticky left-0 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200">
+                            <td class="sticky left-0 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200">
                                 <div class="flex items-center gap-2">
                                     <button type="button"
                                             class="phase-toggle-btn text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -390,16 +392,16 @@
                                     <span class="text-xs text-gray-500">#{{ $phase->phase_order }}</span>
                                 </div>
                             </td>
-                            <td class="sticky left-64 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-88 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">{{ $phase->progress_actual }}%</td>
-                            <td class="sticky left-108 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
+                            <td class="sticky left-64 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="sticky left-88 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">{{ $phase->progress_actual }}%</td>
+                            <td class="sticky left-108 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     @if($phase->start_date_plan) <div class="text-gray-500">P: {{ $phase->start_date_plan->format('d/m/Y') }}</div> @endif
                                     @if($phase->start_date_revise) <div class="text-orange-500">R: {{ $phase->start_date_revise->format('d/m/Y') }}</div> @endif
                                     @if($phase->start_date_actual) <div class="text-green-600">A: {{ $phase->start_date_actual->format('d/m/Y') }}</div> @endif
                                 </div>
                             </td>
-                            <td class="sticky left-140 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
+                            <td class="sticky left-140 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     @if($phase->end_date_plan) <div class="text-gray-500">P: {{ $phase->end_date_plan->format('d/m/Y') }}</div> @endif
                                     @if($phase->end_date_revise) <div class="text-orange-500">R: {{ $phase->end_date_revise->format('d/m/Y') }}</div> @endif
@@ -478,13 +480,13 @@
                     {{-- Standalone Tasks --}}
                     @if($standaloneTasks->isNotEmpty())
                         <tr class="bg-gray-100">
-                            <td class="sticky left-0 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200">
+                            <td class="sticky left-0 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200">
                                 <span class="font-semibold text-gray-900">Standalone Tasks</span>
                             </td>
-                            <td class="sticky left-64 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-88 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-108 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-140 bg-gray-100 z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="sticky left-64 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="sticky left-88 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="sticky left-108 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="sticky left-140 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="px-0 py-2 bg-gray-100">
                                 <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                     @for($i = 0; $i <= $totalDays; $i++)
@@ -499,7 +501,7 @@
                     @endif
                 </tbody>
             </table>
-            <svg id="gantt-dependency-arrows" class="absolute top-0 left-0 pointer-events-none z-30" style="overflow: visible;" width="1" height="1">
+            <svg id="gantt-dependency-arrows" class="absolute top-0 left-0 pointer-events-none z-20" style="overflow: visible;" width="1" height="1">
                 <defs>
                     <marker id="gantt-arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
                         <path d="M0,0 L0,6 L9,3 z" fill="#6b7280"/>
@@ -1070,8 +1072,20 @@
             : (fromRect.right - wrapperRect.left);
         var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
 
-        var xMid = (x1 + x2) / 2;
-        var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
+        var d;
+        if (Math.abs(y2 - y1) < 2) {
+            d = 'M ' + x1 + ' ' + y1 + ' H ' + x2;
+        } else {
+            var midX = (x1 + x2) / 2;
+            var r = Math.min(8, Math.abs(y2 - y1) / 2, Math.abs(x2 - x1) / 2);
+            var dirY = y2 > y1 ? 1 : -1;
+            d = 'M ' + x1 + ' ' + y1
+                + ' H ' + (midX - r)
+                + ' Q ' + midX + ' ' + y1 + ', ' + midX + ' ' + (y1 + dirY * r)
+                + ' V ' + (y2 - dirY * r)
+                + ' Q ' + midX + ' ' + y2 + ', ' + (midX + r) + ' ' + y2
+                + ' H ' + x2;
+        }
 
         var label = typeParts.fromSide === 'start'
             ? 'Start-to-Start (' + lane + ')'
@@ -1176,8 +1190,20 @@
     }
 
     function ganttUpdateTempArrow(path, x1, y1, x2, y2) {
-        var xMid = (x1 + x2) / 2;
-        var d = 'M ' + x1 + ' ' + y1 + ' H ' + xMid + ' V ' + y2 + ' H ' + x2;
+        var d;
+        if (Math.abs(y2 - y1) < 2) {
+            d = 'M ' + x1 + ' ' + y1 + ' H ' + x2;
+        } else {
+            var midX = (x1 + x2) / 2;
+            var r = Math.min(8, Math.abs(y2 - y1) / 2, Math.abs(x2 - x1) / 2);
+            var dirY = y2 > y1 ? 1 : -1;
+            d = 'M ' + x1 + ' ' + y1
+                + ' H ' + (midX - r)
+                + ' Q ' + midX + ' ' + y1 + ', ' + midX + ' ' + (y1 + dirY * r)
+                + ' V ' + (y2 - dirY * r)
+                + ' Q ' + midX + ' ' + y2 + ', ' + (midX + r) + ' ' + y2
+                + ' H ' + x2;
+        }
         path.setAttribute('d', d);
     }
 

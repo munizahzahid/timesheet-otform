@@ -59,7 +59,7 @@
 @endphp
 
 <tr class="hover:bg-gray-50 task-row gantt-draggable-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-task-order="{{ $task->task_order }}" data-predecessor-id="{{ $task->predecessor_task_id }}" data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}" data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}">
-    <td class="sticky left-0 bg-white z-10 px-4 py-2 border-r border-gray-200 pl-8">
+    <td class="sticky left-0 bg-white z-30 px-4 py-2 border-r border-gray-200 pl-8">
         <div class="flex items-center gap-2">
             <div class="gantt-drag-handle text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100 cursor-grab" draggable="true" title="Drag to reorder">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -84,10 +84,10 @@
             <span class="text-sm font-medium text-gray-900">{{ $task->task_name }}</span>
         </div>
     </td>
-    <td class="sticky left-64 bg-white z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
+    <td class="sticky left-64 bg-white z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
         {{ $task->assignedTo->name ?? '—' }}
     </td>
-    <td class="sticky left-88 bg-white z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
+    <td class="sticky left-88 bg-white z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
         <div class="flex items-center gap-2">
             <span>{{ $task->progress_actual }}%</span>
             @if(isset($effective['plan_delay_days']) && $effective['plan_delay_days'] > 0)
@@ -102,14 +102,14 @@
             @endif
         </div>
     </td>
-    <td class="sticky left-108 bg-white z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
+    <td class="sticky left-108 bg-white z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
         <div class="space-y-0.5">
             @if($task->start_date_plan) <div class="text-gray-500">P: {{ $task->start_date_plan->format('d/m/Y') }}</div> @endif
             @if($task->start_date_revise) <div class="text-orange-500">R: {{ $task->start_date_revise->format('d/m/Y') }}</div> @endif
             @if($task->start_date_actual) <div class="text-green-600">A: {{ $task->start_date_actual->format('d/m/Y') }}</div> @endif
         </div>
     </td>
-    <td class="sticky left-140 bg-white z-10 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
+    <td class="sticky left-140 bg-white z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
         <div class="space-y-0.5">
             @if($task->end_date_plan) <div class="text-gray-500">P: {{ $task->end_date_plan->format('d/m/Y') }}</div> @endif
             @if($task->end_date_revise) <div class="text-orange-500">R: {{ $task->end_date_revise->format('d/m/Y') }}</div> @endif
