@@ -271,10 +271,10 @@
         </div>
     </div>
     <div id="gantt-pending-actions" class="hidden px-6 py-2 bg-yellow-50 border-b border-yellow-100 flex items-center justify-between">
-        <span id="gantt-pending-text" class="text-xs text-yellow-800">Unsaved changes</span>
+        <span id="gantt-pending-text" class="text-xs text-yellow-800 font-medium">No unsaved changes</span>
         <div class="flex items-center gap-2">
-            <button id="gantt-pending-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
-            <button id="gantt-pending-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save</button>
+            <button id="gantt-pending-discard" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Discard All</button>
+            <button id="gantt-pending-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save All</button>
         </div>
     </div>
 
@@ -287,7 +287,7 @@
             <p class="text-xs text-gray-400 mt-1">Add phases and tasks to see the Gantt chart.</p>
         </div>
     @else
-        <div id="gantt-chart-container" class="relative">
+        <div id="gantt-chart-container" class="relative" data-recent-changes-url="{{ route('admin.project.projects.tasks.gantt-changes', $project) }}">
             <div class="overflow-x-auto">
             <div id="gantt-wrapper" class="relative inline-block" style="min-width: max-content;">
                 @if($showTodayLine)
@@ -301,19 +301,19 @@
                 <table id="gantt-table" class="border-collapse">
                 <thead>
                     <tr class="bg-gray-50">
-                        <th class="sticky left-0 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-64">
+                        <th class="sticky left-0 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-64">
                             Task
                         </th>
-                        <th class="sticky left-64 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
+                        <th class="sticky left-64 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
                             Assigned To
                         </th>
-                        <th class="sticky left-88 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-20">
+                        <th class="bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-20">
                             Progress
                         </th>
-                        <th class="sticky left-108 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
+                        <th class="bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
                             Start
                         </th>
-                        <th class="sticky left-140 bg-gray-50 z-30 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
+                        <th class="bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-32">
                             End
                         </th>
                         {{-- Timeline Header --}}
@@ -323,11 +323,11 @@
                     </tr>
                     {{-- Timeline Date Header Row --}}
                     <tr class="bg-gray-50">
-                        <th class="sticky left-0 bg-gray-50 z-30 border-r border-gray-200"></th>
-                        <th class="sticky left-64 bg-gray-50 z-30 border-r border-gray-200"></th>
-                        <th class="sticky left-88 bg-gray-50 z-30 border-r border-gray-200"></th>
-                        <th class="sticky left-108 bg-gray-50 z-30 border-r border-gray-200"></th>
-                        <th class="sticky left-140 bg-gray-50 z-30 border-r border-gray-200"></th>
+                        <th class="sticky left-0 bg-gray-50 z-40 border-r border-gray-200"></th>
+                        <th class="sticky left-64 bg-gray-50 z-40 border-r border-gray-200"></th>
+                        <th class="bg-gray-50 border-r border-gray-200"></th>
+                        <th class="bg-gray-50 border-r border-gray-200"></th>
+                        <th class="bg-gray-50 border-r border-gray-200"></th>
                         <th class="px-0 py-0 border-b border-gray-200">
                             <div id="gantt-timeline-header" class="relative" data-timeline-start="{{ $timelineStart->format('Y-m-d') }}" data-timeline-end="{{ $timelineEnd->format('Y-m-d') }}" data-total-days="{{ $totalDays }}" data-timeline-left-offset="{{ $timelineLeftOffset }}" data-today-offset="{{ $todayOffset }}" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                 {{-- Year row --}}
@@ -368,7 +368,7 @@
                     @foreach($phases as $phase)
                         {{-- Phase Row --}}
                         <tr class="bg-gray-100 phase-row" data-phase-id="{{ $phase->id }}">
-                            <td class="sticky left-0 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200">
+                            <td class="sticky left-0 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200">
                                 <div class="flex items-center gap-2">
                                     <button type="button"
                                             class="phase-toggle-btn text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -392,16 +392,16 @@
                                     <span class="text-xs text-gray-500">#{{ $phase->phase_order }}</span>
                                 </div>
                             </td>
-                            <td class="sticky left-64 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-88 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">{{ $phase->progress_actual }}%</td>
-                            <td class="sticky left-108 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
+                            <td class="sticky left-64 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">{{ $phase->progress_actual }}%</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     @if($phase->start_date_plan) <div class="text-gray-500">P: {{ $phase->start_date_plan->format('d/m/Y') }}</div> @endif
                                     @if($phase->start_date_revise) <div class="text-orange-500">R: {{ $phase->start_date_revise->format('d/m/Y') }}</div> @endif
                                     @if($phase->start_date_actual) <div class="text-green-600">A: {{ $phase->start_date_actual->format('d/m/Y') }}</div> @endif
                                 </div>
                             </td>
-                            <td class="sticky left-140 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     @if($phase->end_date_plan) <div class="text-gray-500">P: {{ $phase->end_date_plan->format('d/m/Y') }}</div> @endif
                                     @if($phase->end_date_revise) <div class="text-orange-500">R: {{ $phase->end_date_revise->format('d/m/Y') }}</div> @endif
@@ -480,13 +480,13 @@
                     {{-- Standalone Tasks --}}
                     @if($standaloneTasks->isNotEmpty())
                         <tr class="bg-gray-100">
-                            <td class="sticky left-0 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200">
+                            <td class="sticky left-0 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200">
                                 <span class="font-semibold text-gray-900">Standalone Tasks</span>
                             </td>
-                            <td class="sticky left-64 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-88 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-108 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="sticky left-140 bg-gray-100 z-30 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="sticky left-64 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="px-0 py-2 bg-gray-100">
                                 <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                     @for($i = 0; $i <= $totalDays; $i++)
@@ -1580,7 +1580,7 @@
     // --- Gantt Bar Resize and Progress Popup ---
     (function() {
         var ganttResizing = null;
-        var ganttPending = null;
+        var ganttPending = [];
         var ganttProgressData = null;
 
         function ganttGetTimelineInfo() {
@@ -1619,11 +1619,18 @@
             bar.style.width = (newDuration * pixelsPerDay) + 'px';
         }
 
-        function ganttShowPendingActions(text) {
+        function ganttUpdatePendingActionsUi() {
             var panel = document.getElementById('gantt-pending-actions');
             var label = document.getElementById('gantt-pending-text');
             if (!panel) return;
-            if (label && text) label.textContent = text;
+            var count = ganttPending.length;
+            if (count === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+            if (label) {
+                label.textContent = count + ' unsaved change' + (count === 1 ? '' : 's');
+            }
             panel.classList.remove('hidden');
         }
 
@@ -1632,25 +1639,33 @@
             if (panel) panel.classList.add('hidden');
         }
 
+        function ganttPendingKey(p) {
+            return p.taskId + '-' + p.barType + '-' + (p.side || 'move');
+        }
+
         function ganttRevertBar() {
-            if (!ganttPending) return;
-            var bar = ganttPending.bar;
-            bar.style.left = ganttPending.originalLeft;
-            bar.style.width = ganttPending.originalWidth;
-            bar.dataset.startOffset = ganttPending.originalStartOffset;
-            bar.dataset.duration = ganttPending.originalDuration;
-            ganttHidePendingActions();
-            ganttPending = null;
+            ganttPending.forEach(function(p) {
+                var bar = p.bar;
+                if (!bar) return;
+                bar.style.left = p.originalLeft;
+                bar.style.width = p.originalWidth;
+                bar.dataset.startOffset = p.originalStartOffset;
+                bar.dataset.duration = p.originalDuration;
+            });
+            ganttPending = [];
+            ganttUpdatePendingActionsUi();
+        }
+
+        function ganttDiscardAll() {
+            if (ganttPending.length === 0) return;
+            if (!confirm('Discard all unsaved changes?')) return;
+            window.location.reload();
         }
 
         document.querySelectorAll('.gantt-resize-handle').forEach(function(handle) {
             handle.addEventListener('mousedown', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (ganttPending) {
-                    alert('Please save or cancel the current change first.');
-                    return;
-                }
                 var bar = handle.closest ? handle.closest('.gantt-bar') : null;
                 if (!bar) return;
                 var info = ganttGetTimelineInfo();
@@ -1716,7 +1731,7 @@
             var taskId = bar.dataset.taskId;
             var row = document.querySelector('.task-row[data-task-id="' + taskId + '"]');
 
-            ganttPending = {
+            var newPending = {
                 taskId: taskId,
                 bar: bar,
                 barType: barType,
@@ -1732,59 +1747,92 @@
                 updateUrl: row ? row.dataset.updateUrl : ''
             };
 
+            var key = ganttPendingKey(newPending);
+            var existingIndex = ganttPending.findIndex(function(p) { return ganttPendingKey(p) === key; });
+            if (existingIndex >= 0) {
+                // Replace existing queued change with the latest one, but keep original values
+                newPending.originalLeft = ganttPending[existingIndex].originalLeft;
+                newPending.originalWidth = ganttPending[existingIndex].originalWidth;
+                newPending.originalStartOffset = ganttPending[existingIndex].originalStartOffset;
+                newPending.originalDuration = ganttPending[existingIndex].originalDuration;
+                ganttPending[existingIndex] = newPending;
+            } else {
+                ganttPending.push(newPending);
+            }
+
             bar.dataset.startOffset = startOffset;
             bar.dataset.duration = duration;
-            ganttShowPendingActions('Unsaved changes to ' + barType + ' bar (' + startDate + ' — ' + endDate + ')');
+            ganttUpdatePendingActionsUi();
             ganttResizing = null;
         });
 
-        var ganttPendingCancel = document.getElementById('gantt-pending-cancel');
-        if (ganttPendingCancel) {
-            ganttPendingCancel.addEventListener('click', function() {
-                ganttRevertBar();
+        var ganttPendingDiscard = document.getElementById('gantt-pending-discard');
+        if (ganttPendingDiscard) {
+            ganttPendingDiscard.addEventListener('click', function() {
+                ganttDiscardAll();
             });
         }
 
         var ganttPendingSave = document.getElementById('gantt-pending-save');
         if (ganttPendingSave) {
             ganttPendingSave.addEventListener('click', function() {
-                if (!ganttPending) return;
-                var p = ganttPending;
-                var body = {};
-                if (p.barType === 'plan') {
-                    body.start_date_plan = p.startDate;
-                    body.end_date_plan = p.endDate;
-                } else if (p.barType === 'revise') {
-                    body.start_date_revise = p.startDate;
-                    body.end_date_revise = p.endDate;
-                } else if (p.barType === 'actual') {
-                    if (p.side === 'left') {
-                        body.start_date_actual = p.startDate;
-                    } else if (p.side === 'right') {
-                        body.end_date_actual = p.endDate;
+                if (ganttPending.length === 0) return;
+
+                var queue = ganttPending.slice();
+                var results = [];
+                var failed = false;
+
+                function sendNext(index) {
+                    if (index >= queue.length) {
+                        if (failed) {
+                            alert('Some changes failed to save. Please refresh the page.');
+                        } else {
+                            window.location.reload();
+                        }
+                        return;
                     }
+                    var p = queue[index];
+                    var body = {};
+                    if (p.barType === 'plan') {
+                        body.start_date_plan = p.startDate;
+                        body.end_date_plan = p.endDate;
+                    } else if (p.barType === 'revise') {
+                        body.start_date_revise = p.startDate;
+                        body.end_date_revise = p.endDate;
+                    } else if (p.barType === 'actual') {
+                        if (p.side === 'left') {
+                            body.start_date_actual = p.startDate;
+                        } else if (p.side === 'right') {
+                            body.end_date_actual = p.endDate;
+                        }
+                    }
+                    fetch(p.updateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': gcmCsrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            results.push(data);
+                            sendNext(index + 1);
+                        } else {
+                            failed = true;
+                            alert(data.message || 'Failed to save one of the changes.');
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error(err);
+                        failed = true;
+                        alert('Failed to save one of the changes.');
+                    });
                 }
-                fetch(p.updateUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': gcmCsrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        alert(data.message || 'Failed to save changes.');
-                    }
-                })
-                .catch(function(err) {
-                    console.error(err);
-                    alert('Failed to save changes.');
-                });
+
+                sendNext(0);
             });
         }
 
@@ -1792,10 +1840,6 @@
         document.querySelectorAll('.gantt-effective-bar').forEach(function(bar) {
             bar.addEventListener('click', function(e) {
                 if (e.target.closest && e.target.closest('.gantt-dot, .gantt-resize-handle')) return;
-                if (ganttPending) {
-                    alert('Please save or cancel the current change first.');
-                    return;
-                }
                 var taskId = bar.dataset.taskId;
                 var row = document.querySelector('.task-row[data-task-id="' + taskId + '"]');
                 var progressText = bar.querySelector('.gantt-progress-text');
@@ -1858,6 +1902,9 @@
             if (ganttProgressSave) {
                 ganttProgressSave.addEventListener('click', function() {
                     if (!ganttProgressData) return;
+                    if (ganttPending.length > 0) {
+                        if (!confirm('You have unsaved bar drag changes. Saving progress will reload the page and discard them. Continue?')) return;
+                    }
                     var slider = document.getElementById('gantt-progress-slider');
                     var progress = slider ? parseInt(slider.value, 10) : ganttProgressData.currentProgress;
                     var body = {
@@ -1892,6 +1939,85 @@
                 });
             }
         });
+
+        // --- Recent Gantt Changes ---
+        (function() {
+            var container = document.getElementById('gantt-chart-container');
+            var url = container ? container.dataset.recentChangesUrl : '';
+            var list = document.getElementById('gantt-changes-list');
+            var count = document.getElementById('gantt-changes-count');
+            var page = document.getElementById('gantt-changes-page');
+            var prevBtn = document.getElementById('gantt-changes-prev');
+            var nextBtn = document.getElementById('gantt-changes-next');
+            var currentPage = 1;
+
+            function loadChanges(pageNum) {
+                if (!url || !list) return;
+                list.innerHTML = '<p class="text-xs text-gray-500 py-2">Loading recent changes...</p>';
+                var sep = url.indexOf('?') >= 0 ? '&' : '?';
+                fetch(url + sep + 'page=' + pageNum, {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data.success || !data.data) return;
+                    currentPage = data.pagination.current_page;
+                    if (count) {
+                        count.textContent = data.pagination.total + ' total change' + (data.pagination.total === 1 ? '' : 's');
+                    }
+                    if (page) {
+                        page.textContent = 'Page ' + currentPage + ' of ' + data.pagination.last_page;
+                    }
+                    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+                    if (nextBtn) nextBtn.disabled = currentPage >= data.pagination.last_page;
+
+                    if (data.data.length === 0) {
+                        list.innerHTML = '<p class="text-xs text-gray-500 py-2">No recent changes.</p>';
+                        return;
+                    }
+
+                    var html = '<div class="space-y-2">';
+                    data.data.forEach(function(item) {
+                        html += '<div class="flex items-start justify-between gap-3 py-1 border-b border-gray-100 last:border-0">' +
+                            '<div class="min-w-0">' +
+                                '<p class="text-xs text-gray-800 truncate">' + escapeHtml(item.description) + '</p>' +
+                                '<p class="text-[10px] text-gray-500">by ' + escapeHtml(item.user) + ' &bull; ' + escapeHtml(item.created_at) + '</p>' +
+                            '</div>' +
+                            '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 whitespace-nowrap">' + escapeHtml(item.action) + '</span>' +
+                        '</div>';
+                    });
+                    html += '</div>';
+                    list.innerHTML = html;
+                })
+                .catch(function(err) {
+                    console.error(err);
+                    if (list) list.innerHTML = '<p class="text-xs text-red-500 py-2">Failed to load recent changes.</p>';
+                });
+            }
+
+            function escapeHtml(text) {
+                if (text === null || text === undefined) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    if (currentPage > 1) loadChanges(currentPage - 1);
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    loadChanges(currentPage + 1);
+                });
+            }
+
+            loadChanges(1);
+        })();
     })();
 
 </script>
@@ -1937,6 +2063,22 @@
                 <button id="gantt-progress-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save</button>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- Recent Gantt Changes Box --}}
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm mt-4 overflow-hidden">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <h4 class="text-sm font-semibold text-gray-800">Recent Changes</h4>
+        <span id="gantt-changes-count" class="text-xs text-gray-500">Loading...</span>
+    </div>
+    <div id="gantt-changes-list" class="px-4 py-2">
+        <p class="text-xs text-gray-500 py-2">Loading recent changes...</p>
+    </div>
+    <div class="px-4 py-2 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+        <button id="gantt-changes-prev" type="button" class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">&larr; Prev</button>
+        <span id="gantt-changes-page" class="text-xs text-gray-500">Page 1</span>
+        <button id="gantt-changes-next" type="button" class="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">Next &rarr;</button>
     </div>
 </div>
 </div>

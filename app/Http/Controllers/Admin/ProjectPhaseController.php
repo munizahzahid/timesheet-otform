@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectPhase;
 use App\Models\ProjectTask;
+use App\Services\GanttChangeLogger;
 use Illuminate\Http\Request;
 
 class ProjectPhaseController extends Controller
@@ -47,7 +48,19 @@ class ProjectPhaseController extends Controller
         $validated['progress_plan'] = 0;
         $validated['progress_actual'] = 0;
 
-        ProjectPhase::create($validated);
+        $phase = ProjectPhase::create($validated);
+
+        GanttChangeLogger::log(
+            $project,
+            auth()->user(),
+            'phase_create',
+            null,
+            $phase,
+            null,
+            null,
+            null,
+            "Phase '{$phase->phase_name}' created"
+        );
 
         return redirect()->route('admin.project.projects.phases.index', $project)
             ->with('success', 'Phase created successfully.');
@@ -86,7 +99,33 @@ class ProjectPhaseController extends Controller
             'end_date_revise' => 'nullable|date',
         ]);
 
+        $oldValues = $phase->getOriginal();
         $phase->update($validated);
+
+        $fieldsToLog = [
+            'phase_name' => 'Phase name',
+            'phase_order' => 'Phase order',
+            'start_date_plan' => 'Plan start',
+            'end_date_plan' => 'Plan end',
+            'start_date_revise' => 'Revise start',
+            'end_date_revise' => 'Revise end',
+            'start_date_actual' => 'Actual start',
+            'end_date_actual' => 'Actual end',
+        ];
+        foreach ($fieldsToLog as $field => $label) {
+            if (array_key_exists($field, $validated) && $oldValues[$field] != $validated[$field]) {
+                GanttChangeLogger::log(
+                    $project,
+                    auth()->user(),
+                    'phase_update',
+                    null,
+                    $phase,
+                    $label,
+                    $oldValues[$field],
+                    $validated[$field]
+                );
+            }
+        }
 
         return redirect()->route('admin.project.projects.phases.index', $project)
             ->with('success', 'Phase updated successfully.');
@@ -97,12 +136,25 @@ class ProjectPhaseController extends Controller
      */
     public function destroy(Project $project, ProjectPhase $phase)
     {
+        $phaseName = $phase->phase_name;
         foreach ($phase->tasks as $task) {
             ProjectTask::where('predecessor_task_id', $task->id)->update(['predecessor_task_id' => null]);
             $task->delete();
         }
 
         $phase->delete();
+
+        GanttChangeLogger::log(
+            $project,
+            auth()->user(),
+            'phase_delete',
+            null,
+            null,
+            null,
+            null,
+            null,
+            "Phase '{$phaseName}' and its tasks deleted"
+        );
 
         (new \App\Services\ProjectProgressCalculator())->recalculateProjectProgress($project);
 

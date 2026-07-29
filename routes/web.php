@@ -192,6 +192,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
                 Route::post('/{task}/quick-update', [ProjectTaskController::class, 'quickUpdate'])->name('quick-update');
                 Route::post('/{task}/inline-update', [ProjectTaskController::class, 'inlineUpdate'])->name('inline-update');
                 Route::post('/{task}/dependency', [ProjectTaskController::class, 'updateDependency'])->name('dependency.update');
+                Route::get('/gantt-changes', [ProjectTaskController::class, 'ganttChanges'])->name('gantt-changes');
 
                 // Comments
                 Route::post('/{task}/comments', [ProjectTaskCommentController::class, 'store'])->name('comments.store');

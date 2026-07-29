@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\ProjectPhase;
 use App\Models\ProjectProgressLog;
 use App\Models\ProjectTask;
+use App\Services\GanttChangeLogger;
 use App\Services\ProjectProgressCalculator;
 use App\Services\TaskDependencyResolver;
 use Illuminate\Http\Request;
@@ -84,6 +85,18 @@ class ProjectTaskController extends Controller
         }
 
         $task = ProjectTask::create($validated);
+
+        GanttChangeLogger::log(
+            $project,
+            auth()->user(),
+            'task_create',
+            $task,
+            null,
+            null,
+            null,
+            null,
+            "Task '{$task->task_name}' created"
+        );
 
         $resolver->cascadeActualStartDates($project, $task);
         (new ProjectProgressCalculator())->recalculateFromTask($task);
@@ -196,6 +209,39 @@ class ProjectTaskController extends Controller
         }
         $calculator->recalculateFromTask($task->refresh());
 
+        $fieldsToLog = [
+            'task_name' => 'Task name',
+            'phase_id' => 'Phase',
+            'assigned_to' => 'Assigned to',
+            'weight' => 'Weight',
+            'start_date_plan' => 'Plan start',
+            'end_date_plan' => 'Plan end',
+            'start_date_revise' => 'Revise start',
+            'end_date_revise' => 'Revise end',
+            'start_date_actual' => 'Actual start',
+            'end_date_actual' => 'Actual end',
+            'progress_actual' => 'Progress',
+            'status' => 'Status',
+        ];
+        foreach ($fieldsToLog as $field => $label) {
+            if (array_key_exists($field, $validated)) {
+                $oldValue = $task->getOriginal($field);
+                $newValue = $validated[$field];
+                if ($oldValue != $newValue) {
+                    GanttChangeLogger::log(
+                        $project,
+                        auth()->user(),
+                        'task_update',
+                        $task,
+                        null,
+                        $label,
+                        $oldValue,
+                        $newValue
+                    );
+                }
+            }
+        }
+
         $query = ['tab' => $request->input('tab', 'tasks')];
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
@@ -265,6 +311,25 @@ class ProjectTaskController extends Controller
                     'changed_by' => auth()->id(),
                     'notes' => $validated['notes'] ?? null,
                 ]);
+
+                $fieldLabels = [
+                    'progress_actual' => 'Progress',
+                    'status' => 'Status',
+                    'start_date_actual' => 'Actual start',
+                    'end_date_actual' => 'Actual end',
+                    'start_date_revise' => 'Revise start',
+                    'end_date_revise' => 'Revise end',
+                ];
+                GanttChangeLogger::log(
+                    $project,
+                    auth()->user(),
+                    $field === 'progress_actual' ? 'progress_update' : 'task_update',
+                    $task,
+                    null,
+                    $fieldLabels[$field] ?? $field,
+                    $oldValues[$field],
+                    $newValue
+                );
             }
         }
 
@@ -331,6 +396,8 @@ class ProjectTaskController extends Controller
             $updateData['task_order'] = $newOrder;
         }
 
+        $oldValues = $task->getOriginal();
+
         if (!empty($updateData)) {
             $task->update($updateData);
         }
@@ -356,6 +423,34 @@ class ProjectTaskController extends Controller
             (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
         }
 
+        $fieldLabels = [
+            'status' => 'Status',
+            'weight' => 'Weight',
+            'end_date_revise' => 'Revise end',
+            'start_date_plan' => 'Plan start',
+            'end_date_plan' => 'Plan end',
+            'start_date_revise' => 'Revise start',
+            'start_date_actual' => 'Actual start',
+            'end_date_actual' => 'Actual end',
+            'progress_actual' => 'Progress',
+            'task_order' => 'Order',
+        ];
+        foreach ($updateData as $field => $newValue) {
+            if (isset($fieldLabels[$field]) && $oldValues[$field] != $newValue) {
+                $actionType = in_array($field, ['start_date_actual', 'end_date_actual', 'start_date_plan', 'end_date_plan', 'start_date_revise', 'end_date_revise']) ? 'bar_drag' : 'task_update';
+                GanttChangeLogger::log(
+                    $project,
+                    auth()->user(),
+                    $actionType,
+                    $task,
+                    null,
+                    $fieldLabels[$field],
+                    $oldValues[$field],
+                    $newValue
+                );
+            }
+        }
+
         return response()->json([
             'success' => true,
             'task' => [
@@ -364,6 +459,43 @@ class ProjectTaskController extends Controller
                 'weight' => $task->weight,
                 'end_date_revise' => $task->end_date_revise?->format('M d'),
                 'end_date_revise_raw' => $task->end_date_revise?->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    /**
+     * List recent Gantt changes for a project (paginated, used by the Gantt UI)
+     */
+    public function ganttChanges(Request $request, Project $project)
+    {
+        $perPage = 5;
+        $changes = GanttChangeLog::with(['user', 'task', 'phase'])
+            ->where('project_id', $project->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        $data = $changes->map(function (GanttChangeLog $log) {
+            $subject = $log->task?->task_name ?? ($log->phase?->phase_name ?? 'Project');
+            return [
+                'id' => $log->id,
+                'user' => $log->user?->name ?? 'Unknown',
+                'action' => $log->action_type,
+                'description' => $log->description ?? "{$subject}: {$log->field_name} changed",
+                'created_at' => $log->created_at?->format('d M Y, H:i') ?? '-',
+                'created_at_iso' => $log->created_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $changes->currentPage(),
+                'last_page' => $changes->lastPage(),
+                'per_page' => $changes->perPage(),
+                'total' => $changes->total(),
+                'next_page_url' => $changes->nextPageUrl(),
+                'prev_page_url' => $changes->previousPageUrl(),
             ],
         ]);
     }
@@ -395,10 +527,26 @@ class ProjectTaskController extends Controller
             }
         }
 
+        $oldPredecessor = $task->predecessor_task_id;
+
         $task->update([
             'predecessor_task_id' => $predecessorTaskId,
             'dependency_type' => $predecessorTaskId ? $dependencyType : 'end_to_start',
         ]);
+
+        if ($oldPredecessor != $predecessorTaskId) {
+            GanttChangeLogger::log(
+                $project,
+                auth()->user(),
+                'dependency_update',
+                $task,
+                null,
+                'Dependency',
+                $oldPredecessor ? ProjectTask::find($oldPredecessor)?->task_name : 'None',
+                $predecessorTaskId ? ProjectTask::find($predecessorTaskId)?->task_name : 'None',
+                "Dependency for '{$task->task_name}' changed"
+            );
+        }
 
         $resolver = new TaskDependencyResolver();
         $task->refresh();
@@ -420,7 +568,20 @@ class ProjectTaskController extends Controller
         ProjectTask::where('predecessor_task_id', $task->id)->update(['predecessor_task_id' => null]);
 
         $phase = $task->phase;
+        $taskName = $task->task_name;
         $task->delete();
+
+        GanttChangeLogger::log(
+            $project,
+            auth()->user(),
+            'task_delete',
+            null,
+            null,
+            null,
+            null,
+            null,
+            "Task '{$taskName}' deleted"
+        );
 
         $calculator = new ProjectProgressCalculator();
         if ($phase) {
