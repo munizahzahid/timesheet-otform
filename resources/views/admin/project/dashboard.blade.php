@@ -30,8 +30,8 @@
             </div>
         </div>
 
-        {{-- Row 2: Staff Involvement (left) + Progress Summary (right) --}}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {{-- Row 2: Staff Project Timeline --}}
+        <div class="mb-6">
             {{-- Staff Project Timeline --}}
             <div class="bg-white border border-gray-200 rounded-lg p-3">
                 <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Staff Project Timeline (Active)</h3>
@@ -83,8 +83,10 @@
                     </div>
                 @endif
             </div>
+        </div>
 
-            {{-- Progress Summary (Active Projects Only) --}}
+        {{-- Row 3: Progress Summary --}}
+        <div class="mb-6">
             <div class="bg-white border border-gray-200 rounded-lg p-3">
                 <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Progress Summary (Active Projects)</h3>
                 @if($projects->where('status', 'active')->count() > 0)
