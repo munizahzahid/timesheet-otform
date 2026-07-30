@@ -38,52 +38,116 @@ class ProjectController extends Controller
 
         $projects = Project::latest()->get();
 
-        // Staff involvement: total and active project counts per staff (PM, deskman, or task assigned)
-        $pmUsers = DB::table('pm_projects')
+        // Staff timeline: active projects with planned dates per staff (PM, deskman, or task assigned)
+        $pmProjects = DB::table('pm_projects')
             ->join('users', 'pm_projects.project_manager_staff_id', '=', 'users.staff_no')
             ->whereNotNull('pm_projects.project_manager_staff_id')
             ->whereNotNull('users.staff_no')
-            ->select('users.id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.status')
+            ->where('pm_projects.status', 'active')
+            ->whereNotNull('pm_projects.start_date_plan')
+            ->whereNotNull('pm_projects.end_date_plan')
+            ->select('users.id as user_id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.project_name', 'pm_projects.start_date_plan', 'pm_projects.end_date_plan')
             ->get();
 
-        $deskman1Users = DB::table('pm_projects')
+        $deskman1Projects = DB::table('pm_projects')
             ->join('users', 'pm_projects.deskman_1_staff_id', '=', 'users.staff_no')
             ->whereNotNull('pm_projects.deskman_1_staff_id')
             ->whereNotNull('users.staff_no')
-            ->select('users.id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.status')
+            ->where('pm_projects.status', 'active')
+            ->whereNotNull('pm_projects.start_date_plan')
+            ->whereNotNull('pm_projects.end_date_plan')
+            ->select('users.id as user_id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.project_name', 'pm_projects.start_date_plan', 'pm_projects.end_date_plan')
             ->get();
 
-        $deskman2Users = DB::table('pm_projects')
+        $deskman2Projects = DB::table('pm_projects')
             ->join('users', 'pm_projects.deskman_2_staff_id', '=', 'users.staff_no')
             ->whereNotNull('pm_projects.deskman_2_staff_id')
             ->whereNotNull('users.staff_no')
-            ->select('users.id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.status')
+            ->where('pm_projects.status', 'active')
+            ->whereNotNull('pm_projects.start_date_plan')
+            ->whereNotNull('pm_projects.end_date_plan')
+            ->select('users.id as user_id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.project_name', 'pm_projects.start_date_plan', 'pm_projects.end_date_plan')
             ->get();
 
-        $taskUsers = DB::table('project_tasks')
+        $taskProjects = DB::table('project_tasks')
             ->join('users', 'project_tasks.assigned_to', '=', 'users.id')
             ->whereNotNull('project_tasks.assigned_to')
             ->join('pm_projects', 'project_tasks.project_id', '=', 'pm_projects.id')
-            ->select('users.id', 'users.name', 'project_tasks.project_id', 'pm_projects.status')
+            ->where('pm_projects.status', 'active')
+            ->whereNotNull('pm_projects.start_date_plan')
+            ->whereNotNull('pm_projects.end_date_plan')
+            ->select('users.id as user_id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.project_name', 'pm_projects.start_date_plan', 'pm_projects.end_date_plan')
             ->get();
 
-        $allInvolvements = $pmUsers->concat($deskman1Users)->concat($deskman2Users)->concat($taskUsers);
+        $allStaffProjects = $pmProjects->concat($deskman1Projects)->concat($deskman2Projects)->concat($taskProjects);
 
-        $staffInvolvement = $allInvolvements
-            ->groupBy('id')
+        // Group by staff, keeping only active projects with unique project_ids
+        $staffTimeline = $allStaffProjects
+            ->groupBy('user_id')
             ->map(function($items) {
-                $projectIds = $items->pluck('project_id')->unique();
-                $activeCount = $items->where('status', 'active')->pluck('project_id')->unique()->count();
+                $uniqueProjects = $items->unique('project_id')->values();
                 return [
-                    'id' => $items->first()->id,
+                    'id' => $items->first()->user_id,
                     'name' => $items->first()->name,
-                    'project_count' => $projectIds->count(),
-                    'active_count' => $activeCount,
+                    'projects' => $uniqueProjects->map(function($p) {
+                        return [
+                            'id' => $p->project_id,
+                            'name' => $p->project_name,
+                            'start_date' => $p->start_date_plan,
+                            'end_date' => $p->end_date_plan,
+                        ];
+                    })->all(),
                 ];
             })
-            ->sortByDesc('project_count')
+            ->sortBy('name')
             ->values()
             ->all();
+
+        // Calculate timeline week range across all active projects
+        $allDates = collect($staffTimeline)->flatMap(function($staff) {
+            return collect($staff['projects'])->flatMap(function($p) {
+                return [$p['start_date'], $p['end_date']];
+            });
+        })->filter();
+
+        $weekLabels = [];
+        $timelineStart = null;
+        $weekCount = 0;
+        if ($allDates->isNotEmpty()) {
+            $timelineStart = \Carbon\Carbon::parse($allDates->min())->startOfWeek();
+            $timelineEnd = \Carbon\Carbon::parse($allDates->max())->endOfWeek();
+            $weekCount = (int) $timelineStart->diffInWeeks($timelineEnd) + 1;
+
+            $current = $timelineStart->copy();
+            for ($i = 0; $i < $weekCount; $i++) {
+                $weekLabels[] = $current->copy();
+                $current->addWeek();
+            }
+
+            // Calculate week offsets for each project
+            foreach ($staffTimeline as $key => $staff) {
+                foreach ($staff['projects'] as $pKey => $project) {
+                    $pStart = \Carbon\Carbon::parse($project['start_date'])->startOfWeek();
+                    $pEnd = \Carbon\Carbon::parse($project['end_date'])->endOfWeek();
+                    $startWeek = (int) $timelineStart->diffInWeeks($pStart);
+                    $durationWeeks = max(1, (int) $pStart->diffInWeeks($pEnd) + 1);
+                    $staffTimeline[$key]['projects'][$pKey]['start_week'] = $startWeek;
+                    $staffTimeline[$key]['projects'][$pKey]['duration_weeks'] = $durationWeeks;
+                    // Assign consistent color based on project ID
+                    $staffTimeline[$key]['projects'][$pKey]['color_index'] = $project['id'] % 6;
+                }
+            }
+        }
+
+        // Keep old staffInvolvement for backward compatibility (count data for stat display if needed)
+        $staffInvolvement = collect($staffTimeline)->map(function($staff) {
+            return [
+                'id' => $staff['id'],
+                'name' => $staff['name'],
+                'project_count' => count($staff['projects']),
+                'active_count' => count($staff['projects']),
+            ];
+        })->all();
 
         // Budget year filter
         $budgetYear = $request->input('budget_year');
@@ -118,6 +182,9 @@ class ProjectController extends Controller
             'delayedProjects',
             'projects',
             'staffInvolvement',
+            'staffTimeline',
+            'weekLabels',
+            'weekCount',
             'budgetProjects',
             'totalBudgetPlan',
             'totalBudgetActual',

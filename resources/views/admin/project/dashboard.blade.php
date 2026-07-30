@@ -32,19 +32,54 @@
 
         {{-- Row 2: Staff Involvement (left) + Progress Summary (right) --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {{-- Staff Project Involvement --}}
+            {{-- Staff Project Timeline --}}
             <div class="bg-white border border-gray-200 rounded-lg p-5">
-                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Staff Project Involvement</h3>
-                @if(count($staffInvolvement) > 0)
-                    <div style="height: 320px;">
-                        <canvas id="staffInvolvementChart"></canvas>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Staff Project Timeline (Active)</h3>
+                @if(count($staffTimeline) > 0 && $weekCount > 0)
+                    <div class="overflow-x-auto">
+                        <div class="min-w-max">
+                            {{-- Header --}}
+                            <div class="flex border-b bg-gray-50 sticky top-0">
+                                <div class="w-48 flex-shrink-0 p-3 font-semibold text-sm sticky left-0 bg-gray-50 z-10">Staff</div>
+                                <div class="flex">
+                                    @foreach($weekLabels as $week)
+                                        <div class="flex-shrink-0 w-16 text-center text-[10px] py-2 border-l border-gray-200 {{ $week->isCurrentWeek() ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-500' }}">
+                                            {{ $week->format('M d') }}
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            {{-- Staff rows --}}
+                            @foreach($staffTimeline as $staff)
+                                <div class="flex border-b-2 border-gray-200 hover:bg-gray-50">
+                                    <div class="w-48 flex-shrink-0 p-3 text-sm font-medium sticky left-0 bg-white z-10 border-r border-gray-200">
+                                        {{ $staff['name'] }}
+                                    </div>
+                                    <div class="flex relative" style="width: {{ $weekCount * 64 }}px; min-height: {{ max(40, count($staff['projects']) * 24 + 8) }}px;">
+                                        {{-- Week grid lines --}}
+                                        @for($i = 0; $i < $weekCount; $i++)
+                                            <div class="absolute top-0 bottom-0 border-l border-gray-100" style="left: {{ $i * 64 }}px; width: 64px;"></div>
+                                        @endfor
+                                        {{-- Project bars --}}
+                                        @foreach($staff['projects'] as $project)
+                                            <a href="{{ route('admin.project.projects.show', $project['id']) }}"
+                                               class="absolute h-5 rounded text-white text-[10px] flex items-center px-1 overflow-hidden whitespace-nowrap shadow-sm transition hover:opacity-80 hover:shadow"
+                                               style="left: {{ $project['start_week'] * 64 + 2 }}px; width: {{ max(60, $project['duration_weeks'] * 64 - 4) }}px; top: {{ 4 + $loop->index * 24 }}px; background-color: {{ ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'][$project['color_index'] ?? 0] }};"
+                                               title="{{ $project['name'] }}: {{ \Carbon\Carbon::parse($project['start_date'])->format('d M Y') }} - {{ \Carbon\Carbon::parse($project['end_date'])->format('d M Y') }}">
+                                                {{ $project['name'] }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 @else
                     <div class="text-center py-8">
                         <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
-                        <p class="text-sm text-gray-400 mt-2">No staff project assignments yet.</p>
+                        <p class="text-sm text-gray-400 mt-2">No staff with active projects.</p>
                     </div>
                 @endif
             </div>
@@ -120,94 +155,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const staffInvolvementData = @json($staffInvolvement);
-            const labels = staffInvolvementData.map(d => d.name);
-            const activeData = staffInvolvementData.map(d => d.active_count);
-            const inactiveData = staffInvolvementData.map(d => d.project_count - d.active_count);
-
-            const staffInvolvementUrlTemplate = "{{ route('admin.project.staff-involvement', ['user' => '__USER_ID__']) }}";
-
-            new Chart(document.getElementById('staffInvolvementChart'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Active Projects',
-                            data: activeData,
-                            backgroundColor: '#3B82F6',
-                            borderRadius: { topLeft: 4, topRight: 0, bottomLeft: 4, bottomRight: 0 },
-                            barPercentage: 0.6,
-                            categoryPercentage: 0.8,
-                        },
-                        {
-                            label: 'Other Projects',
-                            data: inactiveData,
-                            backgroundColor: '#E5E7EB',
-                            borderRadius: { topLeft: 0, topRight: 4, bottomLeft: 0, bottomRight: 4 },
-                            barPercentage: 0.6,
-                            categoryPercentage: 0.8,
-                        }
-                    ]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onHover: function(event, chartElements) {
-                        event.native.target.style.cursor = chartElements.length ? 'pointer' : 'default';
-                    },
-                    onClick: function(event, chartElements) {
-                        if (chartElements.length > 0) {
-                            const index = chartElements[0].index;
-                            const userId = staffInvolvementData[index].id;
-                            if (userId) {
-                                window.location.href = staffInvolvementUrlTemplate.replace('__USER_ID__', userId);
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                boxWidth: 8,
-                                font: { size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.dataset.label || '';
-                                    return label + ': ' + context.parsed.x + ' project' + (context.parsed.x !== 1 ? 's' : '');
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            stacked: true,
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1,
-                                precision: 0
-                            },
-                            title: {
-                                display: true,
-                                text: 'Number of Projects'
-                            }
-                        },
-                        y: {
-                            stacked: true,
-                            ticks: {
-                                autoSkip: false
-                            }
-                        }
-                    }
-                }
-            });
-
             // Progress Summary (Active Projects) Chart
             const activeProjectsData = @json($projects->where('status', 'active')->values());
             if (activeProjectsData.length > 0) {
