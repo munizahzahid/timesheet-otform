@@ -8,7 +8,12 @@
         $inputValue = $inputValue->format('Y-m-d');
     }
     if ($type === 'number' && $inputValue !== '' && $inputValue !== null) {
-        $inputValue = number_format((float) $inputValue, 2, '.', '');
+        $floatVal = (float) $inputValue;
+        if ($floatVal == (int) $floatVal) {
+            $inputValue = (int) $floatVal;
+        } else {
+            $inputValue = number_format($floatVal, 2, '.', '');
+        }
     }
 @endphp
 

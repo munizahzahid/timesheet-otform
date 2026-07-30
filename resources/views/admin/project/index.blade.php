@@ -80,7 +80,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <a href="{{ route('admin.project.projects.edit', $project) }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                                    <a href="{{ route('admin.project.projects.edit', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}" class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
                                         Edit
                                     </a>
                                     <span class="text-gray-300 mx-1">|</span>

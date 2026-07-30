@@ -16,7 +16,7 @@
                         Cancel
                     </a>
                 @else
-                    <a href="{{ route('admin.project.projects.edit', $project) }}"
+                    <a href="{{ route('admin.project.projects.edit', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                         Edit Project
                     </a>
@@ -45,11 +45,14 @@
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="tab" value="details">
+                @if(request()->has('redirect'))
+                    <input type="hidden" name="redirect" value="{{ request()->input('redirect') }}">
+                @endif
 
                 @include('admin.project.partials._tab_details', ['editMode' => true, 'staffList' => $staffList])
 
                 <div class="flex items-center justify-end gap-3 mt-6 bg-white border border-gray-200 rounded-lg p-4">
-                    <a href="{{ route('admin.project.projects.show', $project) }}"
+                    <a href="{{ request()->input('redirect') ?? route('admin.project.projects.show', $project) }}"
                        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
                         Cancel
                     </a>

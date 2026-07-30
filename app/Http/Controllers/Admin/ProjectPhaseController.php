@@ -62,6 +62,11 @@ class ProjectPhaseController extends Controller
             "Phase '{$phase->phase_name}' created"
         );
 
+        $redirect = $request->input('redirect');
+        if ($redirect) {
+            return redirect($redirect)->with('success', 'Phase created successfully.');
+        }
+
         return redirect()->route('admin.project.projects.phases.index', $project)
             ->with('success', 'Phase created successfully.');
     }
@@ -125,6 +130,11 @@ class ProjectPhaseController extends Controller
                     $validated[$field]
                 );
             }
+        }
+
+        $redirect = $request->input('redirect');
+        if ($redirect) {
+            return redirect($redirect)->with('success', 'Phase updated successfully.');
         }
 
         return redirect()->route('admin.project.projects.phases.index', $project)

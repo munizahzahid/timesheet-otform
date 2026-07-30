@@ -260,7 +260,7 @@
                     </label>
                 </div>
             </div>
-            <a href="{{ route('admin.project.projects.phases.create', $project) }}"
+            <a href="{{ route('admin.project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                class="inline-flex items-center px-2 py-1 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-indigo-700 transition">
                 Add Phase
             </a>
@@ -380,7 +380,7 @@
                                     </button>
                                     <div class="gantt-menu">
                                         <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Phase actions"
-                                                data-edit-url="{{ route('admin.project.projects.phases.edit', [$project, $phase]) }}"
+                                                data-edit-url="{{ route('admin.project.projects.phases.edit', [$project, $phase]) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                                                 data-delete-action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) }}"
                                                 data-delete-confirm="Delete this phase and all its tasks?">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

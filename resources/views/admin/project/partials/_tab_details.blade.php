@@ -310,6 +310,13 @@
                     'editMode' => $editMode,
                 ])
                 @include('admin.project.partials._field', [
+                    'name' => 'actual_cost',
+                    'label' => 'Actual Cost',
+                    'type' => 'number',
+                    'value' => $project->actual_cost,
+                    'editMode' => $editMode,
+                ])
+                @include('admin.project.partials._field', [
                     'name' => 'tin',
                     'label' => 'TIN',
                     'value' => $project->tin,

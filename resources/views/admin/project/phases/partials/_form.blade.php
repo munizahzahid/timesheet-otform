@@ -83,7 +83,7 @@
 
 {{-- Form Actions --}}
 <div class="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-    <a href="{{ route('admin.project.projects.phases.index', $project) }}"
+    <a href="{{ request()->input('redirect') ?? route('admin.project.projects.phases.index', $project) }}"
        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
         Cancel
     </a>

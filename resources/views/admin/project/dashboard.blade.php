@@ -98,6 +98,41 @@
             </div>
         </div>
 
+        {{-- Budget Variance Summary --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white border border-gray-200 rounded-lg p-5">
+                <p class="text-sm text-gray-500 mb-1">Total Budget (Plan)</p>
+                <p class="text-2xl font-bold text-gray-900">{{ number_format($totalBudgetPlan, 2) }}</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg p-5">
+                <p class="text-sm text-gray-500 mb-1">Total Actual Cost</p>
+                <p class="text-2xl font-bold text-green-600">{{ number_format($totalBudgetActual, 2) }}</p>
+            </div>
+            <div class="bg-white border border-gray-200 rounded-lg p-5">
+                <p class="text-sm text-gray-500 mb-1">Variance</p>
+                <p class="text-2xl font-bold {{ $budgetVariance >= 0 ? 'text-blue-600' : 'text-red-600' }}">
+                    {{ $budgetVariance >= 0 ? '+' : '' }}{{ number_format($budgetVariance, 2) }}
+                </p>
+            </div>
+        </div>
+
+        {{-- Budget Plan vs Actual Chart --}}
+        <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Budget Plan vs Actual</h3>
+            @if($budgetProjects->count() > 0)
+                <div style="height: 320px;">
+                    <canvas id="budgetVarianceChart"></canvas>
+                </div>
+            @else
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm text-gray-400 mt-2">No budget data available. Project values will appear here once set.</p>
+                </div>
+            @endif
+        </div>
+
         {{-- Staff Project Involvement --}}
         <div class="bg-white border border-gray-200 rounded-lg p-5 mb-6">
             <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Staff Project Involvement</h3>
@@ -225,6 +260,74 @@
                     }
                 }
             });
+
+            // Budget Plan vs Actual Chart
+            const budgetProjectsData = @json($budgetProjects);
+            if (budgetProjectsData.length > 0) {
+                const budgetLabels = budgetProjectsData.map(p => {
+                    const name = p.project_name;
+                    return name.length > 25 ? name.substring(0, 25) + '...' : name;
+                });
+                const budgetPlan = budgetProjectsData.map(p => parseFloat(p.project_value) || 0);
+                const budgetActual = budgetProjectsData.map(p => parseFloat(p.actual_cost) || 0);
+                const budgetVarianceArr = budgetPlan.map((plan, i) => plan - budgetActual[i]);
+
+                new Chart(document.getElementById('budgetVarianceChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: budgetLabels,
+                        datasets: [
+                            {
+                                label: 'Budget (Plan)',
+                                data: budgetPlan,
+                                backgroundColor: '#3B82F6',
+                                borderRadius: 4,
+                            },
+                            {
+                                label: 'Actual Cost',
+                                data: budgetActual,
+                                backgroundColor: '#10B981',
+                                borderRadius: 4,
+                            },
+                            {
+                                label: 'Variance',
+                                data: budgetVarianceArr,
+                                backgroundColor: budgetVarianceArr.map(v => v >= 0 ? '#6366F1' : '#EF4444'),
+                                borderRadius: 4,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Amount'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         });
     </script>
     @endpush

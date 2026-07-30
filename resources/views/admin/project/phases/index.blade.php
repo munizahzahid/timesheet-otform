@@ -20,7 +20,7 @@
                 <h3 class="text-lg font-medium text-gray-900">Project Phases</h3>
                 <p class="text-sm text-gray-500">{{ $phases->count() }} phase{{ $phases->count() != 1 ? 's' : '' }}</p>
             </div>
-            <a href="{{ route('admin.project.projects.phases.create', $project) }}"
+            <a href="{{ route('admin.project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                 Add Phase
             </a>
@@ -73,7 +73,7 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="{{ route('admin.project.projects.phases.edit', [$project, $phase]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                    <a href="{{ route('admin.project.projects.phases.edit', [$project, $phase]) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                     <form action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this phase and all its tasks?')">
                                         @csrf
                                         @method('DELETE')

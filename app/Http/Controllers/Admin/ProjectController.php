@@ -75,6 +75,17 @@ class ProjectController extends Controller
             ->values()
             ->all();
 
+        // Budget summary: top projects with budget data
+        $budgetProjects = Project::whereNotNull('project_value')
+            ->where('project_value', '>', 0)
+            ->orderByDesc('project_value')
+            ->take(10)
+            ->get(['id', 'project_name', 'project_value', 'actual_cost']);
+
+        $totalBudgetPlan = Project::sum('project_value') ?? 0;
+        $totalBudgetActual = Project::sum('actual_cost') ?? 0;
+        $budgetVariance = $totalBudgetPlan - $totalBudgetActual;
+
         return view('admin.project.dashboard', compact(
             'totalProjects',
             'activeProjects',
@@ -82,7 +93,11 @@ class ProjectController extends Controller
             'delayedProjects',
             'projects',
             'recentLogs',
-            'staffInvolvement'
+            'staffInvolvement',
+            'budgetProjects',
+            'totalBudgetPlan',
+            'totalBudgetActual',
+            'budgetVariance'
         ));
     }
 
@@ -396,11 +411,16 @@ class ProjectController extends Controller
             'project_value' => 'nullable|numeric',
             'purchasing_budget_100' => 'nullable|numeric',
             'purchasing_budget_95' => 'nullable|numeric',
+            'actual_cost' => 'nullable|numeric',
             'year' => 'nullable|integer',
             'project_schedule_status' => 'nullable|string|max:100',
         ]);
 
         $userName = auth()->user()->name ?? 'System';
+
+        if (empty($validated['year']) && !empty($validated['start_date_plan'])) {
+            $validated['year'] = (int) date('Y', strtotime($validated['start_date_plan']));
+        }
 
         $validated['created_by'] = auth()->id();
         $validated['overall_plan_progress'] = 0;
@@ -522,7 +542,12 @@ class ProjectController extends Controller
      */
     public function edit(Project $project)
     {
-        return redirect()->route('admin.project.projects.show', ['project' => $project, 'tab' => 'details', 'edit' => 1]);
+        $redirect = request('redirect');
+        $params = ['project' => $project, 'tab' => 'details', 'edit' => 1];
+        if ($redirect) {
+            $params['redirect'] = $redirect;
+        }
+        return redirect()->route('admin.project.projects.show', $params);
     }
 
     /**
@@ -567,9 +592,14 @@ class ProjectController extends Controller
             'project_value' => 'nullable|numeric',
             'purchasing_budget_100' => 'nullable|numeric',
             'purchasing_budget_95' => 'nullable|numeric',
+            'actual_cost' => 'nullable|numeric',
             'year' => 'nullable|integer',
             'project_schedule_status' => 'nullable|string|max:100',
         ]);
+
+        if (empty($validated['year']) && !empty($validated['start_date_plan'])) {
+            $validated['year'] = (int) date('Y', strtotime($validated['start_date_plan']));
+        }
 
         $validated['date_time_updated'] = now();
         $validated['updated_by'] = auth()->user()->name ?? 'System';
@@ -588,11 +618,19 @@ class ProjectController extends Controller
                     'project_id' => $project->id,
                     'error' => $e->getMessage(),
                 ]);
+                $redirect = $request->input('redirect');
+                if ($redirect) {
+                    return redirect($redirect)->with('error', 'Project saved locally, but Desknet push failed: ' . $e->getMessage());
+                }
                 return redirect()->route('admin.project.projects.show', ['project' => $project, 'tab' => 'details'])
                     ->with('error', 'Project saved locally, but Desknet push failed: ' . $e->getMessage());
             }
         }
 
+        $redirect = $request->input('redirect');
+        if ($redirect) {
+            return redirect($redirect)->with('success', 'Project updated successfully' . $pushMessage . '.');
+        }
         return redirect()->route('admin.project.projects.show', ['project' => $project, 'tab' => 'details'])
             ->with('success', 'Project updated successfully' . $pushMessage . '.');
     }
