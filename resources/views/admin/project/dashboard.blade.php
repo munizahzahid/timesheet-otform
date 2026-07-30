@@ -33,17 +33,17 @@
         {{-- Row 2: Staff Involvement (left) + Progress Summary (right) --}}
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {{-- Staff Project Timeline --}}
-            <div class="bg-white border border-gray-200 rounded-lg p-5">
-                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Staff Project Timeline (Active)</h3>
+            <div class="bg-white border border-gray-200 rounded-lg p-3">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Staff Project Timeline (Active)</h3>
                 @if(count($staffTimeline) > 0 && $weekCount > 0)
                     <div class="overflow-x-auto">
                         <div class="min-w-max">
                             {{-- Header --}}
                             <div class="flex border-b bg-gray-50 sticky top-0">
-                                <div class="w-48 flex-shrink-0 p-3 font-semibold text-sm sticky left-0 bg-gray-50 z-10">Staff</div>
+                                <div class="w-48 flex-shrink-0 p-2 font-semibold text-sm sticky left-0 bg-gray-50 z-10">Staff</div>
                                 <div class="flex">
                                     @foreach($weekLabels as $week)
-                                        <div class="flex-shrink-0 w-16 text-center text-[10px] py-2 border-l border-gray-200 {{ $week->isCurrentWeek() ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-500' }}">
+                                        <div class="flex-shrink-0 w-16 text-center text-[10px] py-1 border-l border-gray-200 {{ $week->isCurrentWeek() ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-500' }}">
                                             {{ $week->format('M d') }}
                                         </div>
                                     @endforeach
@@ -52,10 +52,10 @@
                             {{-- Staff rows --}}
                             @foreach($staffTimeline as $staff)
                                 <div class="flex border-b-2 border-gray-200 hover:bg-gray-50">
-                                    <div class="w-48 flex-shrink-0 p-3 text-sm font-medium sticky left-0 bg-white z-10 border-r border-gray-200">
+                                    <div class="w-48 flex-shrink-0 p-2 text-sm font-medium sticky left-0 bg-white z-10 border-r border-gray-200">
                                         {{ $staff['name'] }}
                                     </div>
-                                    <div class="flex relative" style="width: {{ $weekCount * 64 }}px; min-height: {{ max(40, count($staff['projects']) * 24 + 8) }}px;">
+                                    <div class="flex relative" style="width: {{ $weekCount * 64 }}px; min-height: {{ max(28, count($staff['projects']) * 20 + 4) }}px;">
                                         {{-- Week grid lines --}}
                                         @for($i = 0; $i < $weekCount; $i++)
                                             <div class="absolute top-0 bottom-0 border-l border-gray-100" style="left: {{ $i * 64 }}px; width: 64px;"></div>
@@ -64,7 +64,7 @@
                                         @foreach($staff['projects'] as $project)
                                             <a href="{{ route('admin.project.projects.show', $project['id']) }}"
                                                class="absolute h-5 rounded text-white text-[10px] flex items-center px-1 overflow-hidden whitespace-nowrap shadow-sm transition hover:opacity-80 hover:shadow"
-                                               style="left: {{ $project['start_week'] * 64 + 2 }}px; width: {{ max(60, $project['duration_weeks'] * 64 - 4) }}px; top: {{ 4 + $loop->index * 24 }}px; background-color: {{ ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'][$project['color_index'] ?? 0] }};"
+                                               style="left: {{ $project['start_week'] * 64 + 2 }}px; width: {{ max(60, $project['duration_weeks'] * 64 - 4) }}px; top: {{ 2 + $loop->index * 20 }}px; background-color: {{ ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'][$project['color_index'] ?? 0] }};"
                                                title="{{ $project['name'] }}: {{ \Carbon\Carbon::parse($project['start_date'])->format('d M Y') }} - {{ \Carbon\Carbon::parse($project['end_date'])->format('d M Y') }}">
                                                 {{ $project['name'] }}
                                             </a>
@@ -85,10 +85,10 @@
             </div>
 
             {{-- Progress Summary (Active Projects Only) --}}
-            <div class="bg-white border border-gray-200 rounded-lg p-5">
-                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Progress Summary (Active Projects)</h3>
+            <div class="bg-white border border-gray-200 rounded-lg p-3">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Progress Summary (Active Projects)</h3>
                 @if($projects->where('status', 'active')->count() > 0)
-                    <div style="height: 320px;">
+                    <div style="height: 240px;">
                         <canvas id="progressSummaryChart"></canvas>
                     </div>
                 @else
