@@ -38,17 +38,47 @@
                                 <span class="text-gray-600">Plan Progress</span>
                                 <span class="font-medium text-gray-900">{{ $phase->progress_plan }}%</span>
                             </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full" style="width: {{ $phase->progress_plan }}%"></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 relative">
+                                <div class="bg-blue-500 h-2 rounded-full flex items-center justify-center" style="width: {{ $phase->progress_plan }}%">
+                                    <span class="text-[9px] font-medium text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_plan }}%</span>
+                                </div>
                             </div>
                         </div>
+                        @if($phase->start_date_revise && $phase->end_date_revise)
+                        @php
+                            $today = \Carbon\Carbon::today();
+                            $reviseStart = $phase->start_date_revise->copy()->startOfDay();
+                            $reviseEnd = $phase->end_date_revise->copy()->startOfDay();
+                            if ($today->lte($reviseStart)) {
+                                $progressRevise = 0;
+                            } elseif ($today->gte($reviseEnd)) {
+                                $progressRevise = 100;
+                            } else {
+                                $totalDays = $reviseStart->diffInDays($reviseEnd);
+                                $progressRevise = $totalDays > 0 ? (int) round(($reviseStart->diffInDays($today) / $totalDays) * 100) : 100;
+                            }
+                        @endphp
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">Revised Progress</span>
+                                <span class="font-medium text-gray-900">{{ $progressRevise }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 relative">
+                                <div class="bg-orange-500 h-2 rounded-full flex items-center justify-center" style="width: {{ $progressRevise }}%">
+                                    <span class="text-[9px] font-medium text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $progressRevise }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                         <div>
                             <div class="flex justify-between text-xs mb-1">
                                 <span class="text-gray-600">Actual Progress</span>
                                 <span class="font-medium text-gray-900">{{ $phase->progress_actual }}%</span>
                             </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-green-500 h-2 rounded-full" style="width: {{ $phase->progress_actual }}%"></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 relative">
+                                <div class="bg-green-500 h-2 rounded-full flex items-center justify-center" style="width: {{ $phase->progress_actual }}%">
+                                    <span class="text-[9px] font-medium text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_actual }}%</span>
+                                </div>
                             </div>
                         </div>
                     </div>

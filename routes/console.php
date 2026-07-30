@@ -19,3 +19,9 @@ Schedule::command('timesheet:send-reminders')
     ->dailyAt('09:00')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/timesheet-reminders.log'));
+
+// Daily project plan progress recalculation at midnight
+Schedule::command('project:recalculate-progress')
+    ->dailyAt('00:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/project-progress.log'));

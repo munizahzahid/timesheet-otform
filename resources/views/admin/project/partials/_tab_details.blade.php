@@ -156,16 +156,51 @@
                     <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4">Phases ({{ $project->phases->count() }})</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach($project->phases as $phase)
+                            @php
+                                $today = \Carbon\Carbon::today();
+                                $reviseProgress = null;
+                                if ($phase->start_date_revise && $phase->end_date_revise) {
+                                    $reviseStart = $phase->start_date_revise->copy()->startOfDay();
+                                    $reviseEnd = $phase->end_date_revise->copy()->startOfDay();
+                                    if ($today->lte($reviseStart)) {
+                                        $reviseProgress = 0;
+                                    } elseif ($today->gte($reviseEnd)) {
+                                        $reviseProgress = 100;
+                                    } else {
+                                        $totalDays = $reviseStart->diffInDays($reviseEnd);
+                                        $reviseProgress = $totalDays > 0 ? (int) round(($reviseStart->diffInDays($today) / $totalDays) * 100) : 100;
+                                    }
+                                }
+                            @endphp
                             <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
                                 <div class="flex items-center justify-between mb-2">
                                     <p class="text-sm font-medium text-gray-900">{{ $phase->phase_name }}</p>
                                     <span class="text-xs text-gray-500">#{{ $phase->phase_order }}</span>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <div class="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                        <div class="h-2.5 rounded-full" style="width: {{ $phase->progress_actual }}%; background-color: #22c55e;"></div>
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 bg-gray-200 rounded-full h-2 relative">
+                                            <div class="h-2 rounded-full flex items-center justify-center" style="width: {{ $phase->progress_plan }}%; background-color: #3b82f6;">
+                                                <span class="text-[8px] font-medium text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_plan }}%</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <span class="text-xs text-gray-600">{{ $phase->progress_actual }}%</span>
+                                    @if($reviseProgress !== null)
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 bg-gray-200 rounded-full h-2 relative">
+                                            <div class="h-2 rounded-full flex items-center justify-center" style="width: {{ $reviseProgress }}%; background-color: #f97316;">
+                                                <span class="text-[8px] font-medium text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 bg-gray-200 rounded-full h-2 relative">
+                                            <div class="h-2 rounded-full flex items-center justify-center" style="width: {{ $phase->progress_actual }}%; background-color: #22c55e;">
+                                                <span class="text-[8px] font-medium text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_actual }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         @endforeach

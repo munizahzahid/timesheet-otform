@@ -393,7 +393,28 @@
                                 </div>
                             </td>
                             <td class="sticky left-64 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
-                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">{{ $phase->progress_actual }}%</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
+                                <div class="space-y-0.5">
+                                    <div class="text-blue-600">P: {{ $phase->progress_plan }}%</div>
+                                    @if($phase->start_date_revise && $phase->end_date_revise)
+                                    @php
+                                        $today = \Carbon\Carbon::today();
+                                        $reviseStart = $phase->start_date_revise->copy()->startOfDay();
+                                        $reviseEnd = $phase->end_date_revise->copy()->startOfDay();
+                                        if ($today->lte($reviseStart)) {
+                                            $reviseProgress = 0;
+                                        } elseif ($today->gte($reviseEnd)) {
+                                            $reviseProgress = 100;
+                                        } else {
+                                            $totalDays = $reviseStart->diffInDays($reviseEnd);
+                                            $reviseProgress = $totalDays > 0 ? (int) round(($reviseStart->diffInDays($today) / $totalDays) * 100) : 100;
+                                        }
+                                    @endphp
+                                    <div class="text-orange-600">R: {{ $reviseProgress }}%</div>
+                                    @endif
+                                    <div class="text-green-600">A: {{ $phase->progress_actual }}%</div>
+                                </div>
+                            </td>
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     @if($phase->start_date_plan) <div class="text-gray-500">P: {{ $phase->start_date_plan->format('d/m/Y') }}</div> @endif
@@ -441,13 +462,28 @@
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phasePlanStartOffset }}" data-duration="{{ $phasePlanDuration }}" data-bar-type="plan"
                                              style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: #a855f7; border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Plan: {{ $phase->start_date_plan->format('d M Y') }} — {{ $phase->end_date_plan->format('d M Y') }}">
+                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_plan }}%</span>
                                         </div>
                                     @endif
                                     {{-- Revise bar --}}
                                     @if($phaseReviseStartOffset !== null && $phaseReviseDuration !== null)
+                                        @php
+                                            $today = \Carbon\Carbon::today();
+                                            $reviseStart = $phase->start_date_revise->copy()->startOfDay();
+                                            $reviseEnd = $phase->end_date_revise->copy()->startOfDay();
+                                            if ($today->lte($reviseStart)) {
+                                                $reviseProgress = 0;
+                                            } elseif ($today->gte($reviseEnd)) {
+                                                $reviseProgress = 100;
+                                            } else {
+                                                $totalDays = $reviseStart->diffInDays($reviseEnd);
+                                                $reviseProgress = $totalDays > 0 ? (int) round(($reviseStart->diffInDays($today) / $totalDays) * 100) : 100;
+                                            }
+                                        @endphp
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phaseReviseStartOffset }}" data-duration="{{ $phaseReviseDuration }}" data-bar-type="revise"
                                              style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Revise: {{ $phase->start_date_revise->format('d M Y') }} — {{ $phase->end_date_revise->format('d M Y') }}">
+                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
                                         </div>
                                     @endif
                                     {{-- Actual bar --}}
@@ -465,6 +501,7 @@
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phaseActualStartOffset }}" data-duration="{{ $phaseActualDuration }}" data-bar-type="actual"
                                              style="left: {{ $phaseActualStartOffset * $dayWidth }}px; top: 48px; width: {{ max($phaseActualDuration * $dayWidth, 4) }}px; height: 16px; {{ $phaseActualStyle }}"
                                              title="{{ $phaseActualTitle }}">
+                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_actual }}%</span>
                                         </div>
                                     @endif
                                 </div>

@@ -42,44 +42,100 @@ class ProjectProgressCalculator
     }
 
     /**
-     * Calculate and persist the weighted actual and plan progress of a phase.
+     * Calculate and persist the progress of a phase.
+     *
+     * Plan progress: time-based based on phase plan dates (elapsed days / total plan days).
+     * Actual progress: weighted average of task actual progress (by task weight).
      */
     public function recalculatePhaseProgress(ProjectPhase $phase): void
     {
         $tasks = $phase->tasks;
         $totalWeight = $tasks->sum('weight');
 
+        // Actual progress: task-weighted (unchanged)
         if ($totalWeight <= 0) {
-            $phase->progress_plan = 0;
             $phase->progress_actual = 0;
         } else {
-            $weightedPlan = $tasks->sum(fn (ProjectTask $task) => $this->calculateTaskPlanProgress($task) * $task->weight);
-            $phase->progress_plan = (int) round($weightedPlan / $totalWeight);
-
             $weightedActual = $tasks->sum(fn (ProjectTask $task) => $task->progress_actual * $task->weight);
             $phase->progress_actual = (int) round($weightedActual / $totalWeight);
+        }
+
+        // Plan progress: time-based based on phase plan dates
+        if (!$phase->start_date_plan || !$phase->end_date_plan) {
+            $phase->progress_plan = 0;
+        } else {
+            $today = Carbon::today();
+            $start = $phase->start_date_plan->copy()->startOfDay();
+            $end = $phase->end_date_plan->copy()->startOfDay();
+
+            if ($today->lte($start)) {
+                $phase->progress_plan = 0;
+            } elseif ($today->gte($end)) {
+                $phase->progress_plan = 100;
+            } else {
+                $totalDays = $start->diffInDays($end);
+                if ($totalDays <= 0) {
+                    $phase->progress_plan = 100;
+                } else {
+                    $elapsed = $start->diffInDays($today);
+                    $phase->progress_plan = (int) round(($elapsed / $totalDays) * 100);
+                }
+            }
         }
 
         $phase->save();
     }
 
     /**
-     * Calculate and persist the weighted actual and plan progress of a project.
+     * Calculate and persist the project progress.
+     *
+     * Plan progress: weighted average of phase plan progress, weighted by phase plan days.
+     * Actual progress: weighted average of all task actual progress (by task weight).
      */
     public function recalculateProjectProgress(Project $project): void
     {
         $tasks = $project->tasks;
         $totalWeight = $tasks->sum('weight');
 
+        // Actual progress: task-weighted (unchanged)
         if ($totalWeight <= 0) {
-            $project->overall_plan_progress = 0;
             $project->overall_actual_progress = 0;
         } else {
-            $weightedPlan = $tasks->sum(fn (ProjectTask $task) => $this->calculateTaskPlanProgress($task) * $task->weight);
-            $project->overall_plan_progress = (int) round($weightedPlan / $totalWeight);
-
             $weightedActual = $tasks->sum(fn (ProjectTask $task) => $task->progress_actual * $task->weight);
             $project->overall_actual_progress = (int) round($weightedActual / $totalWeight);
+        }
+
+        // Plan progress: weighted average of phase plan progress + standalone tasks, weighted by plan days
+        $items = [];
+        $totalPlanDays = 0;
+
+        foreach ($project->phases as $phase) {
+            if ($phase->start_date_plan && $phase->end_date_plan) {
+                $days = $phase->start_date_plan->diffInDays($phase->end_date_plan) + 1;
+                $items[] = ['progress' => $phase->progress_plan ?? 0, 'weight' => $days];
+                $totalPlanDays += $days;
+            }
+        }
+
+        foreach ($tasks->whereNull('phase_id') as $task) {
+            if ($task->start_date_plan && $task->end_date_plan) {
+                $days = $task->start_date_plan->diffInDays($task->end_date_plan) + 1;
+                $items[] = ['progress' => $this->calculateTaskPlanProgress($task), 'weight' => $days];
+                $totalPlanDays += $days;
+            }
+        }
+
+        if ($totalPlanDays > 0) {
+            $weightedPlan = collect($items)->sum(fn (array $item) => $item['progress'] * $item['weight'] / $totalPlanDays);
+            $project->overall_plan_progress = (int) round($weightedPlan);
+        } else {
+            // Fallback: task-weighted plan progress when no plan dates exist
+            if ($totalWeight <= 0) {
+                $project->overall_plan_progress = 0;
+            } else {
+                $weightedPlan = $tasks->sum(fn (ProjectTask $task) => $this->calculateTaskPlanProgress($task) * $task->weight);
+                $project->overall_plan_progress = (int) round($weightedPlan / $totalWeight);
+            }
         }
 
         $project->save();

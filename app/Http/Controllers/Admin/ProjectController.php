@@ -19,45 +19,52 @@ class ProjectController extends Controller
     /**
      * Project Executive Dashboard
      */
-    public function dashboard()
+    public function dashboard(Request $request)
     {
+        // Auto-mark projects with passed delivery date (end_date_plan before July 2026) as completed
+        $cutoffDate = '2026-07-01';
+        Project::where('end_date_plan', '<', $cutoffDate)
+            ->where('status', '!=', 'completed')
+            ->update([
+                'status' => 'completed',
+                'updated_by' => 'System',
+                'date_time_updated' => now(),
+            ]);
+
         $totalProjects = Project::count();
         $activeProjects = Project::where('status', 'active')->count();
         $completedProjects = Project::where('status', 'completed')->count();
         $delayedProjects = Project::where('status', 'delayed')->count();
 
         $projects = Project::latest()->get();
-        $recentLogs = ProjectProgressLog::with(['project', 'changedBy'])
-            ->latest('created_at')
-            ->take(10)
-            ->get();
 
-        // Staff involvement: unique projects per staff (PM, deskman, or task assigned)
+        // Staff involvement: total and active project counts per staff (PM, deskman, or task assigned)
         $pmUsers = DB::table('pm_projects')
             ->join('users', 'pm_projects.project_manager_staff_id', '=', 'users.staff_no')
             ->whereNotNull('pm_projects.project_manager_staff_id')
             ->whereNotNull('users.staff_no')
-            ->select('users.id', 'users.name', 'pm_projects.id as project_id')
+            ->select('users.id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.status')
             ->get();
 
         $deskman1Users = DB::table('pm_projects')
             ->join('users', 'pm_projects.deskman_1_staff_id', '=', 'users.staff_no')
             ->whereNotNull('pm_projects.deskman_1_staff_id')
             ->whereNotNull('users.staff_no')
-            ->select('users.id', 'users.name', 'pm_projects.id as project_id')
+            ->select('users.id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.status')
             ->get();
 
         $deskman2Users = DB::table('pm_projects')
             ->join('users', 'pm_projects.deskman_2_staff_id', '=', 'users.staff_no')
             ->whereNotNull('pm_projects.deskman_2_staff_id')
             ->whereNotNull('users.staff_no')
-            ->select('users.id', 'users.name', 'pm_projects.id as project_id')
+            ->select('users.id', 'users.name', 'pm_projects.id as project_id', 'pm_projects.status')
             ->get();
 
         $taskUsers = DB::table('project_tasks')
             ->join('users', 'project_tasks.assigned_to', '=', 'users.id')
             ->whereNotNull('project_tasks.assigned_to')
-            ->select('users.id', 'users.name', 'project_tasks.project_id')
+            ->join('pm_projects', 'project_tasks.project_id', '=', 'pm_projects.id')
+            ->select('users.id', 'users.name', 'project_tasks.project_id', 'pm_projects.status')
             ->get();
 
         $allInvolvements = $pmUsers->concat($deskman1Users)->concat($deskman2Users)->concat($taskUsers);
@@ -65,25 +72,43 @@ class ProjectController extends Controller
         $staffInvolvement = $allInvolvements
             ->groupBy('id')
             ->map(function($items) {
+                $projectIds = $items->pluck('project_id')->unique();
+                $activeCount = $items->where('status', 'active')->pluck('project_id')->unique()->count();
                 return [
                     'id' => $items->first()->id,
                     'name' => $items->first()->name,
-                    'project_count' => $items->pluck('project_id')->unique()->count(),
+                    'project_count' => $projectIds->count(),
+                    'active_count' => $activeCount,
                 ];
             })
             ->sortByDesc('project_count')
             ->values()
             ->all();
 
-        // Budget summary: top projects with budget data
-        $budgetProjects = Project::whereNotNull('project_value')
-            ->where('project_value', '>', 0)
+        // Budget year filter
+        $budgetYear = $request->input('budget_year');
+        $availableYears = Project::whereNotNull('year')
+            ->where('year', '>=', 2025)
+            ->distinct()
+            ->orderBy('year')
+            ->pluck('year')
+            ->values()
+            ->all();
+
+        $budgetQuery = Project::whereNotNull('project_value')
+            ->where('project_value', '>', 0);
+
+        if ($budgetYear) {
+            $budgetQuery->where('year', $budgetYear);
+        }
+
+        $budgetProjects = $budgetQuery
             ->orderByDesc('project_value')
             ->take(10)
             ->get(['id', 'project_name', 'project_value', 'actual_cost']);
 
-        $totalBudgetPlan = Project::sum('project_value') ?? 0;
-        $totalBudgetActual = Project::sum('actual_cost') ?? 0;
+        $totalBudgetPlan = $budgetQuery->clone()->sum('project_value') ?? 0;
+        $totalBudgetActual = $budgetQuery->clone()->sum('actual_cost') ?? 0;
         $budgetVariance = $totalBudgetPlan - $totalBudgetActual;
 
         return view('admin.project.dashboard', compact(
@@ -92,12 +117,13 @@ class ProjectController extends Controller
             'completedProjects',
             'delayedProjects',
             'projects',
-            'recentLogs',
             'staffInvolvement',
             'budgetProjects',
             'totalBudgetPlan',
             'totalBudgetActual',
-            'budgetVariance'
+            'budgetVariance',
+            'budgetYear',
+            'availableYears'
         ));
     }
 
@@ -665,8 +691,13 @@ class ProjectController extends Controller
             ->with(['tasks' => function ($query) use ($user) {
                 $query->where('assigned_to', $user->id);
             }])
-            ->orderBy('project_name')
             ->get();
+
+        // Sort projects: active first, then delayed, then completed
+        $projects = $projects->sortByDesc(function (Project $project) {
+            $order = ['active' => 3, 'delayed' => 2, 'completed' => 1];
+            return $order[$project->status] ?? 0;
+        })->values();
 
         $projectData = $projects->map(function (Project $project) use ($user) {
             $roles = [];
@@ -684,10 +715,16 @@ class ProjectController extends Controller
                 $roles[] = 'Task Assigned';
             }
 
+            // Sort tasks: active first (in_progress, not_started, on_hold), then completed, then cancelled
+            $taskStatusOrder = ['in_progress' => 3, 'not_started' => 2, 'on_hold' => 1, 'completed' => 0, 'cancelled' => -1];
+            $sortedTasks = $project->tasks->sortByDesc(function ($task) use ($taskStatusOrder) {
+                return $taskStatusOrder[$task->status] ?? 0;
+            })->values();
+
             return [
                 'project' => $project,
                 'roles' => array_unique($roles),
-                'tasks' => $project->tasks,
+                'tasks' => $sortedTasks,
             ];
         });
 

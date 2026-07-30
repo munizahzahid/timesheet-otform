@@ -88,17 +88,18 @@
         {{ $task->assignedTo->name ?? '—' }}
     </td>
     <td class="bg-white px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
-        <div class="flex items-center gap-2">
-            <span>{{ $task->progress_actual }}%</span>
+        <div class="space-y-0.5">
+            <div class="text-blue-600">P: {{ $planProgress }}%</div>
+            <div class="text-green-600">A: {{ $task->progress_actual }}%</div>
             @if(isset($effective['plan_delay_days']) && $effective['plan_delay_days'] > 0)
-                <span class="text-red-600 font-semibold whitespace-nowrap" title="Plan delay: actual/today exceeds plan end date">
+                <div class="text-red-600 font-semibold whitespace-nowrap" title="Plan delay: actual/today exceeds plan end date">
                     {{ $effective['plan_delay_days'] }}d delay
-                </span>
+                </div>
             @endif
             @if(isset($effective['dependency_shift_days']) && $effective['dependency_shift_days'] > 0)
-                <span class="text-orange-600 font-semibold whitespace-nowrap" title="Dependency shift: plan start vs effective start">
+                <div class="text-orange-600 font-semibold whitespace-nowrap" title="Dependency shift: plan start vs effective start">
                     +{{ $effective['dependency_shift_days'] }}d shift
-                </span>
+                </div>
             @endif
         </div>
     </td>
@@ -162,9 +163,11 @@
                         ? now('Asia/Kuala_Lumpur')->copy()->startOfDay()->format('d M Y') . ' (ongoing)'
                         : ($task->end_date_actual ? $task->end_date_actual->format('d M Y') : now('Asia/Kuala_Lumpur')->copy()->startOfDay()->format('d M Y'));
                     $actualTitle = "Actual: " . $task->start_date_actual->format('d M Y') . " — " . $actualTitleEnd;
-                    $actualStyle = $isOngoing
-                        ? "background-color: #86efac; border: 1px solid #22c55e; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
-                        : "background-color: #22c55e; border: 1px solid #16a34a; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
+                    if ($isCompleted) {
+                        $actualStyle = "background-color: #22c55e; border: 1px solid #16a34a; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
+                    } else {
+                        $actualStyle = "background-color: #86efac; border: 1px solid #22c55e; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
+                    }
                 @endphp
                 <div class="gantt-bar absolute gantt-resizable gantt-effective-bar" data-task-id="{{ $task->id }}" data-start-offset="{{ $actualStartOffset }}" data-duration="{{ $actualDuration }}" data-bar-type="actual" data-progress="{{ $actualProgress }}"
                      style="left: {{ $actualStartOffset * $dayWidth }}px; top: 48px; width: {{ max($actualDuration * $dayWidth, 4) }}px; height: 18px; {{ $actualStyle }}"

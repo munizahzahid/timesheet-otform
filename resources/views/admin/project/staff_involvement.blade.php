@@ -29,7 +29,15 @@
                         @click="openProject = openProject === {{ $data['project']->id }} ? null : {{ $data['project']->id }}"
                     >
                         <div class="min-w-0">
-                            <h4 class="text-sm font-medium text-gray-900 truncate">{{ $data['project']->project_name }}</h4>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-medium text-gray-900 truncate">{{ $data['project']->project_name }}</h4>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium
+                                    {{ $data['project']->status === 'active' ? 'bg-green-100 text-green-800' : '' }}
+                                    {{ $data['project']->status === 'completed' ? 'bg-blue-100 text-blue-800' : '' }}
+                                    {{ $data['project']->status === 'delayed' ? 'bg-red-100 text-red-800' : '' }}
+                                    {{ !in_array($data['project']->status, ['active','completed','delayed']) ? 'bg-gray-100 text-gray-800' : '' }}
+                                ">{{ ucfirst($data['project']->status) }}</span>
+                            </div>
                             <div class="flex flex-wrap gap-2 mt-1.5">
                                 @foreach($data['roles'] as $role)
                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-medium
