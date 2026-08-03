@@ -564,7 +564,7 @@ class ProjectTaskController extends Controller
     /**
      * Delete a task
      */
-    public function destroy(Project $project, ProjectTask $task)
+    public function destroy(Request $request, Project $project, ProjectTask $task)
     {
         ProjectTask::where('predecessor_task_id', $task->id)->update(['predecessor_task_id' => null]);
 
@@ -590,7 +590,11 @@ class ProjectTaskController extends Controller
         }
         $calculator->recalculateProjectProgress($project);
 
-        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks')
+        $query = ['tab' => $request->input('tab', 'tasks')];
+        if ($request->input('view')) {
+            $query['view'] = $request->input('view');
+        }
+        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Task deleted successfully.');
     }
 
