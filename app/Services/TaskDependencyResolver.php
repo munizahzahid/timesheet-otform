@@ -73,7 +73,13 @@ class TaskDependencyResolver
             }
 
             // Resolve actual lane (skip shifting if the user has manually locked the actual start)
-            if ($actualStart && !$task->is_actual_start_manual) {
+            // Only resolve actual dates if predecessor is complete (has required date based on dependency type)
+            // Check actual database value, not provisional date from getLaneBaseDates
+            $isPredecessorComplete = $fromSide === 'end'
+                ? !empty($task->predecessorTask->end_date_actual)
+                : !empty($task->predecessorTask->start_date_actual);
+
+            if ($actualStart && !$task->is_actual_start_manual && $isPredecessorComplete) {
                 $drivingDate = $fromSide === 'end' ? $predecessorActualDates['end_date'] : $predecessorActualDates['start_date'];
                 if ($drivingDate) {
                     if ($fromSide === 'end' && $actualStart->lte($drivingDate)) {
@@ -390,19 +396,40 @@ class TaskDependencyResolver
             if ($shouldRecompute) {
                 $predecessor = $tasks->firstWhere('id', $task->predecessor_task_id);
                 if ($predecessor) {
-                    // Use the existing actual start if there is one, otherwise fall back to the planned start,
-                    // but never let the auto-computed date be earlier than the planned start.
-                    $newStart = $task->start_date_actual ?? $task->start_date_plan;
-                    if ($newStart && $task->start_date_plan && $newStart->lt($task->start_date_plan)) {
-                        $newStart = $task->start_date_plan->copy();
+                    $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
+
+                    // Check if predecessor is complete based on dependency type
+                    // For end_to_start: predecessor must have end_date_actual
+                    // For start_to_start: predecessor must have start_date_actual
+                    $isPredecessorComplete = $fromSide === 'end'
+                        ? !empty($predecessor->end_date_actual)
+                        : !empty($predecessor->start_date_actual);
+
+                    // Only set successor actual_start if predecessor is complete
+                    if (!$isPredecessorComplete) {
+                        // If task has no manual actual_start, ensure it's null (don't auto-set from ongoing predecessor)
+                        if (!$task->is_actual_start_manual) {
+                            $task->updateQuietly(['start_date_actual' => null]);
+                            $task->start_date_actual = null;
+                            $taskInCollection = $tasks->firstWhere('id', $task->id);
+                            if ($taskInCollection) {
+                                $taskInCollection->start_date_actual = null;
+                            }
+                        }
+                        continue;
                     }
 
-                    if ($newStart) {
-                        $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
-                        $predecessorDates = $this->getLaneBaseDates($predecessor, 'actual');
-                        $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
+                    // Predecessor is complete - compute successor actual_start
+                    $predecessorDates = $this->getLaneBaseDates($predecessor, 'actual');
+                    $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
 
-                        if ($drivingDate) {
+                    if ($drivingDate) {
+                        $newStart = $task->start_date_actual ?? $task->start_date_plan;
+                        if ($newStart && $task->start_date_plan && $newStart->lt($task->start_date_plan)) {
+                            $newStart = $task->start_date_plan->copy();
+                        }
+
+                        if ($newStart) {
                             if ($fromSide === 'end' && $newStart->lte($drivingDate)) {
                                 $newStart = $drivingDate->copy()->addDay();
                             } elseif ($fromSide === 'start' && $newStart->lt($drivingDate)) {
