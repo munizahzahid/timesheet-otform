@@ -260,6 +260,10 @@
                     </label>
                 </div>
             </div>
+            <a id="gantt-export-excel-btn" href="{{ route('admin.project.projects.tasks.gantt-export-excel', $project) }}"
+               class="inline-flex items-center px-2 py-1 bg-green-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-green-700 transition">
+                Download Excel
+            </a>
             <a href="{{ route('admin.project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                class="inline-flex items-center px-2 py-1 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-indigo-700 transition">
                 Add Phase
@@ -1565,6 +1569,9 @@
                     el.classList.toggle('hidden', !show);
                 });
             });
+            document.querySelectorAll('.gantt-effective-bar').forEach(function(el) {
+                el.classList.toggle('hidden', !visibility.actual);
+            });
             var arrowSvg = document.getElementById('gantt-dependency-arrows');
             if (arrowSvg) {
                 arrowSvg.classList.toggle('hidden', !visibility.dependencies);
@@ -1612,6 +1619,38 @@
                 drawGanttDependencyArrows();
             }
         });
+    })();
+
+    // --- Gantt Export Button Visibility Inheritance ---
+    (function() {
+        var storageKey = 'gantt-visibility';
+        var defaultVisibility = { plan: true, revise: true, actual: true, dependencies: true };
+
+        function getVisibility() {
+            var stored = localStorage.getItem(storageKey);
+            return Object.assign({}, defaultVisibility, stored ? JSON.parse(stored) : {});
+        }
+
+        function buildVisibilityQuery() {
+            var visibility = getVisibility();
+            var parts = [];
+            parts.push('plan=' + (visibility.plan ? '1' : '0'));
+            parts.push('revise=' + (visibility.revise ? '1' : '0'));
+            parts.push('actual=' + (visibility.actual ? '1' : '0'));
+            parts.push('dependencies=' + (visibility.dependencies ? '1' : '0'));
+            return parts.join('&');
+        }
+
+        var excelBtn = document.getElementById('gantt-export-excel-btn');
+
+        if (excelBtn) {
+            excelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                var sep = excelBtn.href.indexOf('?') !== -1 ? '&' : '?';
+                var zoom = window.ganttCurrentZoom || 'day';
+                window.location.href = excelBtn.href + sep + buildVisibilityQuery() + '&zoom=' + encodeURIComponent(zoom);
+            });
+        }
     })();
 
     // --- Gantt Bar Resize and Progress Popup ---

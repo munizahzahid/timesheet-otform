@@ -9,8 +9,10 @@ use App\Models\GanttChangeLog;
 use App\Models\ProjectProgressLog;
 use App\Models\ProjectTask;
 use App\Services\GanttChangeLogger;
+use App\Services\GanttExcelExport;
 use App\Services\ProjectProgressCalculator;
 use App\Services\TaskDependencyResolver;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -699,5 +701,82 @@ class ProjectTaskController extends Controller
             );
             throw ValidationException::withMessages(['weight' => $message]);
         }
+    }
+
+    /**
+     * Export Gantt chart as Excel (respects visibility toggles).
+     */
+    public function exportGanttExcel(Project $project, Request $request)
+    {
+        $project->load(['phases', 'phases.tasks' => function($q) {
+            $q->with(['assignedTo'])->orderBy('task_order');
+        }]);
+        $project->load(['tasks' => function($q) {
+            $q->with(['assignedTo'])->whereNull('phase_id')->orderBy('task_order');
+        }]);
+
+        $resolver = new TaskDependencyResolver();
+        $effectiveDates = $resolver->resolve($project);
+
+        $visible = [
+            'plan' => $request->boolean('plan', true),
+            'revise' => $request->boolean('revise', true),
+            'actual' => $request->boolean('actual', true),
+            'dependencies' => $request->boolean('dependencies', true),
+        ];
+
+        $zoom = $request->input('zoom', 'day');
+        $exporter = new GanttExcelExport();
+        $spreadsheet = $exporter->generate($project, $effectiveDates, $visible, $zoom);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = $project->project_name . ' - Gantt.xlsx';
+        $filename = preg_replace('/[^\w\s\-\.]/', '', $filename);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'gantt_') . '.xlsx';
+        $writer->save($tempFile);
+
+        return response()->download($tempFile, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Export Gantt chart as PDF (respects visibility toggles).
+     */
+    public function exportGanttPdf(Project $project, Request $request)
+    {
+        $project->load(['phases', 'phases.tasks' => function($q) {
+            $q->with(['assignedTo'])->orderBy('task_order');
+        }]);
+        $project->load(['tasks' => function($q) {
+            $q->with(['assignedTo'])->whereNull('phase_id')->orderBy('task_order');
+        }]);
+
+        $resolver = new TaskDependencyResolver();
+        $effectiveDates = $resolver->resolve($project);
+
+        $visible = [
+            'plan' => $request->boolean('plan', true),
+            'revise' => $request->boolean('revise', true),
+            'actual' => $request->boolean('actual', true),
+            'dependencies' => $request->boolean('dependencies', true),
+        ];
+
+        $phases = $project->phases;
+        $standaloneTasks = $project->tasks;
+        $zoom = $request->input('zoom', 'day');
+
+        $logoPath = public_path('images/Logo TSSB.jpeg');
+        $logoBase64 = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : null;
+
+        $pdf = Pdf::loadView('admin.project.pdf.gantt-export', compact(
+            'project', 'phases', 'standaloneTasks', 'effectiveDates', 'visible', 'zoom', 'logoBase64'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = $project->project_name . ' - Gantt.pdf';
+        $filename = preg_replace('/[^\w\s\-\.]/', '', $filename);
+
+        return $pdf->download($filename);
     }
 }
