@@ -79,18 +79,35 @@ class TaskDependencyResolver
                 ? !empty($task->predecessorTask->end_date_actual)
                 : !empty($task->predecessorTask->start_date_actual);
 
-            if ($actualStart && !$task->is_actual_start_manual && $isPredecessorComplete) {
+            if (!$task->is_actual_start_manual && $isPredecessorComplete) {
                 $drivingDate = $fromSide === 'end' ? $predecessorActualDates['end_date'] : $predecessorActualDates['start_date'];
                 if ($drivingDate) {
-                    if ($fromSide === 'end' && $actualStart->lte($drivingDate)) {
-                        $actualStart = $drivingDate->copy()->addDay();
-                    } elseif ($fromSide === 'start' && $actualStart->lt($drivingDate)) {
-                        $actualStart = $drivingDate->copy();
+                    // Calculate predecessor's offset from plan and apply to successor's plan start
+                    $offset = $this->calculatePredecessorOffset($task->predecessorTask, $fromSide);
+                    if ($offset !== null && $task->start_date_plan) {
+                        $newStart = $task->start_date_plan->copy()->addDays($offset);
+                    } else {
+                        $newStart = $drivingDate->copy();
                     }
 
-                    if ($actualStart && $task->start_date_actual && $task->end_date_actual) {
-                        $duration = $task->start_date_actual->diffInDays($task->end_date_actual);
-                        $actualEnd = $actualStart->copy()->addDays($duration);
+                    // Apply dependency constraint (successor can't start before predecessor's actual date)
+                    if ($fromSide === 'end') {
+                        $minStart = $drivingDate->copy()->addDay();
+                        if ($newStart->lt($minStart)) {
+                            $newStart = $minStart;
+                        }
+                    } else {
+                        if ($newStart->lt($drivingDate)) {
+                            $newStart = $drivingDate->copy();
+                        }
+                    }
+
+                    if (!$actualStart || $actualStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
+                        $actualStart = $newStart;
+                        if ($actualStart && $task->start_date_actual && $task->end_date_actual) {
+                            $duration = $task->start_date_actual->diffInDays($task->end_date_actual);
+                            $actualEnd = $actualStart->copy()->addDays($duration);
+                        }
                     }
                 }
             }
@@ -135,6 +152,27 @@ class TaskDependencyResolver
         }
 
         return ['from_side' => 'end'];
+    }
+
+    /**
+     * Calculate the offset in days between predecessor's plan and actual dates.
+     * Returns negative if actual is earlier than plan, positive if actual is later.
+     */
+    protected function calculatePredecessorOffset(ProjectTask $predecessor, string $fromSide): ?int
+    {
+        if ($fromSide === 'end') {
+            $planDate = $predecessor->end_date_plan;
+            $actualDate = $predecessor->end_date_actual;
+        } else {
+            $planDate = $predecessor->start_date_plan;
+            $actualDate = $predecessor->start_date_actual;
+        }
+
+        if (!$planDate || !$actualDate) {
+            return null;
+        }
+
+        return $planDate->diffInDays($actualDate, false);
     }
 
     /**
@@ -424,28 +462,35 @@ class TaskDependencyResolver
                     $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
 
                     if ($drivingDate) {
-                        $newStart = $task->start_date_actual ?? $task->start_date_plan;
-                        if ($newStart && $task->start_date_plan && $newStart->lt($task->start_date_plan)) {
-                            $newStart = $task->start_date_plan->copy();
+                        // Calculate predecessor's offset from plan and apply to successor's plan start
+                        $offset = $this->calculatePredecessorOffset($predecessor, $fromSide);
+                        if ($offset !== null && $task->start_date_plan) {
+                            $newStart = $task->start_date_plan->copy()->addDays($offset);
+                        } else {
+                            $newStart = $drivingDate->copy();
                         }
 
-                        if ($newStart) {
-                            if ($fromSide === 'end' && $newStart->lte($drivingDate)) {
-                                $newStart = $drivingDate->copy()->addDay();
-                            } elseif ($fromSide === 'start' && $newStart->lt($drivingDate)) {
+                        // Apply dependency constraint (successor can't start before predecessor's actual date)
+                        if ($fromSide === 'end') {
+                            $minStart = $drivingDate->copy()->addDay();
+                            if ($newStart->lt($minStart)) {
+                                $newStart = $minStart;
+                            }
+                        } else {
+                            if ($newStart->lt($drivingDate)) {
                                 $newStart = $drivingDate->copy();
                             }
+                        }
 
-                            $currentStart = $task->start_date_actual;
-                            if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
-                                $task->updateQuietly(['start_date_actual' => $newStart]);
-                                $task->start_date_actual = $newStart;
+                        $currentStart = $task->start_date_actual;
+                        if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
+                            $task->updateQuietly(['start_date_actual' => $newStart]);
+                            $task->start_date_actual = $newStart;
 
-                                // Refresh the task instance in the collection so deeper cascades see the new dates
-                                $taskInCollection = $tasks->firstWhere('id', $task->id);
-                                if ($taskInCollection) {
-                                    $taskInCollection->start_date_actual = $newStart;
-                                }
+                            // Refresh the task instance in the collection so deeper cascades see the new dates
+                            $taskInCollection = $tasks->firstWhere('id', $task->id);
+                            if ($taskInCollection) {
+                                $taskInCollection->start_date_actual = $newStart;
                             }
                         }
                     }

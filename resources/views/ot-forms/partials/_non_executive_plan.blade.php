@@ -314,5 +314,25 @@
             @endforeach
             @endforeach
         </tbody>
+        <tfoot class="bg-gray-50">
+            <tr>
+                <td colspan="4" class="border border-gray-200 px-0.5 py-0.5 text-right font-semibold text-[10px]">JUMLAH:</td>
+                <td class="border border-gray-200 px-0.5 py-0.5 text-center font-bold text-[10px]">
+                    {{ number_format($otForm->entries->sum('planned_total_hours'), 2) }}
+                </td>
+                <td colspan="2" class="border border-gray-200"></td>
+                <td class="border border-gray-200 px-0.5 py-0.5 text-center font-bold text-[10px]">
+                    @php
+                        $totalActualNonExec = $otForm->entries->sum(fn($e) => floor(($e->actual_total_hours ?? 0) * 4) / 4);
+                    @endphp
+                    {{ number_format($totalActualNonExec, 2) }}
+                </td>
+                <td colspan="2" class="border border-gray-200"></td>
+                @if(empty($hideApprovalColumns))
+                <td colspan="3" class="border border-gray-200"></td>
+                @endif
+                <td colspan="9" class="border border-gray-200"></td>
+            </tr>
+        </tfoot>
     </table>
 </div>
