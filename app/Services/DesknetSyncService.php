@@ -18,6 +18,7 @@ class DesknetSyncService
     protected string $accessKey;
     protected int $projectCodesAppId;
     protected int $staffListAppId;
+    protected int $timeout;
 
     public function __construct()
     {
@@ -26,6 +27,7 @@ class DesknetSyncService
         $this->accessKey = SystemConfig::getValue('desknet_api_key') ?: config('services.desknet.access_key', '');
         $this->projectCodesAppId = (int) (SystemConfig::getValue('desknet_project_codes_app_id') ?: config('services.desknet.project_codes_app_id', 12));
         $this->staffListAppId = (int) (SystemConfig::getValue('desknet_staff_list_app_id') ?: config('services.desknet.staff_list_app_id', 29));
+        $this->timeout = (int) (SystemConfig::getValue('desknet_timeout') ?: config('services.desknet.timeout', 300));
     }
 
     /**
@@ -49,7 +51,7 @@ class DesknetSyncService
 
         // Try POST with X-Desknets-Auth header
         try {
-            $response = Http::timeout(15)
+            $response = Http::timeout($this->timeout)
                 ->asForm()
                 ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
                 ->post($this->apiUrl, $params);
@@ -103,7 +105,7 @@ class DesknetSyncService
 
         Log::info("Desknet API: fetching record detail app_id={$appId} data_id={$dataId}");
 
-        $response = Http::timeout(30)
+        $response = Http::timeout($this->timeout)
             ->asForm()
             ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
             ->post($this->apiUrl, $params);
@@ -137,7 +139,7 @@ class DesknetSyncService
             'app_id' => $appId,
         ];
 
-        $response = Http::timeout(30)
+        $response = Http::timeout($this->timeout)
             ->asForm()
             ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
             ->post($this->apiUrl, $params);
@@ -165,7 +167,7 @@ class DesknetSyncService
         Log::info("Desknet API: fetching app_id={$appId} from {$this->apiUrl}");
 
         // Use POST with X-Desknets-Auth header (header-based auth)
-        $response = Http::timeout(30)
+        $response = Http::timeout($this->timeout)
             ->asForm()
             ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
             ->post($this->apiUrl, $params);
@@ -720,7 +722,7 @@ class DesknetSyncService
             'payload_keys' => array_keys($payload),
         ]);
 
-        $response = Http::timeout(30)
+        $response = Http::timeout($this->timeout)
             ->asForm()
             ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
             ->post($this->apiUrl, $params);
@@ -908,7 +910,7 @@ class DesknetSyncService
 
         Log::info("Desknet diagnose: fetching app_id={$appId}" . ($viewId ? " view_id={$viewId}" : ''));
 
-        $response = Http::timeout(30)
+        $response = Http::timeout($this->timeout)
             ->asForm()
             ->withHeaders(['X-Desknets-Auth' => $this->accessKey])
             ->post($this->apiUrl, $params);
