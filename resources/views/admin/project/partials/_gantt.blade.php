@@ -971,6 +971,7 @@
 
     function ganttApplyZoom(zoomLevel) {
         window.ganttCurrentZoom = zoomLevel;
+        try { localStorage.setItem('ganttZoomLevel', zoomLevel); } catch (e) {}
         ganttRenderHeader(zoomLevel);
         ganttUpdateBars(zoomLevel);
         ganttUpdateGridLines(zoomLevel);
@@ -999,7 +1000,9 @@
                 ganttApplyZoom(this.dataset.zoom);
             });
         });
-        ganttApplyZoom('day');
+        var savedZoom = 'day';
+        try { savedZoom = localStorage.getItem('ganttZoomLevel') || 'day'; } catch (e) {}
+        ganttApplyZoom(savedZoom);
     }
 
     ganttInitZoom();
