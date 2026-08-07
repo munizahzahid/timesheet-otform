@@ -41,41 +41,13 @@
         @include('admin.project.partials._tertiary_navbar', ['tab' => $tab])
 
         @if($editMode)
-            <form method="POST" action="{{ route('admin.project.projects.update', $project) }}">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="tab" value="details">
-                @if(request()->has('redirect'))
-                    <input type="hidden" name="redirect" value="{{ request()->input('redirect') }}">
-                @endif
-
-                @include('admin.project.partials._tab_details', ['editMode' => true, 'staffList' => $staffList])
-
-                <div class="flex items-center justify-end gap-3 mt-6 bg-white border border-gray-200 rounded-lg p-4">
-                    <a href="{{ request()->input('redirect') ?? route('admin.project.projects.show', $project) }}"
-                       class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
-                        Cancel
-                    </a>
-                    <button type="submit" name="action" value="save"
-                            class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
-                        Save Changes
-                    </button>
-                    <button type="submit" name="action" value="push_to_desknet"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 transition">
-                        Save & Push to Desknet
-                    </button>
-                </div>
-            </form>
+            @include('admin.project.partials._tab_details_form')
         @elseif($tab === 'schedule')
             @include('admin.project.partials._tab_schedule')
         @elseif($tab === 'tasks')
             @include('admin.project.partials._tab_tasks')
-        @elseif($tab === 'cards')
-            <div class="bg-white border border-gray-200 rounded-lg p-8 text-center">
-                <p class="text-sm text-gray-500">Cards view coming soon.</p>
-            </div>
         @elseif($tab === 'details')
-            @include('admin.project.partials._tab_details', ['editMode' => false, 'staffList' => $staffList])
+            @include('admin.project.partials._tab_details_react')
         @else
             @include('admin.project.partials._tab_dashboard')
         @endif

@@ -126,10 +126,10 @@
             @endfor
 
             {{-- Plan lane (row 1) --}}
-            <div class="gantt-lane absolute" data-bar-type="plan" style="left: 0; right: 0; top: 4px; height: 18px; background-color: rgba(59, 130, 246, 0.08); border-radius: 4px;"></div>
+            <div class="gantt-lane absolute" data-bar-type="plan" style="left: 0; right: 0; top: 4px; height: 18px; background-color: rgba(59, 130, 246, 0.08); border-radius: 6px;"></div>
             @if($planStartOffset !== null && $planDuration !== null)
                 <div class="gantt-bar absolute gantt-resizable" data-task-id="{{ $task->id }}" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
-                     style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: #60a5fa; border: 1px solid #3b82f6; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
+                     style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(37,99,235,0.25);"
                      title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }} ({{ $planProgress }}%)">
                     <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $planProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
@@ -140,10 +140,10 @@
             @endif
 
             {{-- Revise lane (row 2) --}}
-            <div class="gantt-lane absolute" data-bar-type="revise" style="left: 0; right: 0; top: 26px; height: 18px; background-color: rgba(251, 146, 60, 0.08); border-radius: 4px;"></div>
+            <div class="gantt-lane absolute" data-bar-type="revise" style="left: 0; right: 0; top: 26px; height: 18px; background-color: rgba(251, 146, 60, 0.08); border-radius: 6px;"></div>
             @if($reviseStartOffset !== null && $reviseDuration !== null)
                 <div class="gantt-bar absolute gantt-resizable" data-task-id="{{ $task->id }}" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
-                     style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
+                     style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: #f97316; border: 1px solid #ea580c; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(234,88,12,0.25);"
                      title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }} ({{ $reviseProgress }}%)">
                     <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
@@ -154,7 +154,7 @@
             @endif
 
             {{-- Actual lane (row 3) --}}
-            <div class="gantt-lane absolute" data-bar-type="actual" style="left: 0; right: 0; top: 48px; height: 18px; background-color: rgba(34, 197, 94, 0.08); border-radius: 4px;"></div>
+            <div class="gantt-lane absolute" data-bar-type="actual" style="left: 0; right: 0; top: 48px; height: 18px; background-color: rgba(34, 197, 94, 0.08); border-radius: 6px;"></div>
             @if($actualStartOffset !== null && $actualDuration !== null)
                 @php
                     $isOngoing = !$actualEnd;
@@ -164,9 +164,9 @@
                         : ($task->end_date_actual ? $task->end_date_actual->format('d M Y') : now('Asia/Kuala_Lumpur')->copy()->startOfDay()->format('d M Y'));
                     $actualTitle = "Actual: " . $task->start_date_actual->format('d M Y') . " — " . $actualTitleEnd;
                     if ($isCompleted) {
-                        $actualStyle = "background-color: #22c55e; border: 1px solid #16a34a; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
+                        $actualStyle = "background-color: #10b981; border: 1px solid #059669; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(5,150,105,0.25)";
                     } else {
-                        $actualStyle = "background-color: #86efac; border: 1px solid #22c55e; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);";
+                        $actualStyle = "background-color: #34d399; border: 1px solid #10b981; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(16,185,129,0.25)";
                     }
                 @endphp
                 <div class="gantt-bar absolute gantt-resizable gantt-effective-bar" data-task-id="{{ $task->id }}" data-start-offset="{{ $actualStartOffset }}" data-duration="{{ $actualDuration }}" data-bar-type="actual" data-progress="{{ $actualProgress }}"

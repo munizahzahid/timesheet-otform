@@ -105,11 +105,7 @@
     $debugLineLeft = $timelineLeftOffset + ($todayOffset * $dayWidth);
 @endphp
 
-<div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
-    {{-- Debug: remove after confirming --}}
-    <div class="px-4 py-1 text-[10px] text-gray-400 bg-gray-50 border-b border-gray-100">
-        System today: {{ $debugToday }} | Timeline start: {{ $debugTimelineStart }} | Today offset: {{ $debugTodayOffset }} | Label at offset: {{ $debugLabelAtToday }} | Line left: {{ $debugLineLeft }}px
-    </div>
+<div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
 
     <style>
         .phase-toggle-btn.collapsed svg {
@@ -186,43 +182,43 @@
         </div>
     @endif
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Project Schedule / Gantt Chart</h3>
+        <h3 class="text-base font-semibold text-gray-800">Project Schedule / Gantt Chart</h3>
         <div class="flex items-center gap-3">
-            <div class="flex items-center gap-4 text-xs mr-4">
-                <div class="flex items-center gap-1">
-                    <div class="w-3 h-3 bg-blue-400 rounded"></div>
-                    <span class="text-gray-600">Plan</span>
+            <div class="flex items-center gap-5 text-xs mr-4">
+                <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 bg-blue-500 rounded shadow-sm"></div>
+                    <span class="text-gray-700 font-medium text-[11px]">Plan</span>
                 </div>
-                <div class="flex items-center gap-1">
-                    <div class="w-3 h-3 bg-orange-400 rounded"></div>
-                    <span class="text-gray-600">Revise</span>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 bg-orange-500 rounded shadow-sm"></div>
+                    <span class="text-gray-700 font-medium text-[11px]">Revise</span>
                 </div>
-                <div class="flex items-center gap-1">
-                    <div class="w-3 h-3 bg-green-500 rounded"></div>
-                    <span class="text-gray-600">Actual</span>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 bg-emerald-500 rounded shadow-sm"></div>
+                    <span class="text-gray-700 font-medium text-[11px]">Actual</span>
                 </div>
-                <div class="flex items-center gap-1">
-                    <div class="w-3 h-3 bg-green-300 rounded border border-green-500 border-dashed"></div>
-                    <span class="text-gray-600">Effective</span>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 bg-emerald-400 rounded border border-emerald-500 border-dashed shadow-sm"></div>
+                    <span class="text-gray-700 font-medium text-[11px]">Effective</span>
                 </div>
             </div>
             <div class="flex items-center gap-1 mr-2">
                 <div class="relative" id="gantt-zoom-toggle">
-                    <button type="button" id="gantt-zoom-trigger" class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                    <button type="button" id="gantt-zoom-trigger" class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm transition">
                         <span id="gantt-zoom-trigger-label" class="w-10 text-center">Day</span>
                         <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                         </svg>
                     </button>
                     <div id="gantt-zoom-menu" class="hidden absolute right-0 mt-1 w-20 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-1">
-                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="day">Day</button>
-                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="week">Week</button>
-                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="month">Month</button>
-                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition" data-zoom="year">Year</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm transition" data-zoom="day">Day</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm transition" data-zoom="week">Week</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm transition" data-zoom="month">Month</button>
+                        <button type="button" class="gantt-zoom-btn w-full text-left px-2 py-1 text-[10px] font-medium rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm transition" data-zoom="year">Year</button>
                     </div>
                 </div>
             </div>
-            <button type="button" id="gantt-fullscreen-btn" class="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition mr-2" title="Fullscreen">
+            <button type="button" id="gantt-fullscreen-btn" class="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:shadow-sm transition mr-2" title="Fullscreen">
                 <svg id="gantt-icon-expand" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
                 </svg>
@@ -231,7 +227,7 @@
                 </svg>
             </button>
             <div class="relative mr-2" id="gantt-display-toggle">
-                <button type="button" id="gantt-display-btn" class="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition">
+                <button type="button" id="gantt-display-btn" class="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-200 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 hover:shadow-sm transition">
                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -269,7 +265,7 @@
                 Add Phase
             </a>
             <a href="{{ route('admin.project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
-               class="inline-flex items-center px-2 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition">
+               class="inline-flex items-center px-2 py-1 bg-white border border-gray-200 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 hover:shadow-sm transition">
                 Add Task
             </a>
         </div>
@@ -277,7 +273,7 @@
     <div id="gantt-pending-actions" class="hidden px-6 py-2 bg-yellow-50 border-b border-yellow-100 flex items-center justify-between">
         <span id="gantt-pending-text" class="text-xs text-yellow-800 font-medium">No unsaved changes</span>
         <div class="flex items-center gap-2">
-            <button id="gantt-pending-discard" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Discard All</button>
+            <button id="gantt-pending-discard" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 hover:shadow-sm transition">Discard All</button>
             <button id="gantt-pending-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save All</button>
         </div>
     </div>
@@ -544,8 +540,14 @@
             </table>
             <svg id="gantt-dependency-arrows" class="absolute top-0 left-0 pointer-events-none z-20" style="overflow: visible;" width="1" height="1">
                 <defs>
-                    <marker id="gantt-arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                        <path d="M0,0 L0,6 L9,3 z" fill="#6b7280"/>
+                    <marker id="gantt-arrowhead-plan" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,4 L2.5,2 z" fill="#4b5563"/>
+                    </marker>
+                    <marker id="gantt-arrowhead-revise" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,4 L2.5,2 z" fill="#c2410c"/>
+                    </marker>
+                    <marker id="gantt-arrowhead-actual" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,4 L2.5,2 z" fill="#059669"/>
                     </marker>
                 </defs>
             </svg>
@@ -562,7 +564,7 @@
 
 {{-- Task Quick Update Modal --}}
 <div id="task-quick-update-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
-    <div class="bg-white rounded-lg shadow-xl w-96 max-w-full mx-4 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-96 max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <h4 class="text-sm font-semibold text-gray-800">Update Task</h4>
             <button type="button" onclick="closeTaskUpdateModal()" class="text-gray-400 hover:text-gray-600">
@@ -1113,20 +1115,22 @@
             : (fromRect.right - wrapperRect.left);
         var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
 
-        var d;
-        if (Math.abs(y2 - y1) < 2) {
-            d = 'M ' + x1 + ' ' + y1 + ' H ' + x2;
-        } else {
-            var midX = (x1 + x2) / 2;
-            var r = Math.min(8, Math.abs(y2 - y1) / 2, Math.abs(x2 - x1) / 2);
-            var dirY = y2 > y1 ? 1 : -1;
-            d = 'M ' + x1 + ' ' + y1
-                + ' H ' + (midX - r)
-                + ' Q ' + midX + ' ' + y1 + ', ' + midX + ' ' + (y1 + dirY * r)
-                + ' V ' + (y2 - dirY * r)
-                + ' Q ' + midX + ' ' + y2 + ', ' + (midX + r) + ' ' + y2
-                + ' H ' + x2;
-        }
+        var margin = 4;
+        var x1Out = typeParts.fromSide === 'start' ? x1 - margin : x1 + margin;
+        var x2In  = typeParts.toSide   === 'start' ? x2 - margin : x2 + margin;
+
+        // Route through the 4px gap below the source and target lanes so arrows
+        // never run through the colored bars.
+        var sourceGapY = fromRect.bottom - wrapperRect.top + 2;
+        var targetGapY = toRect.bottom - wrapperRect.top + 2;
+
+        d = 'M ' + x1 + ' ' + y1
+            + ' V ' + sourceGapY
+            + ' H ' + x1Out
+            + ' V ' + targetGapY
+            + ' H ' + x2In
+            + ' V ' + y2
+            + ' H ' + x2;
 
         var label = typeParts.fromSide === 'start'
             ? 'Start-to-Start (' + lane + ')'
@@ -1134,10 +1138,15 @@
 
         var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', d);
-        path.setAttribute('stroke', lane === 'actual' ? '#16a34a' : '#6b7280');
+        var strokeColor = {
+            plan: '#4b5563',
+            revise: '#c2410c',
+            actual: '#059669'
+        }[lane] || '#4b5563';
+        path.setAttribute('stroke', strokeColor);
         path.setAttribute('stroke-width', '1.5');
         path.setAttribute('fill', 'none');
-        path.setAttribute('marker-end', 'url(#gantt-arrowhead)');
+        path.setAttribute('marker-end', 'url(#gantt-arrowhead-' + lane + ')');
         path.setAttribute('class', 'gantt-dependency-arrow');
         path.setAttribute('data-task-id', taskId);
         path.setAttribute('data-predecessor-id', predecessorId);
@@ -2100,7 +2109,7 @@
 
 {{-- Dependency Delete Confirmation Modal --}}
 <div id="gantt-dependency-delete-modal" class="hidden fixed inset-0 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5); pointer-events: auto; z-index: 9999;">
-    <div class="bg-white rounded-lg shadow-xl w-80 max-w-full mx-4 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-80 max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h4 class="text-sm font-semibold text-gray-800">Delete Dependency?</h4>
         </div>
@@ -2108,7 +2117,7 @@
             <p class="text-xs text-gray-600">Remove this dependency link?</p>
         </div>
         <div class="px-4 py-3 bg-gray-50 flex justify-end gap-2">
-            <button id="gantt-dep-delete-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
+            <button id="gantt-dep-delete-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 hover:shadow-sm transition">Cancel</button>
             <button id="gantt-dep-delete-confirm" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition">Delete</button>
         </div>
     </div>
@@ -2116,7 +2125,7 @@
 
 {{-- Progress Update Modal --}}
 <div id="gantt-progress-modal" class="hidden fixed inset-0 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5); pointer-events: auto; z-index: 9999;">
-    <div class="bg-white rounded-lg shadow-xl w-80 max-w-full mx-4 overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-80 max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
             <h4 class="text-sm font-semibold text-gray-800">Update Progress</h4>
         </div>
@@ -2135,7 +2144,7 @@
         <div class="px-4 py-3 bg-gray-50 flex justify-between gap-2">
             <button id="gantt-progress-complete" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition">Complete</button>
             <div class="flex gap-2">
-                <button id="gantt-progress-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition">Cancel</button>
+                <button id="gantt-progress-cancel" type="button" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 hover:shadow-sm transition">Cancel</button>
                 <button id="gantt-progress-save" type="button" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition">Save</button>
             </div>
         </div>
@@ -2143,7 +2152,7 @@
 </div>
 
 {{-- Recent Gantt Changes Box --}}
-<div class="bg-white border border-gray-200 rounded-lg shadow-sm mt-4 overflow-hidden">
+<div class="bg-white border border-gray-200 rounded-2xl shadow-sm mt-4 overflow-hidden">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
         <h4 class="text-sm font-semibold text-gray-800">Recent Changes</h4>
         <span id="gantt-changes-count" class="text-xs text-gray-500">Loading...</span>

@@ -1,21 +1,21 @@
 {{-- Project Module Secondary Navbar --}}
 @push('sub-navbar')
-<nav class="bg-white border-b border-gray-200">
+<nav class="bg-white border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex space-x-8 h-10">
+        <div class="flex items-center space-x-1 h-12">
             <a href="{{ route('admin.project.dashboard') }}"
-               class="inline-flex items-center px-1 text-sm font-medium border-b-2 transition-colors
-                      {{ request()->routeIs('admin.project.dashboard') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+               class="inline-flex items-center h-full px-3 text-sm font-medium border-b-2 transition-colors
+                      {{ request()->routeIs('admin.project.dashboard') ? 'border-indigo-500 text-indigo-600 font-semibold' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                 Executive Dashboard
             </a>
             <a href="{{ route('admin.project.projects.index') }}"
-               class="inline-flex items-center px-1 text-sm font-medium border-b-2 transition-colors
-                      {{ request()->routeIs('admin.project.projects.*') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+               class="inline-flex items-center h-full px-3 text-sm font-medium border-b-2 transition-colors
+                      {{ request()->routeIs('admin.project.projects.*') ? 'border-indigo-500 text-indigo-600 font-semibold' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                 List of Project
             </a>
             <a href="{{ route('admin.project.calendar') }}"
-               class="inline-flex items-center px-1 text-sm font-medium border-b-2 transition-colors
-                      {{ request()->routeIs('admin.project.calendar') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
+               class="inline-flex items-center h-full px-3 text-sm font-medium border-b-2 transition-colors
+                      {{ request()->routeIs('admin.project.calendar') ? 'border-indigo-500 text-indigo-600 font-semibold' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
                 Calendar
             </a>
         </div>

@@ -18,7 +18,9 @@ class DashboardController extends Controller
         $analytics = new DashboardOtAnalyticsService();
         $availableMonths = $analytics->getAvailableMonths();
 
-        $default = $availableMonths->first();
+        $lastMonth = now()->subMonth()->startOfMonth();
+        $lastMonthValue = $lastMonth->format('Y-m');
+        $default = $availableMonths->firstWhere('value', $lastMonthValue) ?? $availableMonths->first();
         $selectedMonth = $request->input('month');
 
         if ($selectedMonth && preg_match('/^(\d{4})-(\d{2})$/', $selectedMonth, $matches)) {
@@ -29,9 +31,9 @@ class DashboardController extends Controller
             $month = $default->month;
             $selectedMonth = $default->value;
         } else {
-            $year = (int) now()->format('Y');
-            $month = (int) now()->format('n');
-            $selectedMonth = now()->format('Y-m');
+            $year = (int) $lastMonth->format('Y');
+            $month = (int) $lastMonth->format('n');
+            $selectedMonth = $lastMonthValue;
         }
 
         // Active training sessions

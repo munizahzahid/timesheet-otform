@@ -180,17 +180,26 @@ class GanttExcelExport
         // --- Data rows ---
         $dataStartRow = $row;
         $rowNum = 1;
+        $groupEndRows = [];
 
         $types = ['plan', 'revise', 'actual'];
         foreach ($phases as $phase) {
-            for ($c = 1; $c <= ($timeColCount + 3); $c++) {
-                $col = $this->colLetter($c);
-                $sheet->getStyle("{$col}{$row}")->getFill()->setFillType(Fill::FILL_SOLID)
-                    ->setStartColor(new Color('D9D9D9'));
-                $sheet->getStyle("{$col}{$row}")->getFont()->setBold(true);
+            $phaseStartRow = $row;
+            foreach ($types as $type) {
+                for ($c = 1; $c <= ($timeColCount + 3); $c++) {
+                    $col = $this->colLetter($c);
+                    $sheet->getStyle("{$col}{$row}")->getFill()->setFillType(Fill::FILL_SOLID)
+                        ->setStartColor(new Color('D9D9D9'));
+                    $sheet->getStyle("{$col}{$row}")->getFont()->setBold(true);
+                }
+                $this->writePhaseRow($sheet, $row, $phase, $timeBlocks, $colMap, $visible, $type);
+                $row++;
             }
-            $sheet->setCellValue("{$colMap['task']}{$row}", $phase->phase_name);
-            $row++;
+            $phaseEndRow = $row - 1;
+            $sheet->mergeCells("{$colMap['no']}{$phaseStartRow}:{$colMap['no']}{$phaseEndRow}");
+            $sheet->mergeCells("{$colMap['task']}{$phaseStartRow}:{$colMap['task']}{$phaseEndRow}");
+            $sheet->mergeCells("{$colMap['assignee']}{$phaseStartRow}:{$colMap['assignee']}{$phaseEndRow}");
+            $groupEndRows[] = $phaseEndRow;
 
             foreach ($phase->tasks as $task) {
                 $rowNum++;
@@ -204,6 +213,7 @@ class GanttExcelExport
                 $sheet->mergeCells("{$colMap['no']}{$taskStartRow}:{$colMap['no']}{$taskEndRow}");
                 $sheet->mergeCells("{$colMap['task']}{$taskStartRow}:{$colMap['task']}{$taskEndRow}");
                 $sheet->mergeCells("{$colMap['assignee']}{$taskStartRow}:{$colMap['assignee']}{$taskEndRow}");
+                $groupEndRows[] = $taskEndRow;
             }
         }
 
@@ -229,6 +239,7 @@ class GanttExcelExport
                 $sheet->mergeCells("{$colMap['no']}{$taskStartRow}:{$colMap['no']}{$taskEndRow}");
                 $sheet->mergeCells("{$colMap['task']}{$taskStartRow}:{$colMap['task']}{$taskEndRow}");
                 $sheet->mergeCells("{$colMap['assignee']}{$taskStartRow}:{$colMap['assignee']}{$taskEndRow}");
+                $groupEndRows[] = $taskEndRow;
             }
         }
 
@@ -237,6 +248,10 @@ class GanttExcelExport
         if ($dataEndRow >= $dataStartRow) {
             $sheet->getStyle("A{$dataStartRow}:{$lastCol}{$dataEndRow}")
                 ->getBorders()->getAllBorders()->setBorderStyle(self::THIN);
+        }
+
+        foreach ($groupEndRows as $endRow) {
+            $this->setBoldBottomBorder($sheet, $endRow, $timeColCount);
         }
 
         $sheet->getColumnDimension($colMap['no'])->setWidth(5);
@@ -349,6 +364,22 @@ class GanttExcelExport
         }
     }
 
+    private function writePhaseRow(Worksheet $sheet, int $row, $phase, array $timeBlocks, array $colMap, array $visible, string $type): void
+    {
+        $sheet->setCellValue("{$colMap['task']}{$row}", $phase->phase_name);
+
+        if ($visible[$type]) {
+            foreach ($timeBlocks as $i => $block) {
+                $col = $colMap['time_' . $i];
+                $colorType = $this->resolveRowCellType($block, $phase, $type, null);
+                if ($colorType) {
+                    $sheet->getStyle("{$col}{$row}")->getFill()->setFillType(Fill::FILL_SOLID)
+                        ->setStartColor(new Color($this->colors[$colorType]));
+                }
+            }
+        }
+    }
+
     private function resolveRowCellType($block, $task, string $type, ?array $effective): ?string
     {
         $cellStart = $block['startDate'];
@@ -371,13 +402,6 @@ class GanttExcelExport
         }
 
         if ($type === 'actual') {
-            if ($effective && $effective['start_date'] && $effective['end_date']) {
-                $taskStart = $effective['start_date']->copy()->startOfDay();
-                $taskEnd = $effective['end_date']->copy()->endOfDay();
-                if ($cellStart <= $taskEnd && $cellEnd >= $taskStart) {
-                    return 'effective';
-                }
-            }
             if ($task->start_date_actual) {
                 $taskStart = $task->start_date_actual->copy()->startOfDay();
                 $taskEnd = ($task->end_date_actual ?? now())->copy()->endOfDay();
@@ -385,9 +409,24 @@ class GanttExcelExport
                     return 'actual';
                 }
             }
+            if ($effective && $effective['start_date'] && $effective['end_date']) {
+                $taskStart = $effective['start_date']->copy()->startOfDay();
+                $taskEnd = $effective['end_date']->copy()->endOfDay();
+                if ($cellStart <= $taskEnd && $cellEnd >= $taskStart) {
+                    return 'effective';
+                }
+            }
         }
 
         return null;
+    }
+
+    private function setBoldBottomBorder(Worksheet $sheet, int $row, int $timeColCount): void
+    {
+        for ($c = 1; $c <= ($timeColCount + 3); $c++) {
+            $col = $this->colLetter($c);
+            $sheet->getStyle("{$col}{$row}")->getBorders()->getBottom()->setBorderStyle(Border::BORDER_MEDIUM);
+        }
     }
 
     private function colLetter(int $n): string

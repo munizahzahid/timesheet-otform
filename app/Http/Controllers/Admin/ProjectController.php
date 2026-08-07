@@ -149,8 +149,16 @@ class ProjectController extends Controller
             ];
         })->all();
 
-        // Budget year filter
-        $budgetYear = $request->input('budget_year');
+        // Budget year filter (default to current year; 'all' = no filter)
+        $budgetYearInput = $request->input('budget_year');
+        if (is_null($budgetYearInput)) {
+            $budgetYear = now()->format('Y');
+        } elseif (strtolower($budgetYearInput) === 'all') {
+            $budgetYear = null;
+        } else {
+            $budgetYear = $budgetYearInput;
+        }
+
         $availableYears = Project::whereNotNull('year')
             ->where('year', '>=', 2025)
             ->distinct()
@@ -167,13 +175,59 @@ class ProjectController extends Controller
         }
 
         $budgetProjects = $budgetQuery
-            ->orderByDesc('project_value')
-            ->take(10)
-            ->get(['id', 'project_name', 'project_value', 'actual_cost']);
+            ->orderByDesc('start_date_plan')
+            ->get(['id', 'project_name', 'project_value', 'actual_cost', 'start_date_plan']);
 
         $totalBudgetPlan = $budgetQuery->clone()->sum('project_value') ?? 0;
         $totalBudgetActual = $budgetQuery->clone()->sum('actual_cost') ?? 0;
         $budgetVariance = $totalBudgetPlan - $totalBudgetActual;
+
+        // Task status breakdown for active projects
+        $taskStatusCounts = DB::table('project_tasks')
+            ->join('pm_projects', 'project_tasks.project_id', '=', 'pm_projects.id')
+            ->where('pm_projects.status', 'active')
+            ->whereIn('project_tasks.status', ['not_started', 'in_progress', 'completed', 'on_hold', 'cancelled'])
+            ->select('project_tasks.status', DB::raw('count(*) as count'))
+            ->groupBy('project_tasks.status')
+            ->pluck('count', 'status');
+
+        $taskStatusData = collect([
+            'not_started' => 'Not Started',
+            'in_progress' => 'In Progress',
+            'completed' => 'Completed',
+            'on_hold' => 'On Hold',
+            'cancelled' => 'Cancelled',
+        ])->map(function ($label, $status) use ($taskStatusCounts) {
+            return [
+                'status' => $status,
+                'label' => $label,
+                'count' => (int) ($taskStatusCounts[$status] ?? 0),
+            ];
+        })->values()->all();
+
+        // Task status breakdown for each active project (for stacked bar chart)
+        $projectTaskStatusData = Project::where('status', 'active')
+            ->withCount([
+                'tasks as not_started_count' => fn ($q) => $q->where('status', 'not_started'),
+                'tasks as in_progress_count' => fn ($q) => $q->where('status', 'in_progress'),
+                'tasks as completed_count' => fn ($q) => $q->where('status', 'completed'),
+                'tasks as on_hold_count' => fn ($q) => $q->where('status', 'on_hold'),
+                'tasks as cancelled_count' => fn ($q) => $q->where('status', 'cancelled'),
+            ])
+            ->get(['id', 'project_name'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'project_name' => $p->project_name,
+                'not_started' => $p->not_started_count,
+                'in_progress' => $p->in_progress_count,
+                'completed' => $p->completed_count,
+                'on_hold' => $p->on_hold_count,
+                'cancelled' => $p->cancelled_count,
+                'total' => $p->not_started_count + $p->in_progress_count + $p->completed_count + $p->on_hold_count + $p->cancelled_count,
+            ])
+            ->where('total', '>', 0)
+            ->values()
+            ->all();
 
         return view('admin.project.dashboard', compact(
             'totalProjects',
@@ -190,7 +244,9 @@ class ProjectController extends Controller
             'totalBudgetActual',
             'budgetVariance',
             'budgetYear',
-            'availableYears'
+            'availableYears',
+            'taskStatusData',
+            'projectTaskStatusData'
         ));
     }
 

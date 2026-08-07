@@ -60,28 +60,24 @@ class ProjectProgressCalculator
             $phase->progress_actual = (int) round($weightedActual / $totalWeight);
         }
 
-        // Plan progress: time-based based on phase plan dates
-        if (!$phase->start_date_plan || !$phase->end_date_plan) {
+        // Plan progress: task-weighted based on each task's time-based plan progress
+        if ($totalWeight <= 0) {
             $phase->progress_plan = 0;
         } else {
-            $today = Carbon::today();
-            $start = $phase->start_date_plan->copy()->startOfDay();
-            $end = $phase->end_date_plan->copy()->startOfDay();
-
-            if ($today->lte($start)) {
-                $phase->progress_plan = 0;
-            } elseif ($today->gte($end)) {
-                $phase->progress_plan = 100;
-            } else {
-                $totalDays = $start->diffInDays($end);
-                if ($totalDays <= 0) {
-                    $phase->progress_plan = 100;
-                } else {
-                    $elapsed = $start->diffInDays($today);
-                    $phase->progress_plan = (int) round(($elapsed / $totalDays) * 100);
-                }
-            }
+            $weightedPlan = $tasks->sum(fn (ProjectTask $task) => $this->calculateTaskPlanProgress($task) * $task->weight);
+            $phase->progress_plan = (int) round($weightedPlan / $totalWeight);
         }
+
+        // Derive phase actual dates from task actual dates
+        $startedTasks = $tasks->whereNotNull('start_date_actual');
+        $phase->start_date_actual = $startedTasks->isNotEmpty()
+            ? $startedTasks->pluck('start_date_actual')->sortBy(fn ($d) => $d->getTimestamp())->first()
+            : null;
+
+        $tasksWithEnd = $tasks->whereNotNull('end_date_actual');
+        $phase->end_date_actual = ($tasks->isNotEmpty() && $tasksWithEnd->count() === $tasks->count())
+            ? $tasksWithEnd->pluck('end_date_actual')->sortBy(fn ($d) => $d->getTimestamp())->last()
+            : null;
 
         $phase->save();
     }
