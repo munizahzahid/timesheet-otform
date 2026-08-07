@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Gantt, ViewMode } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
 
@@ -70,6 +70,7 @@ function taskToGantt(t, phaseId) {
         dependencies: t.predecessor_task_id ? [`task-${t.predecessor_task_id}`] : [],
         updateUrl: t.updateUrl,
         editUrl: t.editUrl,
+        weight: t.weight ?? 1,
         styles: {
             backgroundColor: '#93c5fd',
             backgroundSelectedColor: '#60a5fa',
@@ -97,6 +98,7 @@ function buildTasks(phases, standaloneTasks) {
         const start = new Date(Math.min(...starts.map(d => d.getTime())));
         const end = new Date(Math.max(...ends.map(d => d.getTime())));
 
+        const phaseWeight = dated.reduce((sum, t) => sum + (t.weight ?? 1), 0);
         list.push({
             id: `phase-${p.id}`,
             name: p.name,
@@ -105,6 +107,7 @@ function buildTasks(phases, standaloneTasks) {
             progress: p.progress || 0,
             type: 'project',
             hideChildren: false,
+            weight: phaseWeight,
             styles: {
                 backgroundColor: '#6366f1',
                 backgroundSelectedColor: '#4f46e5',
@@ -123,6 +126,81 @@ function buildTasks(phases, standaloneTasks) {
     return list;
 }
 
+const dateTimeOptions = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
+
+const localeDateStringCache = {};
+function toLocaleDateStringFactory(locale) {
+    return function (date, options) {
+        const key = date.toString() + JSON.stringify(options);
+        if (!localeDateStringCache[key]) {
+            localeDateStringCache[key] = date.toLocaleDateString(locale, options);
+        }
+        return localeDateStringCache[key];
+    };
+}
+
+const COL_NAME = 220;
+const COL_WEIGHT = 60;
+const COL_FROM = 120;
+const COL_TO = 120;
+const TOTAL_WIDTH = COL_NAME + COL_WEIGHT + COL_FROM + COL_TO + 3; // +3 for separators
+
+function TaskListHeader({ headerHeight, fontFamily, fontSize }) {
+    return (
+        <div style={{ fontFamily, fontSize, borderBottom: '1px solid #e6e4e4', borderLeft: '1px solid #e6e4e4' }}>
+            <div style={{ height: headerHeight - 2, display: 'flex', alignItems: 'center', background: '#f5f5f5' }}>
+                <div style={{ minWidth: COL_NAME, maxWidth: COL_NAME, padding: '0 0.5rem', fontWeight: 500 }}>&nbsp;Name</div>
+                <div style={{ width: 1, height: headerHeight * 0.5, background: '#c4c4c4', marginTop: headerHeight * 0.25, opacity: 0.5 }}></div>
+                <div style={{ minWidth: COL_WEIGHT, maxWidth: COL_WEIGHT, padding: '0 0.5rem', fontWeight: 500, textAlign: 'center' }}>&nbsp;Weight</div>
+                <div style={{ width: 1, height: headerHeight * 0.5, background: '#c4c4c4', marginTop: headerHeight * 0.25, opacity: 0.5 }}></div>
+                <div style={{ minWidth: COL_FROM, maxWidth: COL_FROM, padding: '0 0.5rem', fontWeight: 500 }}>&nbsp;From</div>
+                <div style={{ width: 1, height: headerHeight * 0.5, background: '#c4c4c4', marginTop: headerHeight * 0.25, opacity: 0.5 }}></div>
+                <div style={{ minWidth: COL_TO, maxWidth: COL_TO, padding: '0 0.5rem', fontWeight: 500 }}>&nbsp;To</div>
+            </div>
+        </div>
+    );
+}
+
+function TaskListTable({ rowHeight, fontFamily, fontSize, locale, tasks, selectedTaskId, setSelectedTask, onExpanderClick }) {
+    const toLocaleDateString = useMemo(() => toLocaleDateStringFactory(locale), [locale]);
+    return (
+        <div style={{ fontFamily, fontSize, borderLeft: '1px solid #e6e4e4' }}>
+            {tasks.map(t => {
+                let expanderSymbol = '';
+                if (t.hideChildren === false) expanderSymbol = '▼';
+                else if (t.hideChildren === true) expanderSymbol = '▶';
+                const isSelected = t.id === selectedTaskId;
+                return (
+                    <div key={t.id + 'row'} style={{ height: rowHeight, display: 'flex', alignItems: 'center', borderBottom: '1px solid #e6e4e4', background: isSelected ? '#fff8e1' : undefined }}
+                         onClick={() => setSelectedTask(t.id === selectedTaskId ? '' : t.id)}>
+                        <div style={{ minWidth: COL_NAME, maxWidth: COL_NAME, padding: '0 0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t.name}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <span onClick={(e) => { e.stopPropagation(); onExpanderClick(t); }}
+                                      style={{ cursor: 'pointer', fontSize: '0.6rem', minWidth: '1rem', display: 'inline-block', textAlign: 'center' }}>
+                                    {expanderSymbol}
+                                </span>
+                                <span>{t.name}</span>
+                            </span>
+                        </div>
+                        <div style={{ width: 1, height: rowHeight * 0.5, background: '#c4c4c4', opacity: 0.5 }}></div>
+                        <div style={{ minWidth: COL_WEIGHT, maxWidth: COL_WEIGHT, padding: '0 0.5rem', textAlign: 'center', fontSize: '0.7rem', color: '#555' }}>
+                            {t.weight !== undefined ? t.weight : ''}
+                        </div>
+                        <div style={{ width: 1, height: rowHeight * 0.5, background: '#c4c4c4', opacity: 0.5 }}></div>
+                        <div style={{ minWidth: COL_FROM, maxWidth: COL_FROM, padding: '0 0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: '0.75rem' }}>
+                            &nbsp;{toLocaleDateString(t.start, dateTimeOptions)}
+                        </div>
+                        <div style={{ width: 1, height: rowHeight * 0.5, background: '#c4c4c4', opacity: 0.5 }}></div>
+                        <div style={{ minWidth: COL_TO, maxWidth: COL_TO, padding: '0 0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: '0.75rem' }}>
+                            &nbsp;{toLocaleDateString(t.end, dateTimeOptions)}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 export default function ProjectGantt({ phases = [], standaloneTasks = [], urls = {} }) {
     const [tasks, setTasks] = useState(() => buildTasks(phases, standaloneTasks));
     const [viewKey, setViewKey] = useState('month');
@@ -137,6 +215,79 @@ export default function ProjectGantt({ phases = [], standaloneTasks = [], urls =
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
     }, []);
+
+    // Enhance dependency arrows with visible arrowheads at the successor end
+    useEffect(() => {
+        let timeout;
+        let observer;
+        let styleId = 'gantt-arrow-style';
+
+        const enhanceArrows = () => {
+            const svg = document.querySelector('.gantt-wrapper svg');
+            if (!svg) return;
+
+            // Inject CSS for persistent arrow styling
+            if (!document.getElementById(styleId)) {
+                const style = document.createElement('style');
+                style.id = styleId;
+                style.textContent = `
+                    .gantt-wrapper .arrow path {
+                        stroke: #64748b !important;
+                        stroke-width: 2.5 !important;
+                    }
+                    .gantt-wrapper .arrow polygon {
+                        fill: #64748b !important;
+                        stroke: #64748b !important;
+                        stroke-width: 1 !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Make arrowhead polygons larger by scaling them
+            svg.querySelectorAll('.arrow polygon').forEach((polygon) => {
+                const points = polygon.getAttribute('points');
+                if (!points) return;
+
+                // Parse existing points (format: "x1,y1 x2,y2 x3,y3")
+                const coords = points.trim().split(/\s+/).flatMap(p => p.split(',').map(Number));
+                if (coords.length < 6) return;
+
+                const cx = (coords[0] + coords[2] + coords[4]) / 3;
+                const cy = (coords[1] + coords[3] + coords[5]) / 3;
+                const scale = 1.8;
+
+                const newPoints = coords.map((v, i) => {
+                    const center = i % 2 === 0 ? cx : cy;
+                    return center + (v - center) * scale;
+                });
+
+                polygon.setAttribute('points', [
+                    `${newPoints[0]},${newPoints[1]}`,
+                    `${newPoints[2]},${newPoints[3]}`,
+                    `${newPoints[4]},${newPoints[5]}`,
+                ].join(' '));
+            });
+        };
+
+        const startObserving = () => {
+            const wrapper = document.querySelector('.gantt-wrapper');
+            if (!wrapper) return;
+            observer = new MutationObserver(() => {
+                enhanceArrows();
+            });
+            observer.observe(wrapper, { childList: true, subtree: true });
+            enhanceArrows();
+        };
+
+        timeout = setTimeout(startObserving, 200);
+
+        return () => {
+            clearTimeout(timeout);
+            if (observer) observer.disconnect();
+            document.getElementById(styleId)?.remove();
+        };
+    }, [tasks, viewKey]);
 
     const handleDateChange = (task) => {
         setTasks(prev => prev.map(t => (t.id === task.id ? task : t)));
@@ -217,10 +368,12 @@ export default function ProjectGantt({ phases = [], standaloneTasks = [], urls =
                         onProgressChange={handleProgressChange}
                         onDoubleClick={handleDoubleClick}
                         onExpanderClick={handleExpanderClick}
-                        listCellWidth="220px"
+                        listCellWidth={`${TOTAL_WIDTH}px`}
                         columnWidth={current.columnWidth}
                         locale="en-GB"
                         barFill={65}
+                        TaskListHeader={TaskListHeader}
+                        TaskListTable={TaskListTable}
                     />
                 </div>
             ) : (

@@ -257,8 +257,8 @@ export default function MainDashboard({
                 )}
 
                 {availableMonths.length > 0 && (
-                    <>
-                        <div className="lg:col-span-2 lg:row-span-2">
+                    <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div>
                             <Card title="OT Hours by Project" subtitle={formatMonth(selectedMonthNumber, selectedYear)}>
                                 <div className="p-4 h-[32rem]">
                                     {otProjectData.length > 0 ? (
@@ -270,26 +270,36 @@ export default function MainDashboard({
                             </Card>
                         </div>
 
-                        <Card title="Total OT Hours by Month" subtitle="All approved OT forms">
-                            <div className="p-4 h-60">
-                                {otMonthlyData.length > 0 ? (
-                                    <canvas ref={monthlyRef}></canvas>
-                                ) : (
-                                    <p className="text-sm text-gray-400 text-center py-12">No monthly OT data.</p>
-                                )}
-                            </div>
-                        </Card>
+                        <div className="flex flex-col gap-4">
+                            <Card title="Total OT Hours by Month" subtitle="All approved OT forms">
+                                <div className="p-4 h-60">
+                                    {otMonthlyData.length > 0 ? (
+                                        <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
+                                            <div style={{ height: '100%', minWidth: otMonthlyData.length * 60 }}>
+                                                <canvas ref={monthlyRef}></canvas>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-400 text-center py-12">No monthly OT data.</p>
+                                    )}
+                                </div>
+                            </Card>
 
-                        <Card title="OT Hours by Staff" subtitle={formatMonth(selectedMonthNumber, selectedYear)}>
-                            <div className="p-4 h-60">
-                                {otStaffData.length > 0 ? (
-                                    <canvas ref={staffRef}></canvas>
-                                ) : (
-                                    <p className="text-sm text-gray-400 text-center py-12">No staff OT data.</p>
-                                )}
-                            </div>
-                        </Card>
-                    </>
+                            <Card title="OT Hours by Staff" subtitle={formatMonth(selectedMonthNumber, selectedYear)}>
+                                <div className="p-4 h-80">
+                                    {otStaffData.length > 0 ? (
+                                        <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
+                                            <div style={{ height: '100%', minWidth: otStaffData.length * 60 }}>
+                                                <canvas ref={staffRef}></canvas>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-400 text-center py-12">No staff OT data.</p>
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
                 )}
 
                 <Card title="Recent Actions" subtitle="Your recent Timesheet / OT Form activity">

@@ -307,6 +307,9 @@
                         <th class="sticky left-64 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
                             Assigned To
                         </th>
+                        <th class="bg-gray-50 px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-16">
+                            Weight
+                        </th>
                         <th class="bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-20">
                             Progress
                         </th>
@@ -325,6 +328,7 @@
                     <tr class="bg-gray-50">
                         <th class="sticky left-0 bg-gray-50 z-40 border-r border-gray-200"></th>
                         <th class="sticky left-64 bg-gray-50 z-40 border-r border-gray-200"></th>
+                        <th class="bg-gray-50 border-r border-gray-200"></th>
                         <th class="bg-gray-50 border-r border-gray-200"></th>
                         <th class="bg-gray-50 border-r border-gray-200"></th>
                         <th class="bg-gray-50 border-r border-gray-200"></th>
@@ -381,7 +385,7 @@
                                     <div class="gantt-menu">
                                         <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Phase actions"
                                                 data-edit-url="{{ route('admin.project.projects.phases.edit', [$project, $phase]) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
-                                                data-delete-action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) }}"
+                                                data-delete-action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
                                                 data-delete-confirm="Delete this phase and all its tasks?">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
@@ -393,6 +397,7 @@
                                 </div>
                             </td>
                             <td class="sticky left-64 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500 text-center w-16">—</td>
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     <div class="text-blue-600">P: {{ $phase->progress_plan }}%</div>
@@ -521,6 +526,7 @@
                                 <span class="font-semibold text-gray-900">Standalone Tasks</span>
                             </td>
                             <td class="sticky left-64 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
+                            <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500 text-center w-16">—</td>
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
@@ -540,14 +546,14 @@
             </table>
             <svg id="gantt-dependency-arrows" class="absolute top-0 left-0 pointer-events-none z-20" style="overflow: visible;" width="1" height="1">
                 <defs>
-                    <marker id="gantt-arrowhead-plan" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto" markerUnits="strokeWidth">
-                        <path d="M0,0 L0,4 L2.5,2 z" fill="#4b5563"/>
+                    <marker id="gantt-arrowhead-plan" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,12 L10,6 z" fill="#4b5563"/>
                     </marker>
-                    <marker id="gantt-arrowhead-revise" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto" markerUnits="strokeWidth">
-                        <path d="M0,0 L0,4 L2.5,2 z" fill="#c2410c"/>
+                    <marker id="gantt-arrowhead-revise" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,12 L10,6 z" fill="#c2410c"/>
                     </marker>
-                    <marker id="gantt-arrowhead-actual" markerWidth="4" markerHeight="4" refX="2.5" refY="2" orient="auto" markerUnits="strokeWidth">
-                        <path d="M0,0 L0,4 L2.5,2 z" fill="#059669"/>
+                    <marker id="gantt-arrowhead-actual" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,12 L10,6 z" fill="#059669"/>
                     </marker>
                 </defs>
             </svg>
@@ -1147,6 +1153,8 @@
         path.setAttribute('stroke-width', '1.5');
         path.setAttribute('fill', 'none');
         path.setAttribute('marker-end', 'url(#gantt-arrowhead-' + lane + ')');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
         path.setAttribute('class', 'gantt-dependency-arrow');
         path.setAttribute('data-task-id', taskId);
         path.setAttribute('data-predecessor-id', predecessorId);
@@ -1154,6 +1162,27 @@
         path.setAttribute('data-lane', lane);
         path.setAttribute('title', label);
         svg.appendChild(path);
+
+        // Add right-facing arrow icon at the successor end point (x2, y2)
+        var arrowIcon = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        var arrowBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        arrowBg.setAttribute('cx', x2);
+        arrowBg.setAttribute('cy', y2);
+        arrowBg.setAttribute('r', 3.5);
+        arrowBg.setAttribute('fill', strokeColor);
+        arrowBg.setAttribute('class', 'gantt-arrow-dot');
+        arrowIcon.appendChild(arrowBg);
+
+        var arrowShape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        var ax = x2 - 4, ay = y2 - 3;
+        arrowShape.setAttribute('d', 'M' + ax + ' ' + ay + ' L' + ax + ' ' + (ay + 6) + ' L' + (ax + 7) + ' ' + (ay + 3) + ' Z');
+        arrowShape.setAttribute('fill', '#fff');
+        arrowShape.setAttribute('stroke', strokeColor);
+        arrowShape.setAttribute('stroke-width', '1');
+        arrowShape.setAttribute('stroke-linejoin', 'round');
+        arrowIcon.appendChild(arrowShape);
+
+        svg.appendChild(arrowIcon);
     }
 
     function drawGanttDependencyArrows() {

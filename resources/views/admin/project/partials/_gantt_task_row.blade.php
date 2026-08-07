@@ -74,7 +74,7 @@
             <div class="gantt-menu">
                 <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Task actions"
                         data-edit-url="{{ route('admin.project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
-                        data-delete-action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}"
+                        data-delete-action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
                         data-delete-confirm="Delete this task?">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
@@ -86,6 +86,9 @@
     </td>
     <td class="sticky left-64 bg-white z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
         {{ $task->assignedTo->name ?? '—' }}
+    </td>
+    <td class="bg-white px-4 py-2 border-r border-gray-200 text-xs text-gray-600 text-center w-16">
+        {{ $task->weight ?? '' }}
     </td>
     <td class="bg-white px-4 py-2 border-r border-gray-200 text-xs text-gray-600">
         <div class="space-y-0.5">

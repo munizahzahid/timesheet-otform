@@ -144,7 +144,7 @@ class ProjectPhaseController extends Controller
     /**
      * Delete a phase and its tasks
      */
-    public function destroy(Project $project, ProjectPhase $phase)
+    public function destroy(Request $request, Project $project, ProjectPhase $phase)
     {
         $phaseName = $phase->phase_name;
         foreach ($phase->tasks as $task) {
@@ -168,7 +168,11 @@ class ProjectPhaseController extends Controller
 
         (new \App\Services\ProjectProgressCalculator())->recalculateProjectProgress($project);
 
-        return redirect()->route('admin.project.projects.show', $project)
+        $query = ['tab' => $request->input('tab', 'schedule')];
+        if ($request->input('view')) {
+            $query['view'] = $request->input('view');
+        }
+        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Phase deleted successfully.');
     }
 }

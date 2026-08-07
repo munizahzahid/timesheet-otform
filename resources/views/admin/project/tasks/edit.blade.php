@@ -19,6 +19,10 @@
             <form method="POST" action="{{ route('admin.project.projects.tasks.update', [$project, $task]) }}">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="tab" value="{{ old('tab', request('tab', 'tasks')) }}">
+                @if(request('view'))
+                    <input type="hidden" name="view" value="{{ old('view', request('view')) }}">
+                @endif
                 @include('admin.project.tasks.partials._form')
             </form>
         </div>

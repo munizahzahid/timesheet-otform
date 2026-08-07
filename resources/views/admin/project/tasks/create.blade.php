@@ -18,6 +18,10 @@
         <div class="bg-white border border-gray-200 rounded-lg p-6">
             <form method="POST" action="{{ route('admin.project.projects.tasks.store', $project) }}">
                 @csrf
+                <input type="hidden" name="tab" value="{{ old('tab', request('tab', 'tasks')) }}">
+                @if(request('view'))
+                    <input type="hidden" name="view" value="{{ old('view', request('view')) }}">
+                @endif
                 @include('admin.project.tasks.partials._form')
             </form>
         </div>
