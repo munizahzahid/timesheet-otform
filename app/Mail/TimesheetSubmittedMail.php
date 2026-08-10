@@ -31,7 +31,6 @@ class TimesheetSubmittedMail extends Mailable
     public function build(): self
     {
         return $this->subject("Timesheet Pending Approval - {$this->monthYear}")
-            ->view('emails.timesheet.submitted')
             ->text('emails.timesheet.submitted_text')
             ->with([
                 'recipientName' => $this->recipientName,
