@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Mail\TimesheetApprovedMail;
 use App\Mail\TimesheetRejectedMail;
 use App\Mail\TimesheetReminderMail;
-use App\Mail\TimesheetSubmittedMail;
 use App\Models\Timesheet;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -24,8 +23,25 @@ class TimesheetEmailNotificationService
             'recipient_email' => $approver->email,
         ]);
 
+        $monthYear = \DateTime::createFromFormat('!m', $timesheet->month)->format('F') . ' ' . $timesheet->year;
+        $submittedAt = $timesheet->submitted_at ? $timesheet->submitted_at->format('d M Y, h:i A') : now()->format('d M Y, h:i A');
+        $link = route('approvals.timesheets.show', $timesheet);
+
+        $message = "Timesheet Pending Approval\n\n";
+        $message .= "Hello {$approver->name},\n\n";
+        $message .= "A timesheet has been submitted by {$timesheet->user->name} and is pending your approval.\n\n";
+        $message .= "Staff: {$timesheet->user->name}\n";
+        $message .= "Month / Year: {$monthYear}\n";
+        $message .= "Submitted At: {$submittedAt}\n";
+        $message .= "Status: {$timesheet->status_label}\n\n";
+        $message .= "Please review the timesheet by visiting:\n";
+        $message .= "{$link}\n\n";
+        $message .= "This is an automated message from " . config('app.name') . ".";
+
         try {
-            Mail::to($approver->email)->send(new TimesheetSubmittedMail($timesheet, $approver->name));
+            Mail::to($approver->email)->raw($message, function ($mail) use ($monthYear) {
+                $mail->subject("Timesheet Pending Approval - {$monthYear}");
+            });
         } catch (\Exception $e) {
             Log::error("Failed to send timesheet submission email: {$e->getMessage()}", [
                 'timesheet_id' => $timesheet->id,
