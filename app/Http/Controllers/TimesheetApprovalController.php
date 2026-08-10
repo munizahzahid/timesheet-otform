@@ -10,6 +10,8 @@ use App\Services\TimesheetEmailNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class TimesheetApprovalController extends Controller
 {
@@ -345,7 +347,7 @@ class TimesheetApprovalController extends Controller
 
                     $l1Approver = User::find($l1ApproverId);
                     if ($l1Approver) {
-                        $this->emailService->sendSubmissionNotification($timesheet, $l1Approver);
+                        $this->sendTimesheetSubmissionEmail($timesheet, $l1Approver);
                     }
                 }
             }
@@ -642,8 +644,64 @@ private function notifyTimesheetApprovers(Timesheet $timesheet, string $status):
 
         $recipient = User::find($recipientId);
         if ($recipient) {
-            $this->emailService->sendSubmissionNotification($timesheet, $recipient);
+            $this->sendTimesheetSubmissionEmail($timesheet, $recipient);
         }
     }
+}
+
+/**
+ * Send timesheet submission email directly from controller.
+ */
+private function sendTimesheetSubmissionEmail(Timesheet $timesheet, User $approver): void
+{
+    if (!$this->canSendTimesheetEmail($approver)) {
+        return;
+    }
+
+    Log::info("Sending timesheet submission email", [
+        'timesheet_id' => $timesheet->id,
+        'recipient_email' => $approver->email,
+    ]);
+
+    $monthYear = \DateTime::createFromFormat('!m', $timesheet->month)->format('F') . ' ' . $timesheet->year;
+    $submittedAt = $timesheet->submitted_at ? $timesheet->submitted_at->format('d M Y, h:i A') : now()->format('d M Y, h:i A');
+
+    $message = "Timesheet Pending Approval\n\n";
+    $message .= "Hello {$approver->name},\n\n";
+    $message .= "A timesheet has been submitted by {$timesheet->user->name} and is pending your approval.\n\n";
+    $message .= "Staff: {$timesheet->user->name}\n";
+    $message .= "Month / Year: {$monthYear}\n";
+    $message .= "Submitted At: {$submittedAt}\n";
+    $message .= "Status: {$timesheet->status_label}\n\n";
+    $message .= "Please review the timesheet by visiting:\n";
+    $message .= "https://timesheet.62.238.2.126.sslip.io/\n\n";
+    $message .= "This is an automated message from " . config('app.name') . ".";
+
+    try {
+        Mail::raw($message, function ($mail) use ($approver, $monthYear) {
+            $mail->to($approver->email)
+                 ->subject("Timesheet Pending Approval - {$monthYear}");
+        });
+    } catch (\Exception $e) {
+        Log::error("Failed to send timesheet submission email: {$e->getMessage()}", [
+            'timesheet_id' => $timesheet->id,
+            'recipient_id' => $approver->id,
+        ]);
+    }
+}
+
+private function canSendTimesheetEmail(User $user): bool
+{
+    if (empty($user->email)) {
+        Log::warning("Cannot send timesheet email to user #{$user->id}: missing email address.");
+        return false;
+    }
+
+    if (!filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+        Log::warning("Cannot send timesheet email to user #{$user->id}: invalid email '{$user->email}'.");
+        return false;
+    }
+
+    return true;
 }
 }
