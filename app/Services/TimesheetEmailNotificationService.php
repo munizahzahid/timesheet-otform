@@ -39,8 +39,9 @@ class TimesheetEmailNotificationService
         $message .= "This is an automated message from " . config('app.name') . ".";
 
         try {
-            Mail::to($approver->email)->raw($message, function ($mail) use ($monthYear) {
-                $mail->subject("Timesheet Pending Approval - {$monthYear}");
+            Mail::raw($message, function ($mail) use ($approver, $monthYear) {
+                $mail->to($approver->email)
+                     ->subject("Timesheet Pending Approval - {$monthYear}");
             });
         } catch (\Exception $e) {
             Log::error("Failed to send timesheet submission email: {$e->getMessage()}", [
