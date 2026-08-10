@@ -35,7 +35,7 @@ class TimesheetEmailNotificationService
         $message .= "Submitted At: {$submittedAt}\n";
         $message .= "Status: {$timesheet->status_label}\n\n";
         $message .= "Please review the timesheet by visiting:\n";
-        $message .= "{$link}\n\n";
+        $message .= "https://timesheet.62.238.2.126.sslip.io/\n\n";
         $message .= "This is an automated message from " . config('app.name') . ".";
 
         try {
