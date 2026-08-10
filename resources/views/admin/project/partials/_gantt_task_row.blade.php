@@ -9,9 +9,9 @@
     $planStartOffset = $task->start_date_plan ? $timelineStart->diffInDays($task->start_date_plan) : null;
     $planDuration = $task->start_date_plan && $task->end_date_plan ? $task->start_date_plan->diffInDays($task->end_date_plan) + 1 : null;
 
-    // Actual lane: show when actual start is entered; ongoing tasks run to today
-    $actualStart = $task->start_date_actual;
-    $actualEnd = $task->end_date_actual;
+    // Actual lane: use resolved actual dates so the bar follows predecessor dependencies
+    $actualStart = $effective['actual_start_date'] ?? $task->start_date_actual;
+    $actualEnd = $effective['actual_end_date'] ?? $task->end_date_actual;
     $actualStartOffset = $actualStart ? $timelineStart->diffInDays($actualStart) : null;
     if ($actualStart) {
         $actualEndForBar = $actualEnd ?: now('Asia/Kuala_Lumpur')->copy()->startOfDay();
@@ -125,7 +125,7 @@
         <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
             {{-- Daily grid lines --}}
             @for($i = 0; $i <= $totalDays; $i++)
-                <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
+                <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" data-day-date="{{ $timelineStart->copy()->addDays($i)->format('Y-m-d') }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
             @endfor
 
             {{-- Plan lane (row 1) --}}

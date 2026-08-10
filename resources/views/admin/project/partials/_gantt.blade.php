@@ -460,7 +460,7 @@
                                 @endphp
                                 <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                     @for($i = 0; $i <= $totalDays; $i++)
-                                        <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
+                                        <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" data-day-date="{{ $timelineStart->copy()->addDays($i)->format('Y-m-d') }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
                                     @endfor
                                     {{-- Plan bar --}}
                                     @if($phasePlanStartOffset !== null && $phasePlanDuration !== null)
@@ -533,7 +533,7 @@
                             <td class="px-0 py-2 bg-gray-100">
                                 <div class="gantt-timeline-area relative" style="width: {{ $totalDays * $dayWidth }}px; min-width: 600px; height: 70px; border-left: 1px solid #e5e7eb;">
                                     @for($i = 0; $i <= $totalDays; $i++)
-                                        <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
+                                        <div class="gantt-grid-line absolute" data-day-offset="{{ $i }}" data-day-date="{{ $timelineStart->copy()->addDays($i)->format('Y-m-d') }}" style="left: {{ $i * $dayWidth }}px; top: 0; bottom: 0; width: 1px; background-color: #e5e7eb;"></div>
                                     @endfor
                                 </div>
                             </td>
@@ -927,14 +927,52 @@
         var pixelsPerDay = config.pixelsPerDay;
         var isDayView = zoomLevel === 'day';
         document.querySelectorAll('.gantt-grid-line').forEach(function(line) {
-            if (!isDayView) {
-                line.style.display = 'none';
-                return;
-            }
-            line.style.display = '';
             var offset = parseFloat(line.dataset.dayOffset);
             if (isNaN(offset)) return;
             line.style.left = (offset * pixelsPerDay) + 'px';
+
+            // Reset defaults
+            line.style.width = '1px';
+            line.style.backgroundColor = '#e5e7eb';
+            line.style.zIndex = '';
+            line.style.display = '';
+
+            var date = new Date(line.dataset.dayDate + 'T00:00:00');
+            if (isNaN(date.getTime())) {
+                line.style.display = 'none';
+                return;
+            }
+
+            var isMonday = date.getDay() === 1;
+            var isMonthStart = date.getDate() === 1;
+            var isYearStart = date.getMonth() === 0 && date.getDate() === 1;
+            var isWeekStartFromTimeline = offset % 7 === 0;
+
+            if (zoomLevel === 'day') {
+                if (isMonday) {
+                    line.style.backgroundColor = '#d1d5db';
+                } else {
+                    line.style.backgroundColor = '#f3f4f6';
+                }
+            } else if (zoomLevel === 'week') {
+                if (isWeekStartFromTimeline) {
+                    line.style.backgroundColor = '#d1d5db';
+                } else {
+                    line.style.display = 'none';
+                }
+            } else if (zoomLevel === 'month') {
+                if (isMonthStart) {
+                    line.style.backgroundColor = '#d1d5db';
+                } else {
+                    line.style.display = 'none';
+                }
+            } else if (zoomLevel === 'year') {
+                if (isYearStart) {
+                    line.style.backgroundColor = '#d1d5db';
+                } else {
+                    line.style.display = 'none';
+                }
+            }
         });
     }
 

@@ -79,7 +79,7 @@ class TaskDependencyResolver
                 ? !empty($task->predecessorTask->end_date_actual)
                 : !empty($task->predecessorTask->start_date_actual);
 
-            if (!$task->is_actual_start_manual && $isPredecessorComplete) {
+            if ($isPredecessorComplete) {
                 $drivingDate = $fromSide === 'end' ? $predecessorActualDates['end_date'] : $predecessorActualDates['start_date'];
                 if ($drivingDate) {
                     // Calculate predecessor's offset from plan and apply to successor's plan start
@@ -428,36 +428,32 @@ class TaskDependencyResolver
         while (!$queue->isEmpty()) {
             $task = $queue->dequeue();
 
-            // Skip shifting if the user has explicitly overridden this task's actual start
-            $shouldRecompute = !$task->is_actual_start_manual;
+            // Always recompute actual start based on predecessor dependency
 
-            if ($shouldRecompute) {
-                $predecessor = $tasks->firstWhere('id', $task->predecessor_task_id);
-                if ($predecessor) {
-                    $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
+            $predecessor = $tasks->firstWhere('id', $task->predecessor_task_id);
+            if ($predecessor) {
+                $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
 
-                    // Check if predecessor is complete based on dependency type
-                    // For end_to_start: predecessor must have end_date_actual
-                    // For start_to_start: predecessor must have start_date_actual
-                    $isPredecessorComplete = $fromSide === 'end'
-                        ? !empty($predecessor->end_date_actual)
-                        : !empty($predecessor->start_date_actual);
+                // Check if predecessor is complete based on dependency type
+                // For end_to_start: predecessor must have end_date_actual
+                // For start_to_start: predecessor must have start_date_actual
+                $isPredecessorComplete = $fromSide === 'end'
+                    ? !empty($predecessor->end_date_actual)
+                    : !empty($predecessor->start_date_actual);
 
-                    // Only set successor actual_start if predecessor is complete
-                    if (!$isPredecessorComplete) {
-                        // If task has no manual actual_start, ensure it's null (don't auto-set from ongoing predecessor)
-                        if (!$task->is_actual_start_manual) {
-                            $task->updateQuietly(['start_date_actual' => null]);
-                            $task->start_date_actual = null;
-                            $taskInCollection = $tasks->firstWhere('id', $task->id);
-                            if ($taskInCollection) {
-                                $taskInCollection->start_date_actual = null;
-                            }
-                        }
-                        continue;
+                // Only set successor actual_start if predecessor is complete
+                if (!$isPredecessorComplete) {
+                    // Ensure actual start is null if the predecessor is not yet complete
+                    $task->updateQuietly(['start_date_actual' => null]);
+                    $task->start_date_actual = null;
+                    $taskInCollection = $tasks->firstWhere('id', $task->id);
+                    if ($taskInCollection) {
+                        $taskInCollection->start_date_actual = null;
                     }
+                    continue;
+                }
 
-                    // Predecessor is complete - compute successor actual_start
+                // Predecessor is complete - compute successor actual_start
                     $predecessorDates = $this->getLaneBaseDates($predecessor, 'actual');
                     $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
 
@@ -483,19 +479,32 @@ class TaskDependencyResolver
                         }
 
                         $currentStart = $task->start_date_actual;
+                        $currentEnd = $task->end_date_actual;
+                        $hasEnd = $currentStart && $currentEnd;
+                        $duration = $hasEnd ? $currentStart->diffInDays($currentEnd) : null;
+
                         if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
-                            $task->updateQuietly(['start_date_actual' => $newStart]);
+                            $updateData = ['start_date_actual' => $newStart];
+                            if ($hasEnd) {
+                                $updateData['end_date_actual'] = $newStart->copy()->addDays($duration);
+                            }
+                            $task->updateQuietly($updateData);
                             $task->start_date_actual = $newStart;
+                            if ($hasEnd) {
+                                $task->end_date_actual = $newStart->copy()->addDays($duration);
+                            }
 
                             // Refresh the task instance in the collection so deeper cascades see the new dates
                             $taskInCollection = $tasks->firstWhere('id', $task->id);
                             if ($taskInCollection) {
                                 $taskInCollection->start_date_actual = $newStart;
+                                if ($hasEnd) {
+                                    $taskInCollection->end_date_actual = $newStart->copy()->addDays($duration);
+                                }
                             }
                         }
                     }
                 }
-            }
 
             // Enqueue successors of this task for cascading
             foreach ($successorsByPredecessor->get($task->id, collect()) as $nextSuccessor) {

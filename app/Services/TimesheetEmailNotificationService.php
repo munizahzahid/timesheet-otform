@@ -84,6 +84,16 @@ class TimesheetEmailNotificationService
 
     private function canSendEmail(User $user): bool
     {
-        return !empty($user->email) && filter_var($user->email, FILTER_VALIDATE_EMAIL);
+        if (empty($user->email)) {
+            Log::warning("Cannot send timesheet email to user #{$user->id}: missing email address.");
+            return false;
+        }
+
+        if (!filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+            Log::warning("Cannot send timesheet email to user #{$user->id}: invalid email '{$user->email}'.");
+            return false;
+        }
+
+        return true;
     }
 }
