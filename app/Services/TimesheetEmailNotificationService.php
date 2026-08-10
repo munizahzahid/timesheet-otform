@@ -19,6 +19,11 @@ class TimesheetEmailNotificationService
             return;
         }
 
+        Log::info("Sending timesheet submission email", [
+            'timesheet_id' => $timesheet->id,
+            'recipient_email' => $approver->email,
+        ]);
+
         try {
             Mail::to($approver->email)->send(new TimesheetSubmittedMail($timesheet, $approver->name));
         } catch (\Exception $e) {
