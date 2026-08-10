@@ -1,3 +1,6 @@
 Timesheet Pending Approval
 
-Hello, you received new application.
+Hello, you receive new application.
+
+Please review the timesheet by visiting:
+{{ $link }}
