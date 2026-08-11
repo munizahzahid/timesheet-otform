@@ -4,16 +4,27 @@ namespace App\Services;
 
 use App\Models\Project;
 use App\Models\ProjectTask;
+use App\Services\ProjectProgressCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class TaskDependencyResolver
 {
+    private ?ProjectProgressCalculator $progressCalculator = null;
+
     /**
      * Resolve effective dates for all tasks in a project.
      *
      * @return array<string, array>
      */
+    protected function getProgressCalculator(): ProjectProgressCalculator
+    {
+        if (!$this->progressCalculator) {
+            $this->progressCalculator = new ProjectProgressCalculator();
+        }
+        return $this->progressCalculator;
+    }
+
     public function resolve(Project $project): array
     {
         $tasks = $project->tasks()->with('predecessorTask')->get();
@@ -124,6 +135,10 @@ class TaskDependencyResolver
         $effectiveStart = $actualStart ?? $planStart;
         $effectiveEnd = $actualEnd ?? $planEnd;
 
+        $calculator = $this->getProgressCalculator();
+        $taskPlanProgress = $calculator->calculateTaskPlanProgress($task);
+        $taskActualProgress = (int) $task->progress_actual;
+
         $effectiveDates[$taskId] = [
             'start_date' => $effectiveStart,
             'end_date' => $effectiveEnd,
@@ -135,6 +150,7 @@ class TaskDependencyResolver
             'plan_delay_days' => $this->calculatePlanDelay($task),
             'revise_delay_days' => $this->calculateReviseDelay($task),
             'end_date_delay_days' => $this->calculateEndDateDelay($task),
+            'progress_delay_days' => $calculator->calculateDelayDays($task->start_date_plan, $task->end_date_plan, $taskPlanProgress, $taskActualProgress),
         ];
     }
 
@@ -421,14 +437,32 @@ class TaskDependencyResolver
             $changedInCollection->dependency_type = $changedTask->dependency_type;
         }
 
+        // Also update any instances of the changed task that appear as predecessors in the collection
+        // This ensures successors see the updated actual dates when checking predecessor completion
+        foreach ($tasks as $task) {
+            if ($task->predecessor_task_id === $changedTask->id) {
+                // This task has the changed task as its predecessor
+                // Ensure the predecessorTask relationship has the updated dates
+                if ($task->predecessorTask && $task->predecessorTask->id === $changedTask->id) {
+                    $task->predecessorTask->start_date_actual = $changedTask->start_date_actual;
+                    $task->predecessorTask->end_date_actual = $changedTask->end_date_actual;
+                }
+            }
+        }
+
         $queue = new \SplQueue();
-        $queue->enqueue($changedTask);
-        $queued = [$changedTask->id => true];
+        $queued = [];
+
+        // Only enqueue successors of the changed task; do not re-evaluate the changed task itself
+        foreach ($successorsByPredecessor->get($changedTask->id, collect()) as $successor) {
+            $queued[$successor->id] = true;
+            $queue->enqueue($successor);
+        }
 
         while (!$queue->isEmpty()) {
             $task = $queue->dequeue();
 
-            // Always recompute actual start based on predecessor dependency
+            // Recompute actual start based on predecessor dependency
 
             $predecessor = $tasks->firstWhere('id', $task->predecessor_task_id);
             if ($predecessor) {
@@ -443,12 +477,26 @@ class TaskDependencyResolver
 
                 // Only set successor actual_start if predecessor is complete
                 if (!$isPredecessorComplete) {
-                    // Ensure actual start is null if the predecessor is not yet complete
-                    $task->updateQuietly(['start_date_actual' => null]);
+                    // Reset successor entirely: no actual dates, 0% progress, not started
+                    $task->updateQuietly([
+                        'start_date_actual' => null,
+                        'end_date_actual' => null,
+                        'progress_actual' => 0,
+                        'status' => 'not_started',
+                        'is_actual_start_manual' => false,
+                    ]);
                     $task->start_date_actual = null;
+                    $task->end_date_actual = null;
+                    $task->progress_actual = 0;
+                    $task->status = 'not_started';
+                    $task->is_actual_start_manual = false;
                     $taskInCollection = $tasks->firstWhere('id', $task->id);
                     if ($taskInCollection) {
                         $taskInCollection->start_date_actual = null;
+                        $taskInCollection->end_date_actual = null;
+                        $taskInCollection->progress_actual = 0;
+                        $taskInCollection->status = 'not_started';
+                        $taskInCollection->is_actual_start_manual = false;
                     }
                     continue;
                 }
@@ -483,23 +531,26 @@ class TaskDependencyResolver
                         $hasEnd = $currentStart && $currentEnd;
                         $duration = $hasEnd ? $currentStart->diffInDays($currentEnd) : null;
 
-                        if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
-                            $updateData = ['start_date_actual' => $newStart];
-                            if ($hasEnd) {
-                                $updateData['end_date_actual'] = $newStart->copy()->addDays($duration);
-                            }
-                            $task->updateQuietly($updateData);
-                            $task->start_date_actual = $newStart;
-                            if ($hasEnd) {
-                                $task->end_date_actual = $newStart->copy()->addDays($duration);
-                            }
-
-                            // Refresh the task instance in the collection so deeper cascades see the new dates
-                            $taskInCollection = $tasks->firstWhere('id', $task->id);
-                            if ($taskInCollection) {
-                                $taskInCollection->start_date_actual = $newStart;
+                        // Only update if the user hasn't manually locked the actual start
+                        if (!$task->is_actual_start_manual) {
+                            if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
+                                $updateData = ['start_date_actual' => $newStart];
                                 if ($hasEnd) {
-                                    $taskInCollection->end_date_actual = $newStart->copy()->addDays($duration);
+                                    $updateData['end_date_actual'] = $newStart->copy()->addDays($duration);
+                                }
+                                $task->updateQuietly($updateData);
+                                $task->start_date_actual = $newStart;
+                                if ($hasEnd) {
+                                    $task->end_date_actual = $newStart->copy()->addDays($duration);
+                                }
+
+                                // Refresh the task instance in the collection so deeper cascades see the new dates
+                                $taskInCollection = $tasks->firstWhere('id', $task->id);
+                                if ($taskInCollection) {
+                                    $taskInCollection->start_date_actual = $newStart;
+                                    if ($hasEnd) {
+                                        $taskInCollection->end_date_actual = $newStart->copy()->addDays($duration);
+                                    }
                                 }
                             }
                         }
@@ -669,5 +720,131 @@ class TaskDependencyResolver
         $tempTask = clone $task;
         $tempTask->predecessor_task_id = $predecessorTaskId;
         $this->detectCycle($tempTask, $allTasks, []);
+    }
+
+    /**
+     * Validate a proposed date value for a task field.
+     *
+     * @return array<string, string> Array of field => error message
+     */
+    public function validateTaskDate(ProjectTask $task, string $field, mixed $value, ?ProjectTask $predecessor = null): array
+    {
+        $errors = [];
+
+        if (empty($value)) {
+            return $errors;
+        }
+
+        try {
+            $newDate = Carbon::parse($value)->startOfDay();
+        } catch (\Exception $e) {
+            $errors[$field] = 'Invalid date format.';
+            return $errors;
+        }
+
+        // End date must not be before start date of the same lane
+        if (str_starts_with($field, 'end_date_')) {
+            $lane = str_replace('end_date_', '', $field); // plan, revise, actual
+            $startField = "start_date_{$lane}";
+            $startDate = $task->{$startField};
+
+            // If we are also changing the start date in the same request, it may not be persisted yet.
+            // The caller should set the relevant start date on the task first for accurate validation.
+            if ($startDate && $newDate->lt($startDate->copy()->startOfDay())) {
+                $errors[$field] = 'End date cannot be before the ' . ucfirst($lane) . ' Start date.';
+            }
+        }
+
+        // Validate start dates against predecessor dependency
+        if (str_starts_with($field, 'start_date_') && $predecessor) {
+            $lane = str_replace('start_date_', '', $field);
+            $fromSide = $this->parseDependencyType($task->dependency_type)['from_side'];
+
+            // Use the appropriate lane of the predecessor (do not mix Actual into Plan/Revise)
+            $predecessorDate = $this->getPredecessorDrivingDateForLane($predecessor, $lane, $fromSide);
+
+            if ($fromSide === 'end') {
+                if (!$predecessorDate) {
+                    // Actual lane requires predecessor to have an Actual End
+                    if ($lane === 'actual') {
+                        $errors[$field] = 'Predecessor does not have an Actual End yet.';
+                    }
+                    // For Plan/Revise, no constraint exists until predecessor has an End date
+                } elseif ($newDate->lte($predecessorDate)) {
+                    $errors[$field] = 'Start date must be at least 1 day after the predecessor\'s End date.';
+                }
+            } else {
+                if (!$predecessorDate) {
+                    // Actual lane requires predecessor to have an Actual Start
+                    if ($lane === 'actual') {
+                        $errors[$field] = 'Predecessor does not have an Actual Start yet.';
+                    }
+                    // For Plan/Revise, no constraint exists until predecessor has a Start date
+                } elseif ($newDate->lt($predecessorDate)) {
+                    $errors[$field] = 'Start date cannot be earlier than the predecessor\'s Start date.';
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate a set of proposed dates for a task.
+     *
+     * @param array<string, string|null> $dates Array of field => value
+     * @return array<string, string> Array of field => error message
+     */
+    public function validateTaskDates(ProjectTask $task, array $dates, ?ProjectTask $predecessor = null): array
+    {
+        $errors = [];
+
+        // Build a temporary task with the proposed dates for cross-field validation
+        $tempTask = clone $task;
+        foreach ($dates as $field => $value) {
+            if (!empty($value) && str_contains($field, '_date_')) {
+                try {
+                    $tempTask->{$field} = Carbon::parse($value)->startOfDay();
+                } catch (\Exception $e) {
+                    $errors[$field] = 'Invalid date format.';
+                }
+            }
+        }
+
+        foreach ($dates as $field => $value) {
+            if (isset($errors[$field])) {
+                continue;
+            }
+            $fieldErrors = $this->validateTaskDate($tempTask, $field, $value, $predecessor);
+            $errors = array_merge($errors, $fieldErrors);
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Get the driving date from the predecessor for a specific lane and side.
+     *
+     * @return Carbon|null
+     */
+    protected function getPredecessorDrivingDateForLane(ProjectTask $predecessor, string $lane, string $fromSide): ?Carbon
+    {
+        if ($lane === 'plan') {
+            $dateField = $fromSide === 'end' ? 'end_date_plan' : 'start_date_plan';
+            return $predecessor->{$dateField};
+        }
+
+        if ($lane === 'revise') {
+            $dateField = $fromSide === 'end' ? 'end_date_revise' : 'start_date_revise';
+            $fallbackField = $fromSide === 'end' ? 'end_date_plan' : 'start_date_plan';
+            return $predecessor->{$dateField} ?? $predecessor->{$fallbackField};
+        }
+
+        if ($lane === 'actual') {
+            $dateField = $fromSide === 'end' ? 'end_date_actual' : 'start_date_actual';
+            return $predecessor->{$dateField};
+        }
+
+        return null;
     }
 }

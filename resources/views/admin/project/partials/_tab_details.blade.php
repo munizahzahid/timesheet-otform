@@ -82,6 +82,22 @@
                                 <div class="h-3 rounded-full" style="width: {{ $project->overall_actual_progress }}%; background-color: #22c55e;"></div>
                             </div>
                         </div>
+                        @if($project->delay_days > 0)
+                            <div class="flex items-center justify-between p-2 bg-red-50 rounded border border-red-100">
+                                <span class="text-xs text-red-700 font-medium">Schedule Delay</span>
+                                <span class="text-xs font-bold text-red-700">{{ $project->delay_days }} day{{ $project->delay_days === 1 ? '' : 's' }}</span>
+                            </div>
+                        @elseif($project->overall_actual_progress >= $project->overall_plan_progress)
+                            <div class="flex items-center justify-between p-2 bg-green-50 rounded border border-green-100">
+                                <span class="text-xs text-green-700 font-medium">Schedule Status</span>
+                                <span class="text-xs font-bold text-green-700">On track</span>
+                            </div>
+                        @else
+                            <div class="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-100">
+                                <span class="text-xs text-blue-700 font-medium">Schedule Status</span>
+                                <span class="text-xs font-bold text-blue-700">On track</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -153,7 +169,7 @@
             {{-- Phases Summary --}}
             @if($project->phases->count() > 0)
                 <div class="mt-6 pt-6 border-t border-gray-100">
-                    <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4">Phases ({{ $project->phases->count() }})</h4>
+                    <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4">Tasks ({{ $project->phases->count() }})</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach($project->phases as $phase)
                             @php

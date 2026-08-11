@@ -5,7 +5,7 @@
 
 {{-- Task Name --}}
 <div class="mb-5">
-    <label for="task_name" class="block text-sm font-medium text-gray-700 mb-1">Task Name <span class="text-red-500">*</span></label>
+    <label for="task_name" class="block text-sm font-medium text-gray-700 mb-1">Subtask Name <span class="text-red-500">*</span></label>
     <input type="text" name="task_name" id="task_name"
            value="{{ old('task_name', $isEdit ? $task->task_name : '') }}"
            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
@@ -18,7 +18,7 @@
     <h4 class="text-sm font-semibold text-gray-700 mb-4">Basic Information</h4>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div>
-            <label for="task_order" class="block text-xs font-medium text-gray-600 mb-1">Task Order <span class="text-red-500">*</span></label>
+            <label for="task_order" class="block text-xs font-medium text-gray-600 mb-1">Subtask Order <span class="text-red-500">*</span></label>
             <input type="number" name="task_order" id="task_order" min="1"
                    value="{{ old('task_order', $isEdit ? $task->task_order : 1) }}"
                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
@@ -27,10 +27,10 @@
         </div>
 
         <div>
-            <label for="phase_id" class="block text-xs font-medium text-gray-600 mb-1">Phase</label>
+            <label for="phase_id" class="block text-xs font-medium text-gray-600 mb-1">Parent Task</label>
             <select name="phase_id" id="phase_id"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
-                <option value="">— No Phase (Standalone) —</option>
+                <option value="">— No Parent Task (Standalone) —</option>
                 @foreach($phases as $phase)
                     <option value="{{ $phase->id }}" {{ old('phase_id', $isEdit ? $task->phase_id : ($defaultPhaseId ?? '')) == $phase->id ? 'selected' : '' }}>
                         {{ $phase->phase_name }} (Order #{{ $phase->phase_order }})
@@ -77,7 +77,7 @@
         </div>
 
         <div>
-            <label for="predecessor_task_id" class="block text-xs font-medium text-gray-600 mb-1">Predecessor Task</label>
+            <label for="predecessor_task_id" class="block text-xs font-medium text-gray-600 mb-1">Dependency (Predecessor Subtask)</label>
             <select name="predecessor_task_id" id="predecessor_task_id"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 <option value="">— No Predecessor —</option>
@@ -203,6 +203,6 @@
     </a>
     <button type="submit"
             class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
-        {{ $isEdit ? 'Update Task' : 'Create Task' }}
+        {{ $isEdit ? 'Update Subtask' : 'Create Subtask' }}
     </button>
 </div>

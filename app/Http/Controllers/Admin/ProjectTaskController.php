@@ -27,6 +27,84 @@ class ProjectTaskController extends Controller
     }
 
     /**
+     * Get tasks for Kanban refresh (JSON response)
+     */
+    public function kanbanTasks(Request $request, Project $project)
+    {
+        $resolver = new TaskDependencyResolver();
+        $effectiveDates = $resolver->resolve($project);
+
+        $tasks = $project->tasks()
+            ->with(['phase', 'assignedTo', 'predecessorTask', 'comments', 'attachments'])
+            ->orderBy('task_order')
+            ->get();
+
+        $kanbanTasks = $tasks->map(function ($task) use ($project, $effectiveDates) {
+            $effective = $effectiveDates[$task->id] ?? [];
+            return [
+                'id' => $task->id,
+                'task_name' => $task->task_name,
+                'status' => $task->status ?? 'not_started',
+                'remarks' => $task->remarks,
+                'progress_actual' => $task->progress_actual,
+                'weight' => $task->weight,
+                'end_date_revise' => $task->end_date_revise?->format('Y-m-d'),
+                'end_date_revise_formatted' => $task->end_date_revise?->format('M d'),
+                'end_date_plan_formatted' => $task->end_date_plan?->format('M d'),
+                'phase_id' => $task->phase_id,
+                'phase_name' => $task->phase?->phase_name,
+                'assigned_to_name' => $task->assignedTo?->name,
+                'assigned_to_url' => $task->assignedTo ? route('admin.project.assigned-tasks', $task->assignedTo) : null,
+                'comments_count' => $task->comments_count,
+                'attachments_count' => $task->attachments_count,
+                'plan_delay_days' => $effective['plan_delay_days'] ?? 0,
+                'comments' => $task->comments->map(function ($comment) use ($project, $task) {
+                    return [
+                        'id' => $comment->id,
+                        'user_id' => $comment->user_id,
+                        'user_name' => $comment->user?->name,
+                        'comment' => $comment->comment,
+                        'created_at' => $comment->created_at->diffForHumans(),
+                        'is_owner' => $comment->user_id === auth()->id(),
+                        'delete_url' => route('admin.project.projects.tasks.comments.destroy', [$project, $task, $comment]),
+                    ];
+                })->values()->toArray(),
+                'attachments' => $task->attachments->map(function ($attachment) use ($project, $task) {
+                    return [
+                        'id' => $attachment->id,
+                        'user_id' => $attachment->user_id,
+                        'file_name' => $attachment->file_name,
+                        'show_url' => route('admin.project.projects.tasks.attachments.show', [$project, $task, $attachment]),
+                        'is_owner' => $attachment->user_id === auth()->id(),
+                        'delete_url' => route('admin.project.projects.tasks.attachments.destroy', [$project, $task, $attachment]),
+                    ];
+                })->values()->toArray(),
+                'update_url' => route('admin.project.projects.tasks.inline-update', [$project, $task]),
+                'show_url' => route('admin.project.projects.tasks.show', [$project, $task]),
+                'edit_url' => route('admin.project.projects.tasks.edit', [$project, $task]),
+                'delete_url' => route('admin.project.projects.tasks.destroy', [$project, $task]),
+                'task_order' => $task->task_order,
+                'assigned_to' => $task->assigned_to,
+                'predecessor_task_id' => $task->predecessor_task_id,
+                'dependency_type' => $task->dependency_type ?? 'end_to_start',
+                'start_date_plan' => $task->start_date_plan?->format('Y-m-d'),
+                'end_date_plan' => $task->end_date_plan?->format('Y-m-d'),
+                'start_date_actual' => $task->start_date_actual?->format('Y-m-d'),
+                'end_date_actual' => $task->end_date_actual?->format('Y-m-d'),
+                'start_date_revise' => $task->start_date_revise?->format('Y-m-d'),
+                'end_date_revise' => $task->end_date_revise?->format('Y-m-d'),
+                'comment_store_url' => route('admin.project.projects.tasks.comments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
+                'attachment_store_url' => route('admin.project.projects.tasks.attachments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
+            ];
+        })->values()->toArray();
+
+        return response()->json([
+            'success' => true,
+            'tasks' => $kanbanTasks,
+        ]);
+    }
+
+    /**
      * Show create task form
      */
     public function create(Project $project, Request $request)
@@ -83,11 +161,38 @@ class ProjectTaskController extends Controller
             try {
                 $resolver->validatePredecessor($tempTask, $validated['predecessor_task_id'], $project->tasks);
             } catch (\InvalidArgumentException | \RuntimeException $e) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+                }
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
         }
 
+        // Centralized dependency date validation
+        $tempTask = new ProjectTask($validated);
+        $predecessor = !empty($validated['predecessor_task_id']) ? $project->tasks->firstWhere('id', $validated['predecessor_task_id']) : null;
+        $dateFields = ['start_date_plan', 'end_date_plan', 'start_date_revise', 'end_date_revise', 'start_date_actual', 'end_date_actual'];
+        $proposedDates = array_intersect_key($validated, array_flip($dateFields));
+        $dateErrors = $resolver->validateTaskDates($tempTask, $proposedDates, $predecessor);
+
+        if (!empty($dateErrors)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => $dateErrors, 'message' => 'The proposed dates conflict with dependency rules.'], 422);
+            }
+            return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with dependency rules.');
+        }
+
         $task = ProjectTask::create($validated);
+
+        // Hybrid sync logic for store: if status is "completed", set progress to 100% and actual dates
+        if ($task->status === 'completed') {
+            $task->update(['progress_actual' => 100]);
+            if (!$task->end_date_actual) {
+                $task->update(['end_date_actual' => now()->format('Y-m-d')]);
+            }
+            // Always set start_date_actual to today for SS dependency
+            $task->update(['start_date_actual' => now()->format('Y-m-d')]);
+        }
 
         GanttChangeLogger::log(
             $project,
@@ -104,12 +209,16 @@ class ProjectTaskController extends Controller
         $resolver->cascadeActualStartDates($project, $task);
         (new ProjectProgressCalculator())->recalculateFromTask($task);
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'task' => $task]);
+        }
+
         $query = ['tab' => $request->input('tab', 'tasks')];
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
         }
         return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
-            ->with('success', 'Task created successfully.');
+            ->with('success', 'Subtask created successfully.');
     }
 
     /**
@@ -142,7 +251,7 @@ class ProjectTaskController extends Controller
      */
     public function update(Request $request, Project $project, ProjectTask $task)
     {
-        $validated = $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'phase_id' => 'nullable|exists:project_phases,id',
             'task_name' => 'required|string|max:255',
             'task_order' => 'required|integer|min:1',
@@ -161,11 +270,30 @@ class ProjectTaskController extends Controller
             'dependency_type' => 'required_with:predecessor_task_id|string|in:end_to_start,start_to_start',
         ]);
 
+        if ($validator->fails()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => $validator->errors()->toArray()], 422);
+            }
+            return redirect()->back()->withInput()->withErrors($validator);
+        }
+
+        $validated = $validator->validated();
+
         $validated['progress_actual'] = $validated['progress_actual'] ?? 0;
         $validated['weight'] = $validated['weight'] ?? 0;
         $validated['is_actual_start_manual'] = !empty($validated['start_date_actual']);
 
-        $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], $task->id);
+        try {
+            $this->validateTaskWeightSum($project, $validated['phase_id'] ?? null, $validated['weight'], $task->id);
+        } catch (ValidationException $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Exceed weight percentage. ' . collect($e->errors())->flatten()->first(),
+                ], 422);
+            }
+            throw $e;
+        }
 
         $resolver = new TaskDependencyResolver();
         if (!empty($validated['predecessor_task_id'])) {
@@ -175,7 +303,63 @@ class ProjectTaskController extends Controller
             try {
                 $resolver->validatePredecessor($tempTask, $validated['predecessor_task_id'], $project->tasks);
             } catch (\InvalidArgumentException | \RuntimeException $e) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+                }
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        }
+
+        // Centralized dependency date validation
+        $tempTask = clone $task;
+        $tempTask->predecessor_task_id = $validated['predecessor_task_id'] ?? $task->predecessor_task_id;
+        $tempTask->dependency_type = $validated['dependency_type'] ?? $task->dependency_type;
+        $predecessor = $tempTask->predecessor_task_id ? $project->tasks->firstWhere('id', $tempTask->predecessor_task_id) : null;
+        $dateFields = ['start_date_plan', 'end_date_plan', 'start_date_revise', 'end_date_revise', 'start_date_actual', 'end_date_actual'];
+        $proposedDates = array_intersect_key($validated, array_flip($dateFields));
+        $dateErrors = $resolver->validateTaskDates($tempTask, $proposedDates, $predecessor);
+
+        if (!empty($dateErrors)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => $dateErrors, 'message' => 'The proposed dates conflict with dependency rules.'], 422);
+            }
+            return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with dependency rules.');
+        }
+
+        // Dependency validation for status changes (full update method)
+        if (array_key_exists('status', $validated) && $task->predecessor_task_id) {
+            $predecessor = $project->tasks->firstWhere('id', $task->predecessor_task_id);
+            $dependencyType = $task->dependency_type ?? 'end_to_start';
+            $newStatus = $validated['status'];
+            $oldStatus = $task->status ?? 'not_started';
+
+            // For ES (End-to-Start): successor cannot start until predecessor is completed
+            if ($dependencyType === 'end_to_start') {
+                // Check if trying to change from not_started to in_progress/completed/on_hold/cancelled
+                if ($oldStatus === 'not_started' && $newStatus !== 'not_started') {
+                    // Predecessor must be completed
+                    if (!$predecessor || $predecessor->status !== 'completed') {
+                        if ($request->wantsJson()) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'This task cannot start because its predecessor has not been completed yet.',
+                            ], 422);
+                        }
+                        return redirect()->back()->withInput()->with('error', 'This task cannot start because its predecessor has not been completed yet.');
+                    }
+                }
+                // Check if trying to change to completed when predecessor is not completed
+                if ($newStatus === 'completed') {
+                    if (!$predecessor || $predecessor->status !== 'completed') {
+                        if ($request->wantsJson()) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'This task cannot be completed because its predecessor has not been completed yet.',
+                            ], 422);
+                        }
+                        return redirect()->back()->withInput()->with('error', 'This task cannot be completed because its predecessor has not been completed yet.');
+                    }
+                }
             }
         }
 
@@ -196,11 +380,137 @@ class ProjectTaskController extends Controller
 
         $task->update($validated);
 
+        // Hybrid sync logic for the full update method
+        $oldStatus = $task->status ?? 'not_started';
+        $oldProgress = $task->progress_actual ?? 0;
+        $newStatus = $validated['status'] ?? $oldStatus;
+        $newProgress = $validated['progress_actual'] ?? $oldProgress;
+
+        $syncUpdateData = [];
+
+        // When status changes to "completed"
+        if (array_key_exists('status', $validated) && $validated['status'] === 'completed' && $oldStatus !== 'completed') {
+            $syncUpdateData['progress_actual'] = 100;
+            // Set end_date_actual to today if not already set
+            if (!$task->end_date_actual) {
+                $syncUpdateData['end_date_actual'] = now()->format('Y-m-d');
+            }
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+        }
+
+        // When status changes from "completed" to any other status
+        if (array_key_exists('status', $validated) && $oldStatus === 'completed' && $newStatus !== 'completed') {
+            // Clear end_date_actual to reopen the task
+            $syncUpdateData['end_date_actual'] = null;
+            // If progress was 100%, reduce it to 99% to indicate it's no longer complete
+            if ($oldProgress === 100) {
+                $syncUpdateData['progress_actual'] = 99;
+            }
+        }
+
+        // When status changes to "not_started"
+        if (array_key_exists('status', $validated) && $validated['status'] === 'not_started') {
+            // Clear all actual dates
+            $syncUpdateData['start_date_actual'] = null;
+            $syncUpdateData['end_date_actual'] = null;
+            // Set progress to 0%
+            $syncUpdateData['progress_actual'] = 0;
+        }
+
+        // When status changes from "not_started" to any other status
+        if (array_key_exists('status', $validated) && $oldStatus === 'not_started' && $newStatus !== 'not_started') {
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+        }
+
+        // When progress changes to 100%
+        if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] === 100 && $oldProgress < 100) {
+            // Set status to "completed" if not already
+            if ($oldStatus !== 'completed') {
+                $syncUpdateData['status'] = 'completed';
+            }
+            // Set end_date_actual to today if not already set
+            if (!$task->end_date_actual) {
+                $syncUpdateData['end_date_actual'] = now()->format('Y-m-d');
+            }
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            if (!$task->start_date_actual) {
+                $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+            }
+        }
+
+        // When progress changes from 0 to > 0 (task is starting)
+        if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] > 0 && $oldProgress === 0) {
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            if (!$task->start_date_actual) {
+                $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+            }
+        }
+
+        // When progress changes from 100% to < 100%
+        if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] < 100 && $oldProgress === 100) {
+            // Set status to "in_progress" if it was "completed"
+            if ($oldStatus === 'completed') {
+                $syncUpdateData['status'] = 'in_progress';
+            }
+            // Clear end_date_actual
+            $syncUpdateData['end_date_actual'] = null;
+        }
+
+        // When progress changes to 0% (task is being reset to not_started)
+        if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] === 0 && $oldProgress > 0) {
+            // Clear all actual dates
+            $syncUpdateData['start_date_actual'] = null;
+            $syncUpdateData['end_date_actual'] = null;
+        }
+
+        // Apply sync updates if any
+        if (!empty($syncUpdateData)) {
+            $task->update($syncUpdateData);
+        }
+
+        // If progress drops below 100%, clear the actual end date so successors are treated as incomplete
+        if ($validated['progress_actual'] < 100 && $oldActualEnd) {
+            $task->update(['end_date_actual' => null]);
+        }
+
         // Propagate plan date changes to successor tasks, then recalculate actual starts
         $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
 
         $task->refresh();
-        $resolver->cascadeActualStartDates($project, $task);
+
+        // Cascade actual dates if status changed to/from completed (which affects end_date_actual)
+        $shouldCascadeActual = false;
+        if (array_key_exists('status', $validated)) {
+            if (($validated['status'] === 'completed' && $oldStatus !== 'completed') ||
+                ($validated['status'] !== 'completed' && $oldStatus === 'completed')) {
+                $shouldCascadeActual = true;
+            }
+        }
+        if (array_key_exists('end_date_actual', $syncUpdateData) || $shouldCascadeActual) {
+            $resolver->cascadeActualStartDates($project, $task);
+        }
+
+        // SS (Start-to-Start) dependency cascading for status changes (full update method)
+        // When predecessor changes status (any status change), cascade to successors
+        if (array_key_exists('status', $validated) && $oldStatus !== $newStatus) {
+            if ($task->dependency_type === 'start_to_start') {
+                // Refresh the task to get the latest data after update
+                $task->refresh();
+                $this->cascadeSSStatusChange($project, $task, $newStatus);
+            }
+        }
+
+        // ES (End-to-Start) dependency cascading for status changes (full update method)
+        // When predecessor changes status, cascade to successors based on ES rules
+        if (array_key_exists('status', $validated) && $oldStatus !== $newStatus) {
+            if ($task->dependency_type === 'end_to_start') {
+                // Refresh the task to get the latest data after update
+                $task->refresh();
+                $this->cascadeESStatusChange($project, $task, $oldStatus, $newStatus);
+            }
+        }
 
         // Recalculate progress for affected phase(s) and project
         $calculator = new ProjectProgressCalculator();
@@ -245,12 +555,16 @@ class ProjectTaskController extends Controller
             }
         }
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'task' => $task]);
+        }
+
         $query = ['tab' => $request->input('tab', 'tasks')];
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
         }
         return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
-            ->with('success', 'Task updated successfully.');
+            ->with('success', 'Subtask updated successfully.');
     }
 
     /**
@@ -286,6 +600,11 @@ class ProjectTaskController extends Controller
             'end_date_revise' => $validated['end_date_revise'],
             'is_actual_start_manual' => !empty($validated['start_date_actual']),
         ];
+
+        // If progress drops below 100%, clear the actual end date so successors are treated as incomplete
+        if ($validated['progress_actual'] < 100 && $oldValues['end_date_actual']) {
+            $updateData['end_date_actual'] = null;
+        }
 
         $task->update($updateData);
 
@@ -336,7 +655,7 @@ class ProjectTaskController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'Task updated successfully.');
+        return redirect()->back()->with('success', 'Subtask updated successfully.');
     }
 
     /**
@@ -384,6 +703,142 @@ class ProjectTaskController extends Controller
             }
         }
 
+        $resolver = new TaskDependencyResolver();
+
+        // Centralized dependency date validation for inline date changes
+        $proposedDateFields = array_intersect_key($updateData, array_flip(['start_date_plan', 'end_date_plan', 'start_date_revise', 'end_date_revise', 'start_date_actual', 'end_date_actual']));
+        if (!empty($proposedDateFields)) {
+            $predecessor = $task->predecessor_task_id ? $project->tasks->firstWhere('id', $task->predecessor_task_id) : null;
+            $dateErrors = $resolver->validateTaskDates($task, $proposedDateFields, $predecessor);
+
+            if (!empty($dateErrors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The proposed dates conflict with dependency rules.',
+                    'errors' => $dateErrors,
+                ], 422);
+            }
+        }
+
+        // Dependency validation for status changes
+        if (array_key_exists('status', $updateData) && $task->predecessor_task_id) {
+            $predecessor = $project->tasks->firstWhere('id', $task->predecessor_task_id);
+            $dependencyType = $task->dependency_type ?? 'end_to_start';
+            $newStatus = $updateData['status'];
+            $oldStatus = $task->status ?? 'not_started';
+
+            // For ES (End-to-Start): successor cannot start until predecessor is completed
+            if ($dependencyType === 'end_to_start') {
+                // Check if trying to change from not_started to in_progress/completed/on_hold/cancelled
+                if ($oldStatus === 'not_started' && $newStatus !== 'not_started') {
+                    // Predecessor must be completed
+                    if (!$predecessor || $predecessor->status !== 'completed') {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'This task cannot start because its predecessor has not been completed yet.',
+                        ], 422);
+                    }
+                }
+                // Check if trying to change to completed when predecessor is not completed
+                if ($newStatus === 'completed') {
+                    if (!$predecessor || $predecessor->status !== 'completed') {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'This task cannot be completed because its predecessor has not been completed yet.',
+                        ], 422);
+                    }
+                }
+            }
+        }
+
+        // Hybrid sync logic: Status and progress affect each other
+        $oldStatus = $task->status ?? 'not_started';
+        $oldProgress = $task->progress_actual ?? 0;
+        $newStatus = $updateData['status'] ?? $oldStatus;
+        $newProgress = $updateData['progress_actual'] ?? $oldProgress;
+
+        // When status changes to "completed"
+        if (array_key_exists('status', $updateData) && $updateData['status'] === 'completed' && $oldStatus !== 'completed') {
+            $updateData['progress_actual'] = 100;
+            $newProgress = 100;
+            // Set end_date_actual to today if not already set
+            if (!$task->end_date_actual) {
+                $updateData['end_date_actual'] = now()->format('Y-m-d');
+            }
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            $updateData['start_date_actual'] = now()->format('Y-m-d');
+        }
+
+        // When status changes from "completed" to any other status
+        if (array_key_exists('status', $updateData) && $oldStatus === 'completed' && $newStatus !== 'completed') {
+            // Clear end_date_actual to reopen the task
+            $updateData['end_date_actual'] = null;
+            // If progress was 100%, reduce it to 99% to indicate it's no longer complete
+            if ($oldProgress === 100) {
+                $updateData['progress_actual'] = 99;
+                $newProgress = 99;
+            }
+        }
+
+        // When status changes to "not_started"
+        if (array_key_exists('status', $updateData) && $updateData['status'] === 'not_started') {
+            // Clear all actual dates
+            $updateData['start_date_actual'] = null;
+            $updateData['end_date_actual'] = null;
+            // Set progress to 0%
+            $updateData['progress_actual'] = 0;
+            $newProgress = 0;
+        }
+
+        // When status changes from "not_started" to any other status
+        if (array_key_exists('status', $updateData) && $oldStatus === 'not_started' && $newStatus !== 'not_started') {
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            $updateData['start_date_actual'] = now()->format('Y-m-d');
+        }
+
+        // When progress changes to 100%
+        if (array_key_exists('progress_actual', $updateData) && $updateData['progress_actual'] === 100 && $oldProgress < 100) {
+            // Set status to "completed" if not already
+            if ($oldStatus !== 'completed') {
+                $updateData['status'] = 'completed';
+                $newStatus = 'completed';
+            }
+            // Set end_date_actual to today if not already set
+            if (!$task->end_date_actual) {
+                $updateData['end_date_actual'] = now()->format('Y-m-d');
+            }
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            if (!$task->start_date_actual) {
+                $updateData['start_date_actual'] = now()->format('Y-m-d');
+            }
+        }
+
+        // When progress changes from 0 to > 0 (task is starting)
+        if (array_key_exists('progress_actual', $updateData) && $updateData['progress_actual'] > 0 && $oldProgress === 0) {
+            // Always set start_date_actual to today (for SS dependency to work correctly)
+            if (!$task->start_date_actual) {
+                $updateData['start_date_actual'] = now()->format('Y-m-d');
+            }
+        }
+
+        // When progress changes from 100% to < 100%
+        if (array_key_exists('progress_actual', $updateData) && $updateData['progress_actual'] < 100 && $oldProgress === 100) {
+            // Set status to "in_progress" if it was "completed"
+            if ($oldStatus === 'completed') {
+                $updateData['status'] = 'in_progress';
+                $newStatus = 'in_progress';
+            }
+            // Clear end_date_actual
+            $updateData['end_date_actual'] = null;
+        }
+
+        // When progress changes to 0% (task is being reset to not_started)
+        if (array_key_exists('progress_actual', $updateData) && $updateData['progress_actual'] === 0 && $oldProgress > 0) {
+            // Clear all actual dates
+            $updateData['start_date_actual'] = null;
+            $updateData['end_date_actual'] = null;
+        }
+
         if (array_key_exists('start_date_actual', $validated) && !empty($validated['start_date_actual'])) {
             $updateData['is_actual_start_manual'] = true;
         }
@@ -399,6 +854,31 @@ class ProjectTaskController extends Controller
             $updateData['task_order'] = $newOrder;
         }
 
+        // If progress drops below 100% and the task has an actual end date, clear it so successors are treated as incomplete
+        $shouldCascadeActual = false;
+        if (array_key_exists('progress_actual', $updateData) && $updateData['progress_actual'] < 100 && $task->end_date_actual) {
+            $updateData['end_date_actual'] = null;
+            $shouldCascadeActual = true;
+        }
+
+        // If end_date_actual is set (task is now complete), cascade to successors
+        if (array_key_exists('end_date_actual', $updateData) && !empty($updateData['end_date_actual'])) {
+            $shouldCascadeActual = true;
+        }
+
+        // If end_date_actual is cleared (task is no longer complete), cascade to successors
+        if (array_key_exists('end_date_actual', $updateData) && $updateData['end_date_actual'] === null && $task->end_date_actual) {
+            $shouldCascadeActual = true;
+        }
+
+        // If status changes to/from "completed", cascade to successors (because we set/clear end_date_actual)
+        if (array_key_exists('status', $updateData)) {
+            if (($updateData['status'] === 'completed' && $oldStatus !== 'completed') ||
+                ($updateData['status'] !== 'completed' && $oldStatus === 'completed')) {
+                $shouldCascadeActual = true;
+            }
+        }
+
         $oldValues = $task->getOriginal();
 
         if (!empty($updateData)) {
@@ -407,14 +887,32 @@ class ProjectTaskController extends Controller
 
         $task->refresh();
 
-        $resolver = new TaskDependencyResolver();
-
         if (array_key_exists('start_date_plan', $updateData) || array_key_exists('end_date_plan', $updateData)) {
             $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
         }
 
-        if (array_key_exists('start_date_actual', $updateData)) {
+        if (array_key_exists('start_date_actual', $updateData) || $shouldCascadeActual) {
             $resolver->cascadeActualStartDates($project, $task);
+        }
+
+        // SS (Start-to-Start) dependency cascading for status changes
+        // When predecessor changes status (any status change except to/from not_started), cascade to successors
+        if (array_key_exists('status', $updateData) && $oldStatus !== $newStatus) {
+            if ($task->dependency_type === 'start_to_start') {
+                // Refresh the task to get the latest data after update
+                $task->refresh();
+                $this->cascadeSSStatusChange($project, $task, $newStatus);
+            }
+        }
+
+        // ES (End-to-Start) dependency cascading for status changes
+        // When predecessor changes status, cascade to successors based on ES rules
+        if (array_key_exists('status', $updateData) && $oldStatus !== $newStatus) {
+            if ($task->dependency_type === 'end_to_start') {
+                // Refresh the task to get the latest data after update
+                $task->refresh();
+                $this->cascadeESStatusChange($project, $task, $oldStatus, $newStatus);
+            }
         }
 
         $shouldRecalc = array_key_exists('progress_actual', $updateData)
@@ -464,6 +962,96 @@ class ProjectTaskController extends Controller
                 'end_date_revise_raw' => $task->end_date_revise?->format('Y-m-d'),
             ],
         ]);
+    }
+
+    /**
+     * Cascade SS (Start-to-Start) status change to successors
+     * When predecessor changes status, successors follow the same status (except completed)
+     * Exception: predecessor changing to "completed" does NOT cascade status to successor
+     * If predecessor changes back to "not_started", successors also reset to "not_started"
+     * When predecessor changes from "not_started" to any status, both get TODAY as start_date_actual
+     */
+    private function cascadeSSStatusChange(Project $project, ProjectTask $predecessor, string $newStatus): void
+    {
+        // Don't cascade if predecessor is changing to "completed"
+        if ($newStatus === 'completed') {
+            return;
+        }
+
+        // Ensure predecessor has the latest data
+        $predecessor->refresh();
+
+        $tasks = $project->tasks()->with('predecessorTask')->get();
+        $successors = $tasks->where('predecessor_task_id', $predecessor->id)
+            ->where('dependency_type', 'start_to_start');
+
+        // Always use today's date for SS dependency when starting
+        $today = now()->format('Y-m-d');
+
+        foreach ($successors as $successor) {
+            if ($newStatus === 'not_started') {
+                // Predecessor is resetting to not_started, so successor should also reset
+                $successor->update([
+                    'start_date_actual' => null,
+                    'end_date_actual' => null,
+                    'status' => 'not_started',
+                    'progress_actual' => 0,
+                    'is_actual_start_manual' => false,
+                ]);
+            } else {
+                // Predecessor is changing to a non-completed status
+                // Only cascade if successor is still not_started
+                if ($successor->status === 'not_started') {
+                    $successor->update([
+                        'start_date_actual' => $today, // Always use today
+                        'status' => $newStatus, // Follow the predecessor's status
+                        'is_actual_start_manual' => false,
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Cascade ES (End-to-Start) status change to successors
+     * When predecessor changes status, cascade to successors based on ES rules
+     */
+    private function cascadeESStatusChange(Project $project, ProjectTask $predecessor, string $oldStatus, string $newStatus): void
+    {
+        // Ensure predecessor has the latest data
+        $predecessor->refresh();
+
+        $tasks = $project->tasks()->with('predecessorTask')->get();
+        $successors = $tasks->where('predecessor_task_id', $predecessor->id)
+            ->where('dependency_type', 'end_to_start');
+
+        foreach ($successors as $successor) {
+            // Predecessor: completed → in_progress/on_hold/cancelled/not_started
+            // Successor should reset to not_started with cleared dates and progress
+            if ($oldStatus === 'completed' && $newStatus !== 'completed') {
+                $successor->update([
+                    'start_date_actual' => null,
+                    'end_date_actual' => null,
+                    'status' => 'not_started',
+                    'progress_actual' => 0,
+                    'is_actual_start_manual' => false,
+                ]);
+            }
+
+            // Predecessor: in_progress → completed
+            // Successor should change to in_progress and set actual start
+            if ($newStatus === 'completed' && $oldStatus !== 'completed') {
+                if ($successor->status === 'not_started') {
+                    $predecessorEndDate = $predecessor->end_date_actual ?: now()->format('Y-m-d');
+                    $successorStartDate = date('Y-m-d', strtotime($predecessorEndDate . ' +1 day'));
+                    $successor->update([
+                        'start_date_actual' => $successorStartDate,
+                        'status' => 'in_progress',
+                        'is_actual_start_manual' => false,
+                    ]);
+                }
+            }
+        }
     }
 
     /**
@@ -597,7 +1185,7 @@ class ProjectTaskController extends Controller
             $query['view'] = $request->input('view');
         }
         return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
-            ->with('success', 'Task deleted successfully.');
+            ->with('success', 'Subtask deleted successfully.');
     }
 
     /**

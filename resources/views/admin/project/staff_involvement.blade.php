@@ -65,7 +65,7 @@
                         class="bg-gray-50 px-5 py-3"
                     >
                         @if($data['tasks']->isNotEmpty())
-                            <h5 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assigned Tasks</h5>
+                            <h5 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assigned Subtasks</h5>
                             <ul class="space-y-2">
                                 @foreach($data['tasks'] as $task)
                                     <li class="bg-white border border-gray-200 rounded p-3">

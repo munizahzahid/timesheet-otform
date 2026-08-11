@@ -1,11 +1,14 @@
 @php
     // Get all phases with their tasks
     $phases = $project->phases()->with(['tasks' => function($q) {
-        $q->with(['assignedTo'])->orderBy('task_order');
+        $q->with(['assignedTo', 'predecessorTask'])->orderBy('task_order');
     }])->orderBy('phase_order')->get();
 
     // Get tasks without a phase (standalone tasks)
-    $standaloneTasks = $project->tasks()->whereNull('phase_id')->with('assignedTo')->orderBy('task_order')->get();
+    $standaloneTasks = $project->tasks()->whereNull('phase_id')->with(['assignedTo', 'predecessorTask'])->orderBy('task_order')->get();
+
+    // All subtasks for dependency selection
+    $allSubtasks = $project->tasks()->orderBy('task_order')->get();
 
     // Calculate timeline range using effective dates
     $allDates = collect();
@@ -260,14 +263,14 @@
                class="inline-flex items-center px-2 py-1 bg-green-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-green-700 transition">
                 Download Excel
             </a>
-            <a href="{{ route('admin.project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
-               class="inline-flex items-center px-2 py-1 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-indigo-700 transition">
-                Add Phase
-            </a>
-            <a href="{{ route('admin.project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
-               class="inline-flex items-center px-2 py-1 bg-white border border-gray-200 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 hover:shadow-sm transition">
+            <button type="button" onclick="openTaskCreateModal()"
+                    class="inline-flex items-center px-2 py-1 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-indigo-700 transition">
                 Add Task
-            </a>
+            </button>
+            <button type="button" onclick="openSubtaskCreateModal()"
+                    class="inline-flex items-center px-2 py-1 bg-white border border-gray-200 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 hover:shadow-sm transition">
+                Add Subtask
+            </button>
         </div>
     </div>
     <div id="gantt-pending-actions" class="hidden px-6 py-2 bg-yellow-50 border-b border-yellow-100 flex items-center justify-between">
@@ -283,8 +286,8 @@
             <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
             </svg>
-            <p class="text-sm text-gray-500 mt-2">No phases or tasks yet.</p>
-            <p class="text-xs text-gray-400 mt-1">Add phases and tasks to see the Gantt chart.</p>
+            <p class="text-sm text-gray-500 mt-2">No tasks or subtasks yet.</p>
+            <p class="text-xs text-gray-400 mt-1">Add tasks and subtasks to see the Gantt chart.</p>
         </div>
     @else
         <div id="gantt-chart-container" class="relative" data-recent-changes-url="{{ route('admin.project.projects.tasks.gantt-changes', $project) }}">
@@ -370,23 +373,33 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($phases as $phase)
-                        {{-- Phase Row --}}
+                        {{-- Task Row (was Phase) --}}
                         <tr class="bg-gray-100 phase-row" data-phase-id="{{ $phase->id }}">
                             <td class="sticky left-0 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200">
                                 <div class="flex items-center gap-2">
                                     <button type="button"
                                             class="phase-toggle-btn text-gray-500 hover:text-gray-700 focus:outline-none"
                                             data-phase-id="{{ $phase->id }}"
-                                            title="Toggle tasks">
+                                            title="Toggle subtasks">
                                         <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                                         </svg>
                                     </button>
                                     <div class="gantt-menu">
-                                        <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Phase actions"
-                                                data-edit-url="{{ route('admin.project.projects.phases.edit', [$project, $phase]) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
+                                        <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Task actions"
+                                                data-edit-type="phase"
+                                                data-edit-id="{{ $phase->id }}"
+                                                data-update-url="{{ route('admin.project.projects.phases.update', [$project, $phase]) }}"
                                                 data-delete-action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
-                                                data-delete-confirm="Delete this phase and all its tasks?">
+                                                data-delete-confirm="Delete this task and all its subtasks?"
+                                                data-phase-name="{{ $phase->phase_name }}"
+                                                data-phase-order="{{ $phase->phase_order }}"
+                                                data-start-date-plan="{{ $phase->start_date_plan?->format('Y-m-d') ?? '' }}"
+                                                data-end-date-plan="{{ $phase->end_date_plan?->format('Y-m-d') ?? '' }}"
+                                                data-start-date-actual="{{ $phase->start_date_actual?->format('Y-m-d') ?? '' }}"
+                                                data-end-date-actual="{{ $phase->end_date_actual?->format('Y-m-d') ?? '' }}"
+                                                data-start-date-revise="{{ $phase->start_date_revise?->format('Y-m-d') ?? '' }}"
+                                                data-end-date-revise="{{ $phase->end_date_revise?->format('Y-m-d') ?? '' }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
                                             </svg>
@@ -401,6 +414,11 @@
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">
                                 <div class="space-y-0.5">
                                     <div class="text-blue-600">P: {{ $phase->progress_plan }}%</div>
+                                    @if($phase->delay_days > 0)
+                                        <div class="text-red-600 font-semibold whitespace-nowrap" title="Progress delay: actual progress is behind plan progress by {{ $phase->delay_days }} day(s)">
+                                            {{ $phase->delay_days }}d behind
+                                        </div>
+                                    @endif
                                     @if($phase->start_date_revise && $phase->end_date_revise)
                                     @php
                                         $today = \Carbon\Carbon::today();
@@ -465,8 +483,10 @@
                                     {{-- Plan bar --}}
                                     @if($phasePlanStartOffset !== null && $phasePlanDuration !== null)
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phasePlanStartOffset }}" data-duration="{{ $phasePlanDuration }}" data-bar-type="plan"
-                                             style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: #a855f7; border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
+                                             style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(168, 85, 247, 0.3); border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden;"
                                              title="Plan: {{ $phase->start_date_plan->format('d M Y') }} — {{ $phase->end_date_plan->format('d M Y') }}">
+                                            {{-- Progress fill --}}
+                                            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $phase->progress_plan }}%; background-color: #a855f7; transition: width 0.3s ease;"></div>
                                             <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_plan }}%</span>
                                         </div>
                                     @endif
@@ -486,8 +506,10 @@
                                             }
                                         @endphp
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phaseReviseStartOffset }}" data-duration="{{ $phaseReviseDuration }}" data-bar-type="revise"
-                                             style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: #fb923c; border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
+                                             style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(251, 146, 60, 0.3); border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden;"
                                              title="Revise: {{ $phase->start_date_revise->format('d M Y') }} — {{ $phase->end_date_revise->format('d M Y') }}">
+                                            {{-- Progress fill --}}
+                                            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $reviseProgress }}%; background-color: #fb923c; transition: width 0.3s ease;"></div>
                                             <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
                                         </div>
                                     @endif
@@ -572,7 +594,7 @@
 <div id="task-quick-update-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
     <div class="bg-white rounded-2xl shadow-xl w-96 max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h4 class="text-sm font-semibold text-gray-800">Update Task</h4>
+            <h4 class="text-sm font-semibold text-gray-800">Update Subtask</h4>
             <button type="button" onclick="closeTaskUpdateModal()" class="text-gray-400 hover:text-gray-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -582,7 +604,7 @@
         <form id="task-quick-update-form" method="POST" class="p-4 space-y-4">
             @csrf
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Task</label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Subtask</label>
                 <p id="modal-task-name" class="text-sm text-gray-900 font-medium"></p>
             </div>
             <div>
@@ -640,6 +662,445 @@
     </div>
 </div>
 
+{{-- Task Create Modal --}}
+<div id="task-create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-2xl shadow-xl w-[420px] max-w-full mx-4 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-800">Create Task</h4>
+            <button type="button" onclick="closeTaskCreateModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="task-create-form" method="POST" action="{{ route('admin.project.projects.phases.store', $project) }}" class="p-4 space-y-4">
+            @csrf
+            <input type="hidden" name="redirect" value="{{ request()->fullUrl() }}">
+            <div>
+                <label for="modal_phase_name" class="block text-xs font-medium text-gray-700 mb-1">Task Name <span class="text-red-500">*</span></label>
+                <input type="text" name="phase_name" id="modal_phase_name" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="phase_name"></p>
+            </div>
+            <div>
+                <label for="modal_phase_order" class="block text-xs font-medium text-gray-700 mb-1">Task Order <span class="text-red-500">*</span></label>
+                <input type="number" name="phase_order" id="modal_phase_order" min="1" value="1" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="phase_order"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_task_start_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan Start</label>
+                    <input type="date" name="start_date_plan" id="modal_task_start_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="start_date_plan"></p>
+                </div>
+                <div>
+                    <label for="modal_task_end_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan End</label>
+                    <input type="date" name="end_date_plan" id="modal_task_end_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="end_date_plan"></p>
+                </div>
+            </div>
+            <div id="task-create-general-error" class="hidden p-2 bg-red-50 text-xs text-red-700 rounded"></div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="closeTaskCreateModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700">Create Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Subtask Create Modal --}}
+<div id="subtask-create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-2xl shadow-xl w-[480px] max-w-full mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-800">Create Subtask</h4>
+            <button type="button" onclick="closeSubtaskCreateModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="subtask-create-form" method="POST" action="{{ route('admin.project.projects.tasks.store', $project) }}" class="p-4 space-y-4">
+            @csrf
+            <input type="hidden" name="tab" value="schedule">
+            <input type="hidden" name="view" value="">
+            <div>
+                <label for="modal_subtask_name" class="block text-xs font-medium text-gray-700 mb-1">Subtask Name <span class="text-red-500">*</span></label>
+                <input type="text" name="task_name" id="modal_subtask_name" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="task_name"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_subtask_order" class="block text-xs font-medium text-gray-700 mb-1">Subtask Order <span class="text-red-500">*</span></label>
+                    <input type="number" name="task_order" id="modal_subtask_order" min="1" value="1" required
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="task_order"></p>
+                </div>
+                <div>
+                    <label for="modal_subtask_weight" class="block text-xs font-medium text-gray-700 mb-1">Weight (%)</label>
+                    <input type="number" name="weight" id="modal_subtask_weight" min="0" max="100" value="0"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="weight"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_subtask_phase_id" class="block text-xs font-medium text-gray-700 mb-1">Parent Task</label>
+                    <select name="phase_id" id="modal_subtask_phase_id"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">— No Parent Task (Standalone) —</option>
+                        @foreach($phases as $parentPhase)
+                            <option value="{{ $parentPhase->id }}">{{ $parentPhase->phase_name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="phase_id"></p>
+                </div>
+                <div>
+                    <label for="modal_subtask_status" class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" id="modal_subtask_status"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="not_started">Not Started</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="on_hold">On Hold</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label for="modal_subtask_assigned_to" class="block text-xs font-medium text-gray-700 mb-1">Assigned To</label>
+                <select name="assigned_to" id="modal_subtask_assigned_to"
+                        class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">— Unassigned —</option>
+                    @foreach($staffList ?? [] as $staff)
+                        <option value="{{ $staff->id }}">{{ $staff->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_subtask_predecessor" class="block text-xs font-medium text-gray-700 mb-1">Dependency</label>
+                    <select name="predecessor_task_id" id="modal_subtask_predecessor"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">— No Dependency —</option>
+                        @foreach($allSubtasks as $predecessor)
+                            <option value="{{ $predecessor->id }}" data-start-date-plan="{{ $predecessor->start_date_plan?->format('Y-m-d') }}" data-end-date-plan="{{ $predecessor->end_date_plan?->format('Y-m-d') }}">{{ $predecessor->task_name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="predecessor_task_id"></p>
+                </div>
+                <div>
+                    <label for="modal_subtask_dependency_type" class="block text-xs font-medium text-gray-700 mb-1">Dependency Type</label>
+                    <select name="dependency_type" id="modal_subtask_dependency_type"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="end_to_start">End-to-Start</option>
+                        <option value="start_to_start">Start-to-Start</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_subtask_start_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan Start</label>
+                    <input type="date" name="start_date_plan" id="modal_subtask_start_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="start_date_plan"></p>
+                </div>
+                <div>
+                    <label for="modal_subtask_end_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan End</label>
+                    <input type="date" name="end_date_plan" id="modal_subtask_end_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="end_date_plan"></p>
+                </div>
+            </div>
+            <div id="subtask-create-general-error" class="hidden p-2 bg-red-50 text-xs text-red-700 rounded"></div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="closeSubtaskCreateModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">Create Subtask</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Task Edit Modal --}}
+<div id="task-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-2xl shadow-xl w-[420px] max-w-full mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-800">Edit Task</h4>
+            <button type="button" onclick="closeTaskEditModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="task-edit-form" method="POST" class="p-4 space-y-4">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="redirect" value="{{ request()->fullUrl() }}">
+            <div>
+                <label for="modal_edit_task_name" class="block text-xs font-medium text-gray-700 mb-1">Task Name <span class="text-red-500">*</span></label>
+                <input type="text" name="phase_name" id="modal_edit_task_name" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="phase_name"></p>
+            </div>
+            <div>
+                <label for="modal_edit_task_order" class="block text-xs font-medium text-gray-700 mb-1">Task Order <span class="text-red-500">*</span></label>
+                <input type="number" name="phase_order" id="modal_edit_task_order" min="1" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="phase_order"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_task_start_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan Start</label>
+                    <input type="date" name="start_date_plan" id="modal_edit_task_start_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="start_date_plan"></p>
+                </div>
+                <div>
+                    <label for="modal_edit_task_end_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan End</label>
+                    <input type="date" name="end_date_plan" id="modal_edit_task_end_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="end_date_plan"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_task_start_date_actual" class="block text-xs font-medium text-gray-700 mb-1">Actual Start</label>
+                    <input type="date" name="start_date_actual" id="modal_edit_task_start_date_actual"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="modal_edit_task_end_date_actual" class="block text-xs font-medium text-gray-700 mb-1">Actual End</label>
+                    <input type="date" name="end_date_actual" id="modal_edit_task_end_date_actual"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_task_start_date_revise" class="block text-xs font-medium text-gray-700 mb-1">Revise Start</label>
+                    <input type="date" name="start_date_revise" id="modal_edit_task_start_date_revise"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="modal_edit_task_end_date_revise" class="block text-xs font-medium text-gray-700 mb-1">Revise End</label>
+                    <input type="date" name="end_date_revise" id="modal_edit_task_end_date_revise"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div id="task-edit-general-error" class="hidden p-2 bg-red-50 text-xs text-red-700 rounded"></div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="closeTaskEditModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700">Update Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Subtask Edit Modal --}}
+<div id="subtask-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-2xl shadow-xl w-[480px] max-w-full mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-800">Edit Subtask</h4>
+            <button type="button" onclick="closeSubtaskEditModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="subtask-edit-form" method="POST" class="p-4 space-y-4">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="tab" value="schedule">
+            <input type="hidden" name="view" value="">
+            <div>
+                <label for="modal_edit_subtask_name" class="block text-xs font-medium text-gray-700 mb-1">Subtask Name <span class="text-red-500">*</span></label>
+                <input type="text" name="task_name" id="modal_edit_subtask_name" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="task_name"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_subtask_order" class="block text-xs font-medium text-gray-700 mb-1">Subtask Order <span class="text-red-500">*</span></label>
+                    <input type="number" name="task_order" id="modal_edit_subtask_order" min="1" required
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="task_order"></p>
+                </div>
+                <div>
+                    <label for="modal_edit_subtask_weight" class="block text-xs font-medium text-gray-700 mb-1">Weight (%)</label>
+                    <input type="number" name="weight" id="modal_edit_subtask_weight" min="0" max="100"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="weight"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_subtask_phase_id" class="block text-xs font-medium text-gray-700 mb-1">Parent Task</label>
+                    <select name="phase_id" id="modal_edit_subtask_phase_id"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">— No Parent Task (Standalone) —</option>
+                        @foreach($phases as $parentPhase)
+                            <option value="{{ $parentPhase->id }}">{{ $parentPhase->phase_name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="phase_id"></p>
+                </div>
+                <div>
+                    <label for="modal_edit_subtask_status" class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                    <select name="status" id="modal_edit_subtask_status"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="not_started">Not Started</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="on_hold">On Hold</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label for="modal_edit_subtask_assigned_to" class="block text-xs font-medium text-gray-700 mb-1">Assigned To</label>
+                <select name="assigned_to" id="modal_edit_subtask_assigned_to"
+                        class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">— Unassigned —</option>
+                    @foreach($staffList ?? [] as $staff)
+                        <option value="{{ $staff->id }}">{{ $staff->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_subtask_predecessor" class="block text-xs font-medium text-gray-700 mb-1">Dependency</label>
+                    <select name="predecessor_task_id" id="modal_edit_subtask_predecessor"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">— No Dependency —</option>
+                        @foreach($allSubtasks as $predecessor)
+                            <option value="{{ $predecessor->id }}" data-start-date-plan="{{ $predecessor->start_date_plan?->format('Y-m-d') }}" data-end-date-plan="{{ $predecessor->end_date_plan?->format('Y-m-d') }}">{{ $predecessor->task_name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="predecessor_task_id"></p>
+                </div>
+                <div>
+                    <label for="modal_edit_subtask_dependency_type" class="block text-xs font-medium text-gray-700 mb-1">Dependency Type</label>
+                    <select name="dependency_type" id="modal_edit_subtask_dependency_type"
+                            class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="end_to_start">End-to-Start</option>
+                        <option value="start_to_start">Start-to-Start</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_subtask_start_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan Start</label>
+                    <input type="date" name="start_date_plan" id="modal_edit_subtask_start_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="start_date_plan"></p>
+                </div>
+                <div>
+                    <label for="modal_edit_subtask_end_date_plan" class="block text-xs font-medium text-gray-700 mb-1">Plan End</label>
+                    <input type="date" name="end_date_plan" id="modal_edit_subtask_end_date_plan"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="modal-error text-xs text-red-600 mt-1 hidden" data-field="end_date_plan"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_subtask_start_date_actual" class="block text-xs font-medium text-gray-700 mb-1">Actual Start</label>
+                    <input type="date" name="start_date_actual" id="modal_edit_subtask_start_date_actual"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="modal_edit_subtask_end_date_actual" class="block text-xs font-medium text-gray-700 mb-1">Actual End</label>
+                    <input type="date" name="end_date_actual" id="modal_edit_subtask_end_date_actual"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label for="modal_edit_subtask_start_date_revise" class="block text-xs font-medium text-gray-700 mb-1">Revise Start</label>
+                    <input type="date" name="start_date_revise" id="modal_edit_subtask_start_date_revise"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="modal_edit_subtask_end_date_revise" class="block text-xs font-medium text-gray-700 mb-1">Revise End</label>
+                    <input type="date" name="end_date_revise" id="modal_edit_subtask_end_date_revise"
+                           class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div id="subtask-edit-general-error" class="hidden p-2 bg-red-50 text-xs text-red-700 rounded"></div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="closeSubtaskEditModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">Update Subtask</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Weight Edit Modal --}}
+<div id="weight-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-2xl shadow-xl w-80 max-w-full mx-4 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-800">Edit Weight</h4>
+            <button type="button" onclick="closeWeightEditModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="weight-edit-form" method="POST" class="p-4 space-y-4">
+            @csrf
+            <div>
+                <p id="modal_weight_task_name" class="text-sm text-gray-900 font-medium truncate"></p>
+                <p class="text-xs text-gray-500">Weight (%)</p>
+            </div>
+            <div>
+                <label for="modal_weight_value" class="block text-xs font-medium text-gray-700 mb-1">Weight (0-100)</label>
+                <input type="number" id="modal_weight_value" name="weight" min="0" max="100" value="0" required
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p id="modal_weight_error" class="text-xs text-red-600 mt-1 hidden"></p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="closeWeightEditModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Date Edit Modal --}}
+<div id="date-edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="bg-white rounded-2xl shadow-xl w-96 max-w-full mx-4 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h4 class="text-sm font-semibold text-gray-800">Edit Date</h4>
+            <button type="button" onclick="closeDateEditModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <form id="date-edit-form" method="POST" class="p-4 space-y-4">
+            @csrf
+            <input type="hidden" id="modal_date_field" name="field" value="">
+            <div>
+                <p id="modal_date_task_name" class="text-sm text-gray-900 font-medium truncate"></p>
+                <p id="modal_date_field_label" class="text-xs text-gray-500"></p>
+            </div>
+            <div>
+                <label for="modal_date_value" class="block text-xs font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" id="modal_date_value" name="value"
+                       class="w-full text-sm border border-gray-300 rounded-md shadow-sm px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                <p id="modal_date_error" class="text-xs text-red-600 mt-1 hidden"></p>
+                <p id="modal_date_constraint" class="text-xs text-orange-600 mt-1 hidden"></p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button type="button" onclick="clearDateValue()" class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100">Clear</button>
+                <button type="button" onclick="closeDateEditModal()" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function openTaskUpdateModal(btn) {
         document.getElementById('modal-task-name').textContent = btn.dataset.taskName;
@@ -658,6 +1119,268 @@
     function closeTaskUpdateModal() {
         document.getElementById('task-quick-update-modal').classList.add('hidden');
     }
+
+    function openTaskCreateModal() {
+        document.getElementById('task-create-form').reset();
+        document.getElementById('modal_phase_order').value = {{ $phases->count() + 1 }};
+        document.getElementById('task-create-general-error').classList.add('hidden');
+        document.querySelectorAll('#task-create-form .modal-error').forEach(function(el) { el.classList.add('hidden'); el.textContent = ''; });
+        document.getElementById('task-create-modal').classList.remove('hidden');
+    }
+
+    function closeTaskCreateModal() {
+        document.getElementById('task-create-modal').classList.add('hidden');
+    }
+
+    function openSubtaskCreateModal() {
+        document.getElementById('subtask-create-form').reset();
+        document.getElementById('modal_subtask_order').value = {{ $allSubtasks->count() + 1 }};
+        document.getElementById('subtask-create-general-error').classList.add('hidden');
+        document.querySelectorAll('#subtask-create-form .modal-error').forEach(function(el) { el.classList.add('hidden'); el.textContent = ''; });
+        document.getElementById('subtask-create-modal').classList.remove('hidden');
+    }
+
+    function closeSubtaskCreateModal() {
+        document.getElementById('subtask-create-modal').classList.add('hidden');
+    }
+
+    function openTaskEditModal(phaseData) {
+        var form = document.getElementById('task-edit-form');
+        form.action = phaseData.updateUrl;
+        document.getElementById('modal_edit_task_name').value = phaseData.phase_name || '';
+        document.getElementById('modal_edit_task_order').value = phaseData.phase_order || 1;
+        document.getElementById('modal_edit_task_start_date_plan').value = formatDateForInput(phaseData.start_date_plan);
+        document.getElementById('modal_edit_task_end_date_plan').value = formatDateForInput(phaseData.end_date_plan);
+        document.getElementById('modal_edit_task_start_date_actual').value = formatDateForInput(phaseData.start_date_actual);
+        document.getElementById('modal_edit_task_end_date_actual').value = formatDateForInput(phaseData.end_date_actual);
+        document.getElementById('modal_edit_task_start_date_revise').value = formatDateForInput(phaseData.start_date_revise);
+        document.getElementById('modal_edit_task_end_date_revise').value = formatDateForInput(phaseData.end_date_revise);
+        document.getElementById('task-edit-general-error').classList.add('hidden');
+        document.querySelectorAll('#task-edit-form .modal-error').forEach(function(el) { el.classList.add('hidden'); el.textContent = ''; });
+        document.getElementById('task-edit-modal').classList.remove('hidden');
+    }
+
+    function closeTaskEditModal() {
+        document.getElementById('task-edit-modal').classList.add('hidden');
+    }
+
+    function openSubtaskEditModal(taskData) {
+        var form = document.getElementById('subtask-edit-form');
+        form.action = taskData.updateUrl;
+        document.getElementById('modal_edit_subtask_name').value = taskData.task_name || '';
+        document.getElementById('modal_edit_subtask_order').value = taskData.task_order || 1;
+        document.getElementById('modal_edit_subtask_weight').value = taskData.weight || 0;
+        document.getElementById('modal_edit_subtask_phase_id').value = taskData.phase_id || '';
+        document.getElementById('modal_edit_subtask_status').value = taskData.status || 'not_started';
+        document.getElementById('modal_edit_subtask_assigned_to').value = taskData.assigned_to || '';
+        document.getElementById('modal_edit_subtask_predecessor').value = taskData.predecessor_task_id || '';
+        document.getElementById('modal_edit_subtask_dependency_type').value = taskData.dependency_type || 'end_to_start';
+        document.getElementById('modal_edit_subtask_start_date_plan').value = formatDateForInput(taskData.start_date_plan);
+        document.getElementById('modal_edit_subtask_end_date_plan').value = formatDateForInput(taskData.end_date_plan);
+        document.getElementById('modal_edit_subtask_start_date_actual').value = formatDateForInput(taskData.start_date_actual);
+        document.getElementById('modal_edit_subtask_end_date_actual').value = formatDateForInput(taskData.end_date_actual);
+        document.getElementById('modal_edit_subtask_start_date_revise').value = formatDateForInput(taskData.start_date_revise);
+        document.getElementById('modal_edit_subtask_end_date_revise').value = formatDateForInput(taskData.end_date_revise);
+        document.getElementById('subtask-edit-general-error').classList.add('hidden');
+        document.querySelectorAll('#subtask-edit-form .modal-error').forEach(function(el) { el.classList.add('hidden'); el.textContent = ''; });
+        document.getElementById('subtask-edit-modal').classList.remove('hidden');
+    }
+
+    function closeSubtaskEditModal() {
+        document.getElementById('subtask-edit-modal').classList.add('hidden');
+    }
+
+    function formatDateForInput(date) {
+        if (!date) return '';
+        var d = new Date(date + 'T00:00:00');
+        if (isNaN(d.getTime())) return '';
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function addOneDay(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return '';
+        d.setDate(d.getDate() + 1);
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function applyDependencyToSubtask() {
+        var predecessorSelect = document.getElementById('modal_subtask_predecessor');
+        var dependencyTypeSelect = document.getElementById('modal_subtask_dependency_type');
+        var startInput = document.getElementById('modal_subtask_start_date_plan');
+
+        var selected = predecessorSelect.options[predecessorSelect.selectedIndex];
+        if (!selected || !selected.value) {
+            startInput.min = '';
+            return;
+        }
+
+        var dependencyType = dependencyTypeSelect.value;
+        var startDatePlan = selected.getAttribute('data-start-date-plan');
+        var endDatePlan = selected.getAttribute('data-end-date-plan');
+
+        if (dependencyType === 'start_to_start') {
+            startInput.value = startDatePlan || '';
+            startInput.min = startDatePlan || '';
+        } else {
+            var minDate = addOneDay(endDatePlan);
+            startInput.min = minDate || '';
+            if (startInput.value && startInput.value < minDate) {
+                startInput.value = minDate;
+            }
+        }
+    }
+
+    document.getElementById('modal_subtask_predecessor').addEventListener('change', applyDependencyToSubtask);
+    document.getElementById('modal_subtask_dependency_type').addEventListener('change', applyDependencyToSubtask);
+
+    function applyDependencyToSubtaskEdit() {
+        var predecessorSelect = document.getElementById('modal_edit_subtask_predecessor');
+        var dependencyTypeSelect = document.getElementById('modal_edit_subtask_dependency_type');
+        var startInput = document.getElementById('modal_edit_subtask_start_date_plan');
+
+        var selected = predecessorSelect.options[predecessorSelect.selectedIndex];
+        if (!selected || !selected.value) {
+            startInput.min = '';
+            return;
+        }
+
+        var dependencyType = dependencyTypeSelect.value;
+        var startDatePlan = selected.getAttribute('data-start-date-plan');
+        var endDatePlan = selected.getAttribute('data-end-date-plan');
+
+        if (dependencyType === 'start_to_start') {
+            startInput.value = startDatePlan || '';
+            startInput.min = startDatePlan || '';
+        } else {
+            var minDate = addOneDay(endDatePlan);
+            startInput.min = minDate || '';
+            if (startInput.value && startInput.value < minDate) {
+                startInput.value = minDate;
+            }
+        }
+    }
+
+    document.getElementById('modal_edit_subtask_predecessor').addEventListener('change', applyDependencyToSubtaskEdit);
+    document.getElementById('modal_edit_subtask_dependency_type').addEventListener('change', applyDependencyToSubtaskEdit);
+
+    function submitModalForm(formId, modalId, onSuccess) {
+        var form = document.getElementById(formId);
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var originalText = submitBtn.textContent;
+
+        var formData = new FormData(form);
+        var data = {};
+        formData.forEach(function(value, key) { data[key] = value; });
+
+        // Include _method if present in the form (for PUT/PATCH requests)
+        var methodInput = form.querySelector('input[name="_method"]');
+        if (methodInput) {
+            data._method = methodInput.value;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(response) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+
+            if (response.success) {
+                document.getElementById(modalId).classList.add('hidden');
+                if (onSuccess) onSuccess(response);
+                window.location.reload();
+            } else {
+                showModalErrors(form, response.errors || {}, response.message || 'Failed to save.');
+            }
+        })
+        .catch(function(error) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            showModalErrors(form, {}, 'An error occurred while saving. Please try again.');
+        });
+
+        return false;
+    }
+
+    function showModalErrors(form, errors, generalMessage) {
+        form.querySelectorAll('.modal-error').forEach(function(el) {
+            el.classList.add('hidden');
+            el.textContent = '';
+        });
+
+        var generalError = form.querySelector('[id$="-general-error"]');
+        if (generalError) {
+            if (generalMessage) {
+                generalError.textContent = generalMessage;
+                generalError.classList.remove('hidden');
+            } else {
+                generalError.classList.add('hidden');
+            }
+        }
+
+        for (var field in errors) {
+            var errorEl = form.querySelector('.modal-error[data-field="' + field + '"]');
+            if (errorEl) {
+                var message = Array.isArray(errors[field]) ? errors[field].join(' ') : errors[field];
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+            }
+        }
+    }
+
+    document.getElementById('task-create-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitModalForm('task-create-form', 'task-create-modal');
+    });
+
+    document.getElementById('subtask-create-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitModalForm('subtask-create-form', 'subtask-create-modal');
+    });
+
+    document.getElementById('task-edit-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitModalForm('task-edit-form', 'task-edit-modal');
+    });
+
+    document.getElementById('subtask-edit-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitModalForm('subtask-edit-form', 'subtask-edit-modal');
+    });
+
+    document.getElementById('task-create-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeTaskCreateModal();
+    });
+
+    document.getElementById('subtask-create-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeSubtaskCreateModal();
+    });
+
+    document.getElementById('task-edit-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeTaskEditModal();
+    });
+
+    document.getElementById('subtask-edit-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeSubtaskEditModal();
+    });
 
     document.querySelectorAll('.task-update-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -717,12 +1440,52 @@
     var gcmDelete = document.getElementById('gcm-delete');
     var gcmDeleteAction = '';
     var gcmDeleteConfirm = '';
+    var gcmCurrentBtn = null;
     var gcmCsrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     gcmEdit.addEventListener('mouseover', function() { this.style.backgroundColor = '#f3f4f6'; });
     gcmEdit.addEventListener('mouseout', function() { this.style.backgroundColor = ''; });
     gcmDelete.addEventListener('mouseover', function() { this.style.backgroundColor = '#f3f4f6'; });
     gcmDelete.addEventListener('mouseout', function() { this.style.backgroundColor = ''; });
+
+    gcmEdit.addEventListener('click', function(e) {
+        e.preventDefault();
+        ganttDropdown.classList.add('hidden');
+        if (!gcmCurrentBtn) return;
+
+        var editType = gcmCurrentBtn.dataset.editType;
+        if (editType === 'phase') {
+            openTaskEditModal({
+                updateUrl: gcmCurrentBtn.dataset.updateUrl,
+                phase_name: gcmCurrentBtn.dataset.phaseName,
+                phase_order: gcmCurrentBtn.dataset.phaseOrder,
+                start_date_plan: gcmCurrentBtn.dataset.startDatePlan,
+                end_date_plan: gcmCurrentBtn.dataset.endDatePlan,
+                start_date_actual: gcmCurrentBtn.dataset.startDateActual,
+                end_date_actual: gcmCurrentBtn.dataset.endDateActual,
+                start_date_revise: gcmCurrentBtn.dataset.startDateRevise,
+                end_date_revise: gcmCurrentBtn.dataset.endDateRevise
+            });
+        } else if (editType === 'task') {
+            openSubtaskEditModal({
+                updateUrl: gcmCurrentBtn.dataset.updateUrl,
+                task_name: gcmCurrentBtn.dataset.taskName,
+                task_order: gcmCurrentBtn.dataset.taskOrder,
+                weight: gcmCurrentBtn.dataset.weight,
+                phase_id: gcmCurrentBtn.dataset.phaseId,
+                status: gcmCurrentBtn.dataset.status,
+                assigned_to: gcmCurrentBtn.dataset.assignedTo,
+                predecessor_task_id: gcmCurrentBtn.dataset.predecessorTaskId,
+                dependency_type: gcmCurrentBtn.dataset.dependencyType,
+                start_date_plan: gcmCurrentBtn.dataset.startDatePlan,
+                end_date_plan: gcmCurrentBtn.dataset.endDatePlan,
+                start_date_actual: gcmCurrentBtn.dataset.startDateActual,
+                end_date_actual: gcmCurrentBtn.dataset.endDateActual,
+                start_date_revise: gcmCurrentBtn.dataset.startDateRevise,
+                end_date_revise: gcmCurrentBtn.dataset.endDateRevise
+            });
+        }
+    });
 
     gcmDelete.addEventListener('click', function(e) {
         e.preventDefault();
@@ -745,11 +1508,11 @@
             ganttDropdown.classList.add('hidden');
             if (wasVisible) return;
 
-            var rect = this.getBoundingClientRect();
-            gcmEdit.href = this.dataset.editUrl;
+            gcmCurrentBtn = this;
             gcmDeleteAction = this.dataset.deleteAction;
             gcmDeleteConfirm = this.dataset.deleteConfirm;
 
+            var rect = this.getBoundingClientRect();
             ganttDropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
             ganttDropdown.style.left = (rect.left + window.scrollX) + 'px';
             ganttDropdown.classList.remove('hidden');
@@ -1162,22 +1925,21 @@
             : (fromRect.right - wrapperRect.left);
         var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
 
-        var margin = 4;
-        var x1Out = typeParts.fromSide === 'start' ? x1 - margin : x1 + margin;
-        var x2In  = typeParts.toSide   === 'start' ? x2 - margin : x2 + margin;
+        // Simple curved arrow path - more user-friendly
+        var midX = (x1 + x2) / 2;
+        var curveOffset = 15; // Amount to curve the arrow
 
-        // Route through the 4px gap below the source and target lanes so arrows
-        // never run through the colored bars.
-        var sourceGapY = fromRect.bottom - wrapperRect.top + 2;
-        var targetGapY = toRect.bottom - wrapperRect.top + 2;
-
-        d = 'M ' + x1 + ' ' + y1
-            + ' V ' + sourceGapY
-            + ' H ' + x1Out
-            + ' V ' + targetGapY
-            + ' H ' + x2In
-            + ' V ' + y2
-            + ' H ' + x2;
+        // Create a smooth bezier curve
+        if (y1 === y2) {
+            // Same row - simple straight line
+            d = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2;
+        } else {
+            // Different rows - use curved path
+            var controlX = midX;
+            var controlY = y1 + (y2 - y1) / 2;
+            d = 'M ' + x1 + ' ' + y1
+                + ' Q ' + controlX + ' ' + controlY + ' ' + x2 + ' ' + y2;
+        }
 
         var label = typeParts.fromSide === 'start'
             ? 'Start-to-Start (' + lane + ')'
@@ -1191,7 +1953,7 @@
             actual: '#059669'
         }[lane] || '#4b5563';
         path.setAttribute('stroke', strokeColor);
-        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('stroke-width', '2');
         path.setAttribute('fill', 'none');
         path.setAttribute('marker-end', 'url(#gantt-arrowhead-' + lane + ')');
         path.setAttribute('stroke-linecap', 'round');
@@ -1204,26 +1966,14 @@
         path.setAttribute('title', label);
         svg.appendChild(path);
 
-        // Add right-facing arrow icon at the successor end point (x2, y2)
-        var arrowIcon = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        var arrowBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        arrowBg.setAttribute('cx', x2);
-        arrowBg.setAttribute('cy', y2);
-        arrowBg.setAttribute('r', 3.5);
-        arrowBg.setAttribute('fill', strokeColor);
-        arrowBg.setAttribute('class', 'gantt-arrow-dot');
-        arrowIcon.appendChild(arrowBg);
-
-        var arrowShape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        var ax = x2 - 4, ay = y2 - 3;
-        arrowShape.setAttribute('d', 'M' + ax + ' ' + ay + ' L' + ax + ' ' + (ay + 6) + ' L' + (ax + 7) + ' ' + (ay + 3) + ' Z');
-        arrowShape.setAttribute('fill', '#fff');
-        arrowShape.setAttribute('stroke', strokeColor);
-        arrowShape.setAttribute('stroke-width', '1');
-        arrowShape.setAttribute('stroke-linejoin', 'round');
-        arrowIcon.appendChild(arrowShape);
-
-        svg.appendChild(arrowIcon);
+        // Add dot at the target point for better visibility
+        var arrowDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        arrowDot.setAttribute('cx', x2);
+        arrowDot.setAttribute('cy', y2);
+        arrowDot.setAttribute('r', 4);
+        arrowDot.setAttribute('fill', strokeColor);
+        arrowDot.setAttribute('class', 'gantt-arrow-dot');
+        svg.appendChild(arrowDot);
     }
 
     function drawGanttDependencyArrows() {
@@ -1736,6 +2486,7 @@
     (function() {
         var ganttResizing = null;
         var ganttPending = [];
+        var ganttShiftedBars = [];
         var ganttProgressData = null;
 
         function ganttGetTimelineInfo() {
@@ -1772,6 +2523,73 @@
         function ganttUpdateBarPreview(bar, newStartOffset, newDuration, pixelsPerDay) {
             bar.style.left = (newStartOffset * pixelsPerDay) + 'px';
             bar.style.width = (newDuration * pixelsPerDay) + 'px';
+
+            // Live preview: shift dependent task bars
+            if (ganttResizing && ganttResizing.bar === bar) {
+                ganttShiftSuccessors(bar.dataset.taskId, bar.dataset.barType, ganttResizing.startOffset, ganttResizing.duration, newStartOffset, newDuration, pixelsPerDay);
+            }
+        }
+
+        function ganttShiftSuccessors(predecessorTaskId, barType, oldPredecessorStart, oldPredecessorDuration, newPredecessorStart, newPredecessorDuration, pixelsPerDay, visited) {
+            if (!predecessorTaskId || !barType) return;
+
+            visited = visited || new Set();
+            if (visited.has(predecessorTaskId)) return;
+            visited.add(predecessorTaskId);
+
+            var oldPredecessorEnd = oldPredecessorStart + oldPredecessorDuration - 1;
+            var newPredecessorEnd = newPredecessorStart + newPredecessorDuration - 1;
+            var startDelta = newPredecessorStart - oldPredecessorStart;
+            var endDelta = newPredecessorEnd - oldPredecessorEnd;
+
+            document.querySelectorAll('.task-row[data-predecessor-id="' + predecessorTaskId + '"]').forEach(function(row) {
+                var dependencyType = row.dataset.dependencyType || 'end_to_start';
+                var successorId = row.dataset.taskId;
+                if (!successorId) return;
+
+                // Do not auto-shift if the successor already has a manual pending drag for this lane
+                var hasPending = ganttPending.some(function(p) {
+                    return p.taskId === successorId && p.barType === barType;
+                });
+                if (hasPending) return;
+
+                var successorRow = document.querySelector('.task-row[data-task-id="' + successorId + '"]');
+                if (!successorRow) return;
+                var successorBar = successorRow.querySelector('.gantt-timeline-area .gantt-bar[data-bar-type="' + barType + '"]');
+                if (!successorBar) return;
+
+                // Store original only the first time this bar is shifted
+                var existing = ganttShiftedBars.find(function(s) { return s.bar === successorBar; });
+                if (!existing) {
+                    ganttShiftedBars.push({
+                        bar: successorBar,
+                        originalLeft: successorBar.style.left,
+                        originalWidth: successorBar.style.width,
+                        originalStartOffset: successorBar.dataset.startOffset,
+                        originalDuration: successorBar.dataset.duration
+                    });
+                }
+
+                var successorStart = parseFloat(successorBar.dataset.startOffset) || 0;
+                var successorDuration = parseFloat(successorBar.dataset.duration) || 1;
+                var newSuccessorStart = successorStart;
+
+                if (dependencyType === 'start_to_start') {
+                    newSuccessorStart = successorStart + startDelta;
+                } else {
+                    // end_to_start: shift based on predecessor end change
+                    newSuccessorStart = successorStart + endDelta;
+                }
+
+                if (newSuccessorStart < 0) newSuccessorStart = 0;
+
+                successorBar.style.left = (newSuccessorStart * pixelsPerDay) + 'px';
+                successorBar.style.width = (successorDuration * pixelsPerDay) + 'px';
+                successorBar.dataset.startOffset = newSuccessorStart;
+
+                // Cascade one more level for direct successors only
+                ganttShiftSuccessors(successorId, barType, successorStart, successorDuration, newSuccessorStart, successorDuration, pixelsPerDay, visited);
+            });
         }
 
         function ganttUpdatePendingActionsUi() {
@@ -1807,7 +2625,16 @@
                 bar.dataset.startOffset = p.originalStartOffset;
                 bar.dataset.duration = p.originalDuration;
             });
+            ganttShiftedBars.forEach(function(s) {
+                var bar = s.bar;
+                if (!bar) return;
+                bar.style.left = s.originalLeft;
+                bar.style.width = s.originalWidth;
+                bar.dataset.startOffset = s.originalStartOffset;
+                bar.dataset.duration = s.originalDuration;
+            });
             ganttPending = [];
+            ganttShiftedBars = [];
             ganttUpdatePendingActionsUi();
         }
 
@@ -1933,14 +2760,28 @@
             ganttPendingSave.addEventListener('click', function() {
                 if (ganttPending.length === 0) return;
 
+                // Revert any live-shifted dependent bars; the backend will cascade on save and the page will reload
+                ganttShiftedBars.forEach(function(s) {
+                    var bar = s.bar;
+                    if (!bar) return;
+                    bar.style.left = s.originalLeft;
+                    bar.style.width = s.originalWidth;
+                    bar.dataset.startOffset = s.originalStartOffset;
+                    bar.dataset.duration = s.originalDuration;
+                });
+                ganttShiftedBars = [];
+
                 var queue = ganttPending.slice();
                 var results = [];
-                var failed = false;
+                var failures = [];
 
                 function sendNext(index) {
                     if (index >= queue.length) {
-                        if (failed) {
-                            alert('Some changes failed to save. Please refresh the page.');
+                        if (failures.length > 0) {
+                            var messages = failures.map(function(f) {
+                                return f.name + ' (' + f.barType + '): ' + f.message;
+                            });
+                            alert('Some changes could not be saved:\n\n' + messages.join('\n'));
                         } else {
                             window.location.reload();
                         }
@@ -1970,20 +2811,44 @@
                         },
                         body: JSON.stringify(body)
                     })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        if (!r.ok && r.status === 422) {
+                            return r.json().then(function(data) { throw data; });
+                        }
+                        return r.json();
+                    })
                     .then(function(data) {
                         if (data.success) {
                             results.push(data);
+                            // Remove this pending item from the list after success
+                            ganttPending = ganttPending.filter(function(item) { return ganttPendingKey(item) !== ganttPendingKey(p); });
+                            ganttUpdatePendingActionsUi();
                             sendNext(index + 1);
                         } else {
-                            failed = true;
-                            alert(data.message || 'Failed to save one of the changes.');
+                            throw data;
                         }
                     })
-                    .catch(function(err) {
-                        console.error(err);
-                        failed = true;
-                        alert('Failed to save one of the changes.');
+                    .catch(function(data) {
+                        // Revert the failed bar and remove it from the queue
+                        if (p.bar) {
+                            p.bar.style.left = p.originalLeft;
+                            p.bar.style.width = p.originalWidth;
+                            p.bar.dataset.startOffset = p.originalStartOffset;
+                            p.bar.dataset.duration = p.originalDuration;
+                        }
+                        ganttPending = ganttPending.filter(function(item) { return ganttPendingKey(item) !== ganttPendingKey(p); });
+                        ganttUpdatePendingActionsUi();
+
+                        var taskName = '';
+                        if (p.bar && p.bar.closest) {
+                            var row = p.bar.closest('.task-row');
+                            if (row) taskName = row.dataset.taskName || '';
+                        }
+                        var errorMessage = data && data.message ? data.message : 'Failed to save.';
+                        failures.push({ name: taskName, barType: p.barType, message: errorMessage });
+
+                        // Continue with the rest of the queue
+                        sendNext(index + 1);
                     });
                 }
 
@@ -2174,6 +3039,259 @@
             loadChanges(1);
         });
     })();
+
+    // Date edit modal functions
+    var activeDateCell = null;
+    var fieldLabels = {
+        'start_date_plan': 'Plan Start',
+        'end_date_plan': 'Plan End',
+        'start_date_revise': 'Revise Start',
+        'end_date_revise': 'Revise End',
+        'start_date_actual': 'Actual Start',
+        'end_date_actual': 'Actual End',
+    };
+
+    function openDateEditModal(cell) {
+        activeDateCell = cell;
+        var field = cell.dataset.field;
+        var taskName = cell.dataset.taskName;
+        var dateValue = cell.dataset.date || '';
+        var pairDate = cell.dataset.pairDate || '';
+
+        var form = document.getElementById('date-edit-form');
+        var dateInput = document.getElementById('modal_date_value');
+
+        form.action = cell.dataset.updateUrl;
+        document.getElementById('modal_date_field').value = field;
+        document.getElementById('modal_date_task_name').textContent = taskName;
+        document.getElementById('modal_date_field_label').textContent = 'Edit ' + (fieldLabels[field] || field);
+        dateInput.value = dateValue;
+        dateInput.min = '';
+        dateInput.max = '';
+
+        document.getElementById('modal_date_error').classList.add('hidden');
+        document.getElementById('modal_date_constraint').classList.add('hidden');
+
+        // Basic constraint: end date must be >= start date of the same lane
+        if (field.startsWith('end_date_') && pairDate) {
+            dateInput.min = pairDate;
+            document.getElementById('modal_date_constraint').textContent = 'Must be on or after ' + (fieldLabels[field.replace('end', 'start')] || 'start date');
+            document.getElementById('modal_date_constraint').classList.remove('hidden');
+        }
+
+        // Basic constraint: start date must be <= end date of the same lane
+        if (field.startsWith('start_date_') && pairDate) {
+            dateInput.max = pairDate;
+            document.getElementById('modal_date_constraint').textContent = 'Must be on or before ' + (fieldLabels[field.replace('start', 'end')] || 'end date');
+            document.getElementById('modal_date_constraint').classList.remove('hidden');
+        }
+
+        document.getElementById('date-edit-modal').classList.remove('hidden');
+    }
+
+    function closeDateEditModal() {
+        document.getElementById('date-edit-modal').classList.add('hidden');
+        activeDateCell = null;
+    }
+
+    function clearDateValue() {
+        document.getElementById('modal_date_value').value = '';
+    }
+
+    document.querySelectorAll('.gantt-date-cell').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+            openDateEditModal(cell);
+        });
+    });
+
+    document.getElementById('date-edit-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = document.getElementById('date-edit-form');
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var originalText = submitBtn.textContent;
+
+        var field = document.getElementById('modal_date_field').value;
+        var value = document.getElementById('modal_date_value').value;
+        var data = {};
+        // Send empty string to clear the date
+        data[field] = value || '';
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+        document.getElementById('modal_date_error').classList.add('hidden');
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(response) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+
+            if (response.success) {
+                closeDateEditModal();
+                window.location.reload();
+            } else {
+                var message = response.message || 'Failed to save date.';
+                var errorEl = document.getElementById('modal_date_error');
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+            }
+        })
+        .catch(function(error) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            var errorEl = document.getElementById('modal_date_error');
+            errorEl.textContent = 'An error occurred while saving. Please try again.';
+            errorEl.classList.remove('hidden');
+        });
+    });
+
+    document.getElementById('date-edit-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeDateEditModal();
+    });
+
+    // Weight edit
+    var activeWeightCell = null;
+
+    function openWeightEditModal(cell) {
+        activeWeightCell = cell;
+
+        var form = document.getElementById('weight-edit-form');
+        form.action = cell.dataset.updateUrl;
+        document.getElementById('modal_weight_task_name').textContent = cell.dataset.taskName;
+        document.getElementById('modal_weight_value').value = cell.dataset.weight;
+        document.getElementById('modal_weight_error').classList.add('hidden');
+
+        document.getElementById('weight-edit-modal').classList.remove('hidden');
+    }
+
+    function closeWeightEditModal() {
+        document.getElementById('weight-edit-modal').classList.add('hidden');
+        activeWeightCell = null;
+    }
+
+    document.querySelectorAll('.gantt-weight-cell').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+            openWeightEditModal(cell);
+        });
+    });
+
+    document.getElementById('weight-edit-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = document.getElementById('weight-edit-form');
+        var submitBtn = form.querySelector('button[type="submit"]');
+        var originalText = submitBtn.textContent;
+
+        var weight = document.getElementById('modal_weight_value').value;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+        document.getElementById('modal_weight_error').classList.add('hidden');
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ weight: weight })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(response) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+
+            if (response.success) {
+                closeWeightEditModal();
+                window.location.reload();
+            } else {
+                var errorEl = document.getElementById('modal_weight_error');
+                errorEl.textContent = response.message || 'Failed to save weight.';
+                errorEl.classList.remove('hidden');
+            }
+        })
+        .catch(function(error) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            var errorEl = document.getElementById('modal_weight_error');
+            errorEl.textContent = 'An error occurred while saving. Please try again.';
+            errorEl.classList.remove('hidden');
+        });
+    });
+
+    document.getElementById('weight-edit-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeWeightEditModal();
+    });
+
+    // Start Actual button
+    document.querySelectorAll('.gantt-start-actual-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            var predecessorId = btn.dataset.predecessorId;
+            var dependencyType = btn.dataset.dependencyType || 'end_to_start';
+            var predecessorActualEnd = btn.dataset.predecessorActualEnd;
+            var predecessorActualStart = btn.dataset.predecessorActualStart || '';
+
+            if (predecessorId) {
+                // Check if predecessor is complete based on dependency type
+                var predecessorComplete = false;
+                if (dependencyType === 'start_to_start') {
+                    predecessorComplete = !!predecessorActualStart;
+                } else {
+                    // end_to_start (default)
+                    predecessorComplete = !!predecessorActualEnd;
+                }
+
+                if (!predecessorComplete) {
+                    var depTypeText = dependencyType === 'start_to_start' ? 'started' : 'completed';
+                    alert('This subtask cannot start because its predecessor has not been ' + depTypeText + ' yet.');
+                    return;
+                }
+            }
+
+            if (!confirm('Set Actual Start to today for "' + btn.dataset.taskName + '"?')) {
+                return;
+            }
+
+            var today = new Date();
+            var y = today.getFullYear();
+            var m = String(today.getMonth() + 1).padStart(2, '0');
+            var day = String(today.getDate()).padStart(2, '0');
+            var todayStr = y + '-' + m + '-' + day;
+
+            var data = { start_date_actual: todayStr };
+
+            fetch(btn.dataset.updateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(response) {
+                if (response.success) {
+                    window.location.reload();
+                } else {
+                    alert(response.message || 'Failed to set Actual Start.');
+                }
+            })
+            .catch(function(error) {
+                alert('An error occurred. Please try again.');
+            });
+        });
+    });
 
 </script>
 

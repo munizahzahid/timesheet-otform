@@ -30,7 +30,7 @@ const statusBadgeColors = {
     cancelled: 'bg-red-500',
 };
 
-export default function ProjectKanban({ tasks: initialTasks = [], csrfToken, addTaskUrl }) {
+export default function ProjectKanban({ tasks: initialTasks = [], csrfToken, addTaskUrl, refreshUrl }) {
     const [tasks, setTasks] = useState(initialTasks);
     const [open, setOpen] = useState({ type: null, taskId: null });
     const [expanded, setExpanded] = useState({ comments: new Set(), attachments: new Set() });
@@ -41,6 +41,23 @@ export default function ProjectKanban({ tasks: initialTasks = [], csrfToken, add
         document.addEventListener('click', close);
         return () => document.removeEventListener('click', close);
     }, []);
+
+    const refreshTasks = async () => {
+        if (!refreshUrl) return;
+        try {
+            const res = await fetch(refreshUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await res.json();
+            if (data.success && data.tasks) {
+                setTasks(data.tasks);
+            }
+        } catch (e) {
+            console.error('Failed to refresh tasks:', e);
+        }
+    };
 
     const grouped = useMemo(() => {
         const map = {};
@@ -73,6 +90,8 @@ export default function ProjectKanban({ tasks: initialTasks = [], csrfToken, add
             if (data.success) {
                 onSuccess(data.task);
                 setOpen({ type: null, taskId: null });
+                // Refresh all tasks to show cascaded changes
+                await refreshTasks();
             } else {
                 alert(data.message || 'Update failed.');
             }
@@ -144,11 +163,11 @@ export default function ProjectKanban({ tasks: initialTasks = [], csrfToken, add
             >
                 <div className="flex items-start justify-between mb-3 gap-2">
                     <a href={task.show_url} className="text-sm font-semibold text-gray-900 line-clamp-2 flex-1 hover:text-indigo-600">{task.task_name}</a>
-                    <a href={task.edit_url} className="text-gray-400 hover:text-indigo-600 flex-shrink-0 p-1 rounded hover:bg-gray-100" title="Edit">
+                    <button onClick={(e) => { e.stopPropagation(); if (window.openSubtaskEditModal) window.openSubtaskEditModal(task); }} type="button" className="text-gray-400 hover:text-indigo-600 flex-shrink-0 p-1 rounded hover:bg-gray-100" title="Edit">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
-                    </a>
+                    </button>
                     <div className="relative flex-shrink-0">
                         <button onClick={(e) => toggle('menu', task.id, e)} type="button" className="text-gray-400 hover:text-gray-600 focus:outline-none p-1 rounded hover:bg-gray-100">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,7 +176,7 @@ export default function ProjectKanban({ tasks: initialTasks = [], csrfToken, add
                         </button>
                         {isMenuOpen && (
                             <div className="absolute right-0 mt-1 w-28 bg-white rounded-xl shadow-lg ring-1 ring-black/5 border border-gray-100 z-20 py-1" onClick={(e) => e.stopPropagation()}>
-                                <a href={task.edit_url} className="block px-4 py-2 text-xs text-gray-700 hover:bg-gray-100">Edit</a>
+                                <button onClick={() => { if (window.openSubtaskEditModal) window.openSubtaskEditModal(task); }} type="button" className="block w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-100">Edit</button>
                                 <form action={task.delete_url} method="POST" onSubmit={(e) => { if (!window.confirm('Delete this task?')) e.preventDefault(); }}>
                                     <input type="hidden" name="_token" value={csrfToken} />
                                     <input type="hidden" name="_method" value="DELETE" />

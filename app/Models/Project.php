@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProjectProgressCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -95,6 +96,20 @@ class Project extends Model
     public function getNameAttribute(): ?string
     {
         return $this->project_name;
+    }
+
+    /**
+     * Calculate how many days the actual progress is behind the plan progress.
+     * Returns 0 if on time or ahead.
+     */
+    public function getDelayDaysAttribute(): int
+    {
+        return (new ProjectProgressCalculator())->calculateDelayDays(
+            $this->start_date_plan,
+            $this->end_date_plan,
+            (int) $this->overall_plan_progress,
+            (int) $this->overall_actual_progress
+        );
     }
 
     public function phases(): HasMany

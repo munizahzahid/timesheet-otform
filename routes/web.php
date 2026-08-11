@@ -188,6 +188,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
                 Route::get('/gantt-changes', [ProjectTaskController::class, 'ganttChanges'])->name('gantt-changes');
                 Route::get('/gantt-export-excel', [ProjectTaskController::class, 'exportGanttExcel'])->name('gantt-export-excel');
                 Route::get('/gantt-export-pdf', [ProjectTaskController::class, 'exportGanttPdf'])->name('gantt-export-pdf');
+                Route::get('/kanban-tasks', [ProjectTaskController::class, 'kanbanTasks'])->name('kanban-tasks');
                 Route::get('/{task}', [ProjectTaskController::class, 'show'])->name('show');
                 Route::get('/{task}/edit', [ProjectTaskController::class, 'edit'])->name('edit');
                 Route::put('/{task}', [ProjectTaskController::class, 'update'])->name('update');

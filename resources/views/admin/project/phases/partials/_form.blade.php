@@ -4,7 +4,7 @@
     {{-- Left Column --}}
     <div class="space-y-5">
         <div>
-            <label for="phase_name" class="block text-sm font-medium text-gray-700 mb-1">Phase Name <span class="text-red-500">*</span></label>
+            <label for="phase_name" class="block text-sm font-medium text-gray-700 mb-1">Task Name <span class="text-red-500">*</span></label>
             <input type="text" name="phase_name" id="phase_name"
                    value="{{ old('phase_name', $isEdit ? $phase->phase_name : '') }}"
                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
@@ -13,7 +13,7 @@
         </div>
 
         <div>
-            <label for="phase_order" class="block text-sm font-medium text-gray-700 mb-1">Phase Order <span class="text-red-500">*</span></label>
+            <label for="phase_order" class="block text-sm font-medium text-gray-700 mb-1">Task Order <span class="text-red-500">*</span></label>
             <input type="number" name="phase_order" id="phase_order" min="1"
                    value="{{ old('phase_order', $isEdit ? $phase->phase_order : 1) }}"
                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
@@ -89,6 +89,6 @@
     </a>
     <button type="submit"
             class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
-        {{ $isEdit ? 'Update Phase' : 'Create Phase' }}
+        {{ $isEdit ? 'Update Task' : 'Create Task' }}
     </button>
 </div>

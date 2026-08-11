@@ -43,6 +43,16 @@
             'show_url' => route('admin.project.projects.tasks.show', [$project, $task]),
             'edit_url' => route('admin.project.projects.tasks.edit', [$project, $task]),
             'delete_url' => route('admin.project.projects.tasks.destroy', [$project, $task]),
+            'task_order' => $task->task_order,
+            'assigned_to' => $task->assigned_to,
+            'predecessor_task_id' => $task->predecessor_task_id,
+            'dependency_type' => $task->dependency_type ?? 'end_to_start',
+            'start_date_plan' => $task->start_date_plan?->format('Y-m-d'),
+            'end_date_plan' => $task->end_date_plan?->format('Y-m-d'),
+            'start_date_actual' => $task->start_date_actual?->format('Y-m-d'),
+            'end_date_actual' => $task->end_date_actual?->format('Y-m-d'),
+            'start_date_revise' => $task->start_date_revise?->format('Y-m-d'),
+            'end_date_revise' => $task->end_date_revise?->format('Y-m-d'),
             'comment_store_url' => route('admin.project.projects.tasks.comments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
             'attachment_store_url' => route('admin.project.projects.tasks.attachments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
         ];
@@ -52,6 +62,7 @@
         'tasks' => $kanbanTasks,
         'csrfToken' => csrf_token(),
         'addTaskUrl' => route('admin.project.projects.tasks.create', $project),
+        'refreshUrl' => route('admin.project.projects.tasks.kanban-tasks', $project),
     ];
 @endphp
 

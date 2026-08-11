@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Phases — {{ $project->project_name }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Tasks — {{ $project->project_name }}</h2>
     </x-slot>
 
     @include('admin.project.partials._navbar')
@@ -17,12 +17,12 @@
 
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h3 class="text-lg font-medium text-gray-900">Project Phases</h3>
-                <p class="text-sm text-gray-500">{{ $phases->count() }} phase{{ $phases->count() != 1 ? 's' : '' }}</p>
+                <h3 class="text-lg font-medium text-gray-900">Project Tasks</h3>
+                <p class="text-sm text-gray-500">{{ $phases->count() }} task{{ $phases->count() != 1 ? 's' : '' }}</p>
             </div>
             <a href="{{ route('admin.project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
-                Add Phase
+                Add Task
             </a>
         </div>
 
@@ -31,8 +31,8 @@
                 <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
                 </svg>
-                <p class="text-sm text-gray-500 mt-2">No phases yet.</p>
-                <p class="text-xs text-gray-400 mt-1">Add a phase to get started.</p>
+                <p class="text-sm text-gray-500 mt-2">No tasks yet.</p>
+                <p class="text-xs text-gray-400 mt-1">Add a task to get started.</p>
             </div>
         @else
             <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -40,7 +40,7 @@
                     <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phase Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Name</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planned Period</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>

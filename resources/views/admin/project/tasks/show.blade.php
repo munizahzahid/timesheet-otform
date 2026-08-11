@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Task Details — {{ $task->task_name }}</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Subtask Details — {{ $task->task_name }}</h2>
     </x-slot>
 
     @include('admin.project.partials._navbar')
@@ -11,7 +11,7 @@
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
-                Back to Tasks
+                Back to Subtasks
             </a>
         </div>
 
@@ -20,7 +20,7 @@
                 <div class="lg:col-span-2 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Task Name</p>
+                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Subtask Name</p>
                             <p class="text-sm font-medium text-gray-900">{{ $task->task_name }}</p>
                         </div>
                         <div>
@@ -31,11 +31,11 @@
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Phase</p>
+                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Parent Task</p>
                             <p class="text-sm text-gray-700">{{ $task->phase->phase_name ?? 'Standalone' }}</p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Predecessor Task</p>
+                            <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Dependency (Predecessor)</p>
                             <p class="text-sm text-gray-700">{{ $task->predecessorTask->task_name ?? '—' }}</p>
                         </div>
                     </div>

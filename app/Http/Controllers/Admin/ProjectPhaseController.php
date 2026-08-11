@@ -62,13 +62,17 @@ class ProjectPhaseController extends Controller
             "Phase '{$phase->phase_name}' created"
         );
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'phase' => $phase]);
+        }
+
         $redirect = $request->input('redirect');
         if ($redirect) {
-            return redirect($redirect)->with('success', 'Phase created successfully.');
+            return redirect($redirect)->with('success', 'Task created successfully.');
         }
 
         return redirect()->route('admin.project.projects.phases.index', $project)
-            ->with('success', 'Phase created successfully.');
+            ->with('success', 'Task created successfully.');
     }
 
     /**
@@ -93,7 +97,7 @@ class ProjectPhaseController extends Controller
      */
     public function update(Request $request, Project $project, ProjectPhase $phase)
     {
-        $validated = $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'phase_name' => 'required|string|max:255',
             'phase_order' => 'required|integer|min:1',
             'start_date_plan' => 'nullable|date',
@@ -103,6 +107,15 @@ class ProjectPhaseController extends Controller
             'start_date_revise' => 'nullable|date',
             'end_date_revise' => 'nullable|date',
         ]);
+
+        if ($validator->fails()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => $validator->errors()->toArray()], 422);
+            }
+            return redirect()->back()->withInput()->withErrors($validator);
+        }
+
+        $validated = $validator->validated();
 
         $oldValues = $phase->getOriginal();
         $phase->update($validated);
@@ -132,13 +145,17 @@ class ProjectPhaseController extends Controller
             }
         }
 
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'phase' => $phase]);
+        }
+
         $redirect = $request->input('redirect');
         if ($redirect) {
-            return redirect($redirect)->with('success', 'Phase updated successfully.');
+            return redirect($redirect)->with('success', 'Task updated successfully.');
         }
 
         return redirect()->route('admin.project.projects.phases.index', $project)
-            ->with('success', 'Phase updated successfully.');
+            ->with('success', 'Task updated successfully.');
     }
 
     /**
@@ -173,6 +190,6 @@ class ProjectPhaseController extends Controller
             $query['view'] = $request->input('view');
         }
         return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
-            ->with('success', 'Phase deleted successfully.');
+            ->with('success', 'Task deleted successfully.');
     }
 }

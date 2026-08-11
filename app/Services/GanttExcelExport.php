@@ -43,6 +43,8 @@ class GanttExcelExport
             foreach ($phase->tasks as $task) {
                 $this->collectDates($task, $effectiveDates[$task->id] ?? null, $allDates);
             }
+            // Also collect phase dates
+            $this->collectPhaseDates($phase, $allDates);
         }
         foreach ($standaloneTasks as $task) {
             $this->collectDates($task, $effectiveDates[$task->id] ?? null, $allDates);
@@ -275,10 +277,36 @@ class GanttExcelExport
         if ($effective && $effective['end_date']) $allDates->push($effective['end_date']->copy());
         if ($task->start_date_plan) $allDates->push($task->start_date_plan->copy());
         if ($task->end_date_plan) $allDates->push($task->end_date_plan->copy());
-        if ($task->start_date_actual) $allDates->push($task->start_date_actual->copy());
-        if ($task->end_date_actual) $allDates->push($task->end_date_actual->copy());
+        // Only include actual dates if task has started (has start_date_actual)
+        if ($task->start_date_actual) {
+            $allDates->push($task->start_date_actual->copy());
+            if ($task->end_date_actual) {
+                $allDates->push($task->end_date_actual->copy());
+            } else {
+                // If ongoing, include today in timeline
+                $allDates->push(now()->copy()->startOfDay());
+            }
+        }
         if ($task->start_date_revise) $allDates->push($task->start_date_revise->copy());
         if ($task->end_date_revise) $allDates->push($task->end_date_revise->copy());
+    }
+
+    private function collectPhaseDates($phase, $allDates): void
+    {
+        if ($phase->start_date_plan) $allDates->push($phase->start_date_plan->copy());
+        if ($phase->end_date_plan) $allDates->push($phase->end_date_plan->copy());
+        // Only include actual dates if phase has started (has start_date_actual)
+        if ($phase->start_date_actual) {
+            $allDates->push($phase->start_date_actual->copy());
+            if ($phase->end_date_actual) {
+                $allDates->push($phase->end_date_actual->copy());
+            } else {
+                // If ongoing, include today in timeline
+                $allDates->push(now()->copy()->startOfDay());
+            }
+        }
+        if ($phase->start_date_revise) $allDates->push($phase->start_date_revise->copy());
+        if ($phase->end_date_revise) $allDates->push($phase->end_date_revise->copy());
     }
 
     private function buildTimeBlocks($timelineStart, $timelineEnd, string $zoom): array
@@ -371,7 +399,7 @@ class GanttExcelExport
         if ($visible[$type]) {
             foreach ($timeBlocks as $i => $block) {
                 $col = $colMap['time_' . $i];
-                $colorType = $this->resolveRowCellType($block, $phase, $type, null);
+                $colorType = $this->resolvePhaseCellType($block, $phase, $type);
                 if ($colorType) {
                     $sheet->getStyle("{$col}{$row}")->getFill()->setFillType(Fill::FILL_SOLID)
                         ->setStartColor(new Color($this->colors[$colorType]));
@@ -402,18 +430,51 @@ class GanttExcelExport
         }
 
         if ($type === 'actual') {
+            // Only show actual bar if task has started (has start_date_actual)
+            // This matches the UI behavior where actual bar is only shown when start_date_actual exists
             if ($task->start_date_actual) {
                 $taskStart = $task->start_date_actual->copy()->startOfDay();
+                // If task is ongoing (no end_date_actual), extend to today
                 $taskEnd = ($task->end_date_actual ?? now())->copy()->endOfDay();
                 if ($cellStart <= $taskEnd && $cellEnd >= $taskStart) {
                     return 'actual';
                 }
             }
-            if ($effective && $effective['start_date'] && $effective['end_date']) {
-                $taskStart = $effective['start_date']->copy()->startOfDay();
-                $taskEnd = $effective['end_date']->copy()->endOfDay();
-                if ($cellStart <= $taskEnd && $cellEnd >= $taskStart) {
-                    return 'effective';
+        }
+
+        return null;
+    }
+
+    private function resolvePhaseCellType($block, $phase, string $type): ?string
+    {
+        $cellStart = $block['startDate'];
+        $cellEnd = $block['endDate'];
+
+        if ($type === 'plan' && $phase->start_date_plan && $phase->end_date_plan) {
+            $phaseStart = $phase->start_date_plan->copy()->startOfDay();
+            $phaseEnd = $phase->end_date_plan->copy()->endOfDay();
+            if ($cellStart <= $phaseEnd && $cellEnd >= $phaseStart) {
+                return 'plan';
+            }
+        }
+
+        if ($type === 'revise' && $phase->start_date_revise && $phase->end_date_revise) {
+            $phaseStart = $phase->start_date_revise->copy()->startOfDay();
+            $phaseEnd = $phase->end_date_revise->copy()->endOfDay();
+            if ($cellStart <= $phaseEnd && $cellEnd >= $phaseStart) {
+                return 'revise';
+            }
+        }
+
+        if ($type === 'actual') {
+            // Only show actual bar if phase has started (has start_date_actual)
+            // This matches the UI behavior where actual bar is only shown when start_date_actual exists
+            if ($phase->start_date_actual) {
+                $phaseStart = $phase->start_date_actual->copy()->startOfDay();
+                // If phase is ongoing (no end_date_actual), extend to today
+                $phaseEnd = ($phase->end_date_actual ?? now())->copy()->endOfDay();
+                if ($cellStart <= $phaseEnd && $cellEnd >= $phaseStart) {
+                    return 'actual';
                 }
             }
         }

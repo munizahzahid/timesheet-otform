@@ -42,6 +42,33 @@ class ProjectProgressCalculator
     }
 
     /**
+     * Calculate how many days the actual progress is behind the plan progress.
+     *
+     * Example: 5-day project, plan = 60%, actual = 20%.
+     * Progress per day = 100% / 5 days = 20% per day.
+     * Delay % = 60% - 20% = 40%.
+     * Delay days = 40% / 20% = 2 days.
+     *
+     * @return int 0 if on time or ahead
+     */
+    public function calculateDelayDays(?Carbon $startDate, ?Carbon $endDate, int $planProgress, int $actualProgress): int
+    {
+        if (!$startDate || !$endDate || $actualProgress >= $planProgress) {
+            return 0;
+        }
+
+        $totalDays = $startDate->copy()->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1;
+        if ($totalDays <= 0) {
+            $totalDays = 1;
+        }
+
+        $delayPercentage = $planProgress - $actualProgress;
+        $progressPerDay = 100 / $totalDays;
+
+        return (int) round($delayPercentage / $progressPerDay);
+    }
+
+    /**
      * Calculate and persist the progress of a phase.
      *
      * Plan progress: time-based based on phase plan dates (elapsed days / total plan days).
@@ -91,6 +118,16 @@ class ProjectProgressCalculator
     public function recalculateProjectProgress(Project $project): void
     {
         $tasks = $project->tasks;
+
+        // Keep each task's stored plan progress in sync (used by task show view and reports)
+        foreach ($tasks as $task) {
+            $newPlanProgress = $this->calculateTaskPlanProgress($task);
+            if ((int) $task->progress_plan !== $newPlanProgress) {
+                $task->progress_plan = $newPlanProgress;
+                $task->saveQuietly();
+            }
+        }
+
         $totalWeight = $tasks->sum('weight');
 
         // Actual progress: task-weighted (unchanged)
