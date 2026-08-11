@@ -20,6 +20,7 @@
         'variance' => $variance,
         'delayedTasks' => $delayedTasks,
         'totalTasks' => $totalTasks,
+        'daysBehind' => $daysBehind ?? 0,
         'taskStatusDistribution' => collect($taskStatusDistribution)->map(function ($count, $status) use ($colorMap, $bgClassMap) {
             return [
                 'status' => $status,

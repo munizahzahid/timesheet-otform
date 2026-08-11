@@ -631,6 +631,9 @@ class ProjectController extends Controller
             return $delay !== null && $delay > 0;
         })->count();
 
+        // Calculate project days behind (based on project's plan vs actual progress)
+        $daysBehind = $project->delay_days;
+
         // Calculate variance (plan vs actual progress)
         $overallPlanProgress = $project->overall_plan_progress;
         $overallActualProgress = $project->overall_actual_progress;
@@ -678,6 +681,7 @@ class ProjectController extends Controller
             'delayedTasks',
             'onHoldTasks',
             'variance',
+            'daysBehind',
             'phaseProgress',
             'taskStatusDistribution',
             'effectiveDates',
