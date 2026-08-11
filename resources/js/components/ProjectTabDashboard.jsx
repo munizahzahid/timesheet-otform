@@ -102,17 +102,31 @@ export default function ProjectTabDashboard({
         <div className="space-y-4">
             {/* Top stat cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard title="Overall Progress" value={`${overallActualProgress}%`} valueColor="text-blue-600">
-                    <div className="relative w-10 h-10">
-                        <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 40 40">
-                            <circle cx="20" cy="20" r="16" stroke="#e5e7eb" strokeWidth="3" fill="none" />
-                            <circle cx="20" cy="20" r="16" stroke="#3b82f6" strokeWidth="3" fill="none" strokeLinecap="round"
-                                strokeDasharray={circumference} strokeDashoffset={dashOffset} />
-                        </svg>
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Overall Progress</p>
+                    <div className="space-y-2">
+                        <div>
+                            <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-600">Plan</span>
+                                <span className="font-semibold text-gray-900">{overallPlanProgress}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${overallPlanProgress}%` }}></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-600">Actual</span>
+                                <span className="font-semibold text-gray-900">{overallActualProgress}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${overallActualProgress}%` }}></div>
+                            </div>
+                        </div>
                     </div>
-                </StatCard>
-                <StatCard title="Total Tasks" value={totalTasks} valueColor="text-gray-900" />
+                </div>
                 <StatCard title="Variance" value={`${variance >= 0 ? '+' : ''}${variance}%`} valueColor={variance >= 0 ? 'text-green-600' : 'text-red-600'} />
+                <StatCard title="Total Tasks" value={totalTasks} valueColor="text-gray-900" />
                 <StatCard title="Overdue" value={delayedTasks} valueColor={delayedTasks > 0 ? 'text-red-600' : 'text-green-600'} />
             </div>
 
