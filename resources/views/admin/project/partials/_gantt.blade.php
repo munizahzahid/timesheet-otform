@@ -483,7 +483,7 @@
                                     {{-- Plan bar --}}
                                     @if($phasePlanStartOffset !== null && $phasePlanDuration !== null)
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phasePlanStartOffset }}" data-duration="{{ $phasePlanDuration }}" data-bar-type="plan"
-                                             style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(168, 85, 247, 0.3); border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden;"
+                                             style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(168, 85, 247, 0.3); border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Plan: {{ $phase->start_date_plan->format('d M Y') }} — {{ $phase->end_date_plan->format('d M Y') }}">
                                             {{-- Progress fill --}}
                                             <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $phase->progress_plan }}%; background-color: #a855f7; transition: width 0.3s ease;"></div>
@@ -506,7 +506,7 @@
                                             }
                                         @endphp
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phaseReviseStartOffset }}" data-duration="{{ $phaseReviseDuration }}" data-bar-type="revise"
-                                             style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(251, 146, 60, 0.3); border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden;"
+                                             style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(251, 146, 60, 0.3); border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Revise: {{ $phase->start_date_revise->format('d M Y') }} — {{ $phase->end_date_revise->format('d M Y') }}">
                                             {{-- Progress fill --}}
                                             <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $reviseProgress }}%; background-color: #fb923c; transition: width 0.3s ease;"></div>
@@ -1925,21 +1925,42 @@
             : (fromRect.right - wrapperRect.left);
         var y1 = (fromRect.top + fromRect.bottom) / 2 - wrapperRect.top;
 
-        // Simple curved arrow path - more user-friendly
-        var midX = (x1 + x2) / 2;
-        var curveOffset = 15; // Amount to curve the arrow
+        // Flowchart-style stepped connector (straight vertical/horizontal lines)
+        var margin = 6;
+        var elbowX, elbowY;
 
-        // Create a smooth bezier curve
-        if (y1 === y2) {
-            // Same row - simple straight line
-            d = 'M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2;
+        if (typeParts.fromSide === 'end') {
+            // End-to-Start: from right side of predecessor
+            elbowX = x1 + margin;
+            if (x2 < elbowX) {
+                // Target is to the left, need to go around
+                elbowX = x1 + margin + 10;
+            }
         } else {
-            // Different rows - use curved path
-            var controlX = midX;
-            var controlY = y1 + (y2 - y1) / 2;
-            d = 'M ' + x1 + ' ' + y1
-                + ' Q ' + controlX + ' ' + controlY + ' ' + x2 + ' ' + y2;
+            // Start-to-Start: from left side of predecessor
+            elbowX = x1 - margin;
+            if (x2 > elbowX) {
+                elbowX = x1 - margin - 10;
+            }
         }
+
+        // Create stepped path: from source → horizontal → vertical → horizontal → target
+        // Start at source point
+        // Move slightly outward from bar
+        var x1Out = typeParts.fromSide === 'end' ? x1 + margin : x1 - margin;
+        // Enter target slightly before
+        var x2In = typeParts.toSide === 'start' ? x2 - margin : x2 + margin;
+
+        // Use the midpoint of the two rows as the horizontal level
+        var midY = y1 + (y2 - y1) / 2;
+
+        // Build the stepped path
+        var d = 'M ' + x1 + ' ' + y1
+            + ' L ' + x1Out + ' ' + y1
+            + ' L ' + x1Out + ' ' + midY
+            + ' L ' + x2In + ' ' + midY
+            + ' L ' + x2In + ' ' + y2
+            + ' L ' + x2 + ' ' + y2;
 
         var label = typeParts.fromSide === 'start'
             ? 'Start-to-Start (' + lane + ')'
@@ -1956,7 +1977,7 @@
         path.setAttribute('stroke-width', '2');
         path.setAttribute('fill', 'none');
         path.setAttribute('marker-end', 'url(#gantt-arrowhead-' + lane + ')');
-        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linecap', 'butt');
         path.setAttribute('stroke-linejoin', 'round');
         path.setAttribute('class', 'gantt-dependency-arrow');
         path.setAttribute('data-task-id', taskId);
@@ -1965,15 +1986,6 @@
         path.setAttribute('data-lane', lane);
         path.setAttribute('title', label);
         svg.appendChild(path);
-
-        // Add dot at the target point for better visibility
-        var arrowDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        arrowDot.setAttribute('cx', x2);
-        arrowDot.setAttribute('cy', y2);
-        arrowDot.setAttribute('r', 4);
-        arrowDot.setAttribute('fill', strokeColor);
-        arrowDot.setAttribute('class', 'gantt-arrow-dot');
-        svg.appendChild(arrowDot);
     }
 
     function drawGanttDependencyArrows() {
@@ -2570,15 +2582,17 @@
                     });
                 }
 
-                var successorStart = parseFloat(successorBar.dataset.startOffset) || 0;
-                var successorDuration = parseFloat(successorBar.dataset.duration) || 1;
-                var newSuccessorStart = successorStart;
+                // Calculate from the original start/duration so repeated mousemove events
+                // do not accumulate and overshift the successor.
+                var originalSuccessorStart = existing ? parseFloat(existing.originalStartOffset) || 0 : parseFloat(successorBar.dataset.startOffset) || 0;
+                var successorDuration = existing ? parseFloat(existing.originalDuration) || 1 : parseFloat(successorBar.dataset.duration) || 1;
+                var newSuccessorStart = originalSuccessorStart;
 
                 if (dependencyType === 'start_to_start') {
-                    newSuccessorStart = successorStart + startDelta;
+                    newSuccessorStart = originalSuccessorStart + startDelta;
                 } else {
                     // end_to_start: shift based on predecessor end change
-                    newSuccessorStart = successorStart + endDelta;
+                    newSuccessorStart = originalSuccessorStart + endDelta;
                 }
 
                 if (newSuccessorStart < 0) newSuccessorStart = 0;
@@ -2588,7 +2602,7 @@
                 successorBar.dataset.startOffset = newSuccessorStart;
 
                 // Cascade one more level for direct successors only
-                ganttShiftSuccessors(successorId, barType, successorStart, successorDuration, newSuccessorStart, successorDuration, pixelsPerDay, visited);
+                ganttShiftSuccessors(successorId, barType, originalSuccessorStart, successorDuration, newSuccessorStart, successorDuration, pixelsPerDay, visited);
             });
         }
 

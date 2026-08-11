@@ -226,7 +226,7 @@
             <div class="gantt-lane absolute" data-bar-type="plan" style="left: 0; right: 0; top: 4px; height: 18px; background-color: rgba(59, 130, 246, 0.08); border-radius: 6px;"></div>
             @if($planStartOffset !== null && $planDuration !== null)
                 <div class="gantt-bar absolute gantt-resizable" data-task-id="{{ $task->id }}" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
-                     style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: rgba(59, 130, 246, 0.3); border: 1px solid #2563eb; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(37,99,235,0.25); overflow: hidden;"
+                     style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: rgba(59, 130, 246, 0.3); border: 1px solid #2563eb; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(37,99,235,0.25);"
                      title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }} ({{ $planProgress }}%)">
                     {{-- Progress fill --}}
                     <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $planProgress }}%; background-color: #3b82f6; transition: width 0.3s ease;"></div>
@@ -242,7 +242,7 @@
             <div class="gantt-lane absolute" data-bar-type="revise" style="left: 0; right: 0; top: 26px; height: 18px; background-color: rgba(251, 146, 60, 0.08); border-radius: 6px;"></div>
             @if($reviseStartOffset !== null && $reviseDuration !== null)
                 <div class="gantt-bar absolute gantt-resizable" data-task-id="{{ $task->id }}" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
-                     style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: rgba(249, 115, 22, 0.3); border: 1px solid #ea580c; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(234,88,12,0.25); overflow: hidden;"
+                     style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: rgba(249, 115, 22, 0.3); border: 1px solid #ea580c; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(234,88,12,0.25);"
                      title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }} ({{ $reviseProgress }}%)">
                     {{-- Progress fill --}}
                     <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $reviseProgress }}%; background-color: #f97316; transition: width 0.3s ease;"></div>
