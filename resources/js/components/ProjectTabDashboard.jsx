@@ -47,6 +47,11 @@ export default function ProjectTabDashboard({
         if (!window.Chart) return;
         const charts = [];
 
+        // Register datalabels plugin
+        if (window.ChartDataLabels) {
+            window.Chart.register(window.ChartDataLabels);
+        }
+
         const visibleStatuses = taskStatusDistribution.filter(s => s.count > 0);
 
         if (visibleStatuses.length > 0 && pieRef.current) {
@@ -63,7 +68,18 @@ export default function ProjectTabDashboard({
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            color: '#fff',
+                            font: { weight: 'bold', size: 12 },
+                            formatter: (value, context) => {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return percentage > 5 ? `${percentage}%` : '';
+                            },
+                        },
+                    },
                 },
             }));
         }
@@ -84,6 +100,13 @@ export default function ProjectTabDashboard({
                     plugins: {
                         legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
                         tooltip: { backgroundColor: '#1F2937', padding: 10, cornerRadius: 8 },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#374151',
+                            font: { weight: 'bold', size: 11 },
+                            formatter: (value) => `${value}%`,
+                        },
                     },
                     scales: {
                         y: { beginAtZero: true, max: 100, grid: { color: '#F3F4F6' } },

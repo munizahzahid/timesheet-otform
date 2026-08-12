@@ -93,7 +93,13 @@ export default function MainDashboard({
                         maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            datalabels: { color: '#FFFFFF', font: { weight: 'bold', size: 11 }, formatter: (v) => v.toFixed(1) },
+                            datalabels: {
+                                color: '#FFFFFF',
+                                font: { weight: 'bold', size: 12 },
+                                anchor: 'center',
+                                align: 'center',
+                                formatter: (v) => v.toFixed(1),
+                            },
                             tooltip: { callbacks: { label: (c) => `${c.parsed.y.toFixed(2)} hours` } },
                         },
                         scales: {
@@ -123,7 +129,15 @@ export default function MainDashboard({
                         cutout: '60%',
                         plugins: {
                             legend: { position: 'right' },
-                            datalabels: { color: '#FFFFFF', font: { weight: 'bold', size: 11 }, formatter: (v) => v.toFixed(2) },
+                            datalabels: {
+                                color: '#FFFFFF',
+                                font: { weight: 'bold', size: 12 },
+                                formatter: (v, c) => {
+                                    const total = c.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((v / total) * 100).toFixed(0) : 0;
+                                    return pct > 5 ? `${pct}%` : '';
+                                },
+                            },
                             tooltip: {
                                 callbacks: {
                                     label: (c) => {
@@ -159,7 +173,13 @@ export default function MainDashboard({
                         maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
-                            datalabels: { color: '#FFFFFF', font: { weight: 'bold', size: 11 }, anchor: 'center', align: 'center', formatter: (v) => v.toFixed(2) },
+                            datalabels: {
+                                color: '#FFFFFF',
+                                font: { weight: 'bold', size: 12 },
+                                anchor: 'center',
+                                align: 'center',
+                                formatter: (v) => v.toFixed(1),
+                            },
                             tooltip: { callbacks: { label: (c) => `${c.parsed.y.toFixed(2)} hours` } },
                         },
                         scales: {
@@ -274,8 +294,8 @@ export default function MainDashboard({
                             <Card title="Total OT Hours by Month" subtitle="All approved OT forms">
                                 <div className="p-4 h-60">
                                     {otMonthlyData.length > 0 ? (
-                                        <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
-                                            <div style={{ height: '100%', minWidth: otMonthlyData.length * 60 }}>
+                                        <div className="overflow-x-auto h-full" style={{ maxWidth: '100%' }}>
+                                            <div className="h-full" style={{ minWidth: otMonthlyData.length * 60 }}>
                                                 <canvas ref={monthlyRef}></canvas>
                                             </div>
                                         </div>
@@ -286,10 +306,10 @@ export default function MainDashboard({
                             </Card>
 
                             <Card title="OT Hours by Staff" subtitle={formatMonth(selectedMonthNumber, selectedYear)}>
-                                <div className="p-4 h-80">
+                                <div className="p-4 h-96">
                                     {otStaffData.length > 0 ? (
-                                        <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
-                                            <div style={{ height: '100%', minWidth: otStaffData.length * 60 }}>
+                                        <div className="overflow-x-auto h-full" style={{ maxWidth: '100%' }}>
+                                            <div className="h-full" style={{ minWidth: otStaffData.length * 60 }}>
                                                 <canvas ref={staffRef}></canvas>
                                             </div>
                                         </div>

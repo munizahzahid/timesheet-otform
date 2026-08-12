@@ -92,6 +92,9 @@ export default function ProjectDashboard({
 
     useEffect(() => {
         if (!window.Chart) return;
+        if (window.ChartDataLabels) {
+            window.Chart.register(window.ChartDataLabels);
+        }
         const charts = [];
 
         // Budget Plan vs Actual (vertical bars)
@@ -120,10 +123,18 @@ export default function ProjectDashboard({
                                 label: (context) => `${context.dataset.label}: ${context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                             },
                         },
+                        datalabels: {
+                            color: '#374151',
+                            font: { weight: 'bold', size: 11 },
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 4,
+                            formatter: (v) => v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+                        },
                     },
                     scales: {
                         x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 45, font: { size: 11 } } },
-                        y: { beginAtZero: true, grid: { color: '#F3F4F6' } },
+                        y: { beginAtZero: true, grid: { color: '#F3F4F6' }, padding: { top: 20 } },
                     },
                 },
             }));
@@ -200,9 +211,17 @@ export default function ProjectDashboard({
                     plugins: {
                         legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
                         tooltip: { backgroundColor: '#1F2937', padding: 10, cornerRadius: 8 },
+                        datalabels: {
+                            color: '#374151',
+                            font: { weight: 'bold', size: 11 },
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 4,
+                            formatter: (v) => `${v}%`,
+                        },
                     },
                     scales: {
-                        y: { beginAtZero: true, max: 100, grid: { color: '#F3F4F6' }, title: { display: true, text: 'Progress (%)' } },
+                        y: { beginAtZero: true, max: 100, grid: { color: '#F3F4F6' }, title: { display: true, text: 'Progress (%)' }, padding: { top: 20 } },
                         x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } },
                     },
                 },
