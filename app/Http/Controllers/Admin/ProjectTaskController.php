@@ -415,8 +415,9 @@ class ProjectTaskController extends Controller
         if (array_key_exists('status', $validated) && $oldStatus === 'completed' && $newStatus === 'in_progress') {
             // Clear end_date_actual to reopen the task
             $syncUpdateData['end_date_actual'] = null;
-            // If progress was 100% and user didn't explicitly change progress, set to 99%
-            if ($oldProgress === 100 && !$userChangedProgress) {
+            // Always set progress to 99% when changing from completed to in_progress
+            // unless user explicitly set a different value (not 0 or 100)
+            if (!$userChangedProgress || $validated['progress_actual'] === 0 || $validated['progress_actual'] === 100) {
                 $syncUpdateData['progress_actual'] = 99;
             }
             // Do NOT clear start_date_actual - keep the existing start date
@@ -488,7 +489,9 @@ class ProjectTaskController extends Controller
         }
 
         // When progress changes to 0% (task is being reset to not_started)
-        if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] === 0 && $oldProgress > 0) {
+        // Only clear actual dates if the user explicitly set progress to 0 AND status is not being changed from completed to in_progress
+        $isStatusChangeFromCompletedToInProgress = array_key_exists('status', $validated) && $oldStatus === 'completed' && $newStatus === 'in_progress';
+        if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] === 0 && $oldProgress > 0 && !$isStatusChangeFromCompletedToInProgress) {
             // Clear all actual dates
             $syncUpdateData['start_date_actual'] = null;
             $syncUpdateData['end_date_actual'] = null;
