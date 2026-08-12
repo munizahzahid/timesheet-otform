@@ -678,8 +678,10 @@ class ProjectTaskController extends Controller
         $task->refresh();
         $resolver->cascadeActualStartDates($project, $task);
 
-        // Recalculate progress when progress changes
-        if ($oldValues['progress_actual'] !== $validated['progress_actual']) {
+        // Recalculate progress when progress or plan dates change
+        if ($oldValues['progress_actual'] !== $validated['progress_actual']
+            || $oldValues['start_date_plan'] !== $validated['start_date_plan']
+            || $oldValues['end_date_plan'] !== $validated['end_date_plan']) {
             (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
         }
 
@@ -1031,7 +1033,9 @@ class ProjectTaskController extends Controller
         $shouldRecalc = array_key_exists('progress_actual', $updateData)
             || array_key_exists('status', $updateData)
             || array_key_exists('start_date_actual', $updateData)
-            || array_key_exists('end_date_actual', $updateData);
+            || array_key_exists('end_date_actual', $updateData)
+            || array_key_exists('start_date_plan', $updateData)
+            || array_key_exists('end_date_plan', $updateData);
 
         if ($shouldRecalc) {
             (new ProjectProgressCalculator())->recalculateFromTask($task->refresh());
