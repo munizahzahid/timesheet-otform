@@ -190,8 +190,10 @@ class ProjectTaskController extends Controller
             if (!$task->end_date_actual) {
                 $task->update(['end_date_actual' => now()->format('Y-m-d')]);
             }
-            // Always set start_date_actual to today for SS dependency
-            $task->update(['start_date_actual' => now()->format('Y-m-d')]);
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
+            if (!$task->start_date_actual) {
+                $task->update(['start_date_actual' => now()->format('Y-m-d')]);
+            }
         }
 
         GanttChangeLogger::log(
@@ -395,8 +397,10 @@ class ProjectTaskController extends Controller
             if (!$task->end_date_actual) {
                 $syncUpdateData['end_date_actual'] = now()->format('Y-m-d');
             }
-            // Always set start_date_actual to today (for SS dependency to work correctly)
-            $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
+            if (!$task->start_date_actual) {
+                $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+            }
         }
 
         // When status changes from "completed" to any other status
@@ -420,8 +424,10 @@ class ProjectTaskController extends Controller
 
         // When status changes from "not_started" to any other status
         if (array_key_exists('status', $validated) && $oldStatus === 'not_started' && $newStatus !== 'not_started') {
-            // Always set start_date_actual to today (for SS dependency to work correctly)
-            $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
+            if (!$task->start_date_actual) {
+                $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
+            }
         }
 
         // When progress changes to 100%
@@ -434,7 +440,7 @@ class ProjectTaskController extends Controller
             if (!$task->end_date_actual) {
                 $syncUpdateData['end_date_actual'] = now()->format('Y-m-d');
             }
-            // Always set start_date_actual to today (for SS dependency to work correctly)
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
             if (!$task->start_date_actual) {
                 $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
             }
@@ -442,7 +448,7 @@ class ProjectTaskController extends Controller
 
         // When progress changes from 0 to > 0 (task is starting)
         if (array_key_exists('progress_actual', $validated) && $validated['progress_actual'] > 0 && $oldProgress === 0) {
-            // Always set start_date_actual to today (for SS dependency to work correctly)
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
             if (!$task->start_date_actual) {
                 $syncUpdateData['start_date_actual'] = now()->format('Y-m-d');
             }
@@ -765,8 +771,10 @@ class ProjectTaskController extends Controller
             if (!$task->end_date_actual) {
                 $updateData['end_date_actual'] = now()->format('Y-m-d');
             }
-            // Always set start_date_actual to today (for SS dependency to work correctly)
-            $updateData['start_date_actual'] = now()->format('Y-m-d');
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
+            if (!$task->start_date_actual) {
+                $updateData['start_date_actual'] = now()->format('Y-m-d');
+            }
         }
 
         // When status changes from "completed" to any other status
@@ -792,8 +800,10 @@ class ProjectTaskController extends Controller
 
         // When status changes from "not_started" to any other status
         if (array_key_exists('status', $updateData) && $oldStatus === 'not_started' && $newStatus !== 'not_started') {
-            // Always set start_date_actual to today (for SS dependency to work correctly)
-            $updateData['start_date_actual'] = now()->format('Y-m-d');
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
+            if (!$task->start_date_actual) {
+                $updateData['start_date_actual'] = now()->format('Y-m-d');
+            }
         }
 
         // When progress changes to 100%
@@ -807,7 +817,7 @@ class ProjectTaskController extends Controller
             if (!$task->end_date_actual) {
                 $updateData['end_date_actual'] = now()->format('Y-m-d');
             }
-            // Always set start_date_actual to today (for SS dependency to work correctly)
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
             if (!$task->start_date_actual) {
                 $updateData['start_date_actual'] = now()->format('Y-m-d');
             }
@@ -815,7 +825,7 @@ class ProjectTaskController extends Controller
 
         // When progress changes from 0 to > 0 (task is starting)
         if (array_key_exists('progress_actual', $updateData) && $updateData['progress_actual'] > 0 && $oldProgress === 0) {
-            // Always set start_date_actual to today (for SS dependency to work correctly)
+            // Set start_date_actual to today only if not already set (preserve manual start dates)
             if (!$task->start_date_actual) {
                 $updateData['start_date_actual'] = now()->format('Y-m-d');
             }
