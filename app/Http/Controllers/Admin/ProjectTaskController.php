@@ -372,6 +372,10 @@ class ProjectTaskController extends Controller
         $oldPhaseId = $task->phase_id;
         $oldOrder = $task->task_order;
 
+        // Capture old status and progress BEFORE updating the task
+        $oldStatus = $task->status ?? 'not_started';
+        $oldProgress = $task->progress_actual ?? 0;
+
         $validated['task_order'] = $this->reorderTasksForOrder(
             $project,
             $oldPhaseId,
@@ -383,8 +387,6 @@ class ProjectTaskController extends Controller
         $task->update($validated);
 
         // Hybrid sync logic for the full update method
-        $oldStatus = $task->status ?? 'not_started';
-        $oldProgress = $task->progress_actual ?? 0;
         $newStatus = $validated['status'] ?? $oldStatus;
         $newProgress = $validated['progress_actual'] ?? $oldProgress;
 
@@ -392,7 +394,10 @@ class ProjectTaskController extends Controller
 
         // When status changes to "completed"
         if (array_key_exists('status', $validated) && $validated['status'] === 'completed' && $oldStatus !== 'completed') {
-            $syncUpdateData['progress_actual'] = 100;
+            // Set progress to 100% only if user didn't explicitly set a new progress
+            if (!array_key_exists('progress_actual', $validated)) {
+                $syncUpdateData['progress_actual'] = 100;
+            }
             // Set end_date_actual to today if not already set
             if (!$task->end_date_actual) {
                 $syncUpdateData['end_date_actual'] = now()->format('Y-m-d');
@@ -403,23 +408,41 @@ class ProjectTaskController extends Controller
             }
         }
 
-        // When status changes from "completed" to any other status
-        if (array_key_exists('status', $validated) && $oldStatus === 'completed' && $newStatus !== 'completed') {
+        // Determine if user explicitly changed the progress (not just inherited the existing value)
+        $userChangedProgress = array_key_exists('progress_actual', $validated) && (int) $validated['progress_actual'] !== $oldProgress;
+
+        // When status changes from "completed" to "in_progress"
+        if (array_key_exists('status', $validated) && $oldStatus === 'completed' && $newStatus === 'in_progress') {
             // Clear end_date_actual to reopen the task
             $syncUpdateData['end_date_actual'] = null;
-            // If progress was 100%, reduce it to 99% to indicate it's no longer complete
-            if ($oldProgress === 100) {
+            // If progress was 100% and user didn't explicitly change progress, set to 99%
+            if ($oldProgress === 100 && !$userChangedProgress) {
                 $syncUpdateData['progress_actual'] = 99;
+            }
+            // Do NOT clear start_date_actual - keep the existing start date
+        }
+
+        // When status changes from "completed" to "not_started"
+        if (array_key_exists('status', $validated) && $oldStatus === 'completed' && $newStatus === 'not_started') {
+            // Clear end_date_actual to reopen the task
+            $syncUpdateData['end_date_actual'] = null;
+            // Clear start_date_actual when resetting to not_started
+            $syncUpdateData['start_date_actual'] = null;
+            // If progress was 100% and user didn't explicitly change progress, set to 0%
+            if ($oldProgress === 100 && !$userChangedProgress) {
+                $syncUpdateData['progress_actual'] = 0;
             }
         }
 
-        // When status changes to "not_started"
-        if (array_key_exists('status', $validated) && $validated['status'] === 'not_started') {
-            // Clear all actual dates
-            $syncUpdateData['start_date_actual'] = null;
+        // When status changes from "completed" to other statuses (on_hold, cancelled)
+        if (array_key_exists('status', $validated) && $oldStatus === 'completed' && !in_array($newStatus, ['completed', 'in_progress', 'not_started'])) {
+            // Clear end_date_actual to reopen the task
             $syncUpdateData['end_date_actual'] = null;
-            // Set progress to 0%
-            $syncUpdateData['progress_actual'] = 0;
+            // If progress was 100% and user didn't explicitly change progress, set to 99%
+            if ($oldProgress === 100 && !$userChangedProgress) {
+                $syncUpdateData['progress_actual'] = 99;
+            }
+            // Do NOT clear start_date_actual - keep the existing start date
         }
 
         // When status changes from "not_started" to any other status
@@ -481,6 +504,25 @@ class ProjectTaskController extends Controller
             $task->update(['end_date_actual' => null]);
         }
 
+        // ES (End-to-Start) dependency cascading for status changes (full update method)
+        // When predecessor changes status, cascade to successors based on ES rules
+        // Call this BEFORE cascadeActualStartDates to ensure successors are reset properly
+        // Remove dependency_type check - this task is the predecessor, so cascade to all its successors
+        if (array_key_exists('status', $validated) && $oldStatus !== $newStatus) {
+            // Refresh the task to get the latest data after update
+            $task->refresh();
+            $this->cascadeESStatusChange($project, $task, $oldStatus, $newStatus);
+        }
+
+        // SS (Start-to-Start) dependency cascading for status changes (full update method)
+        // When predecessor changes status (any status change), cascade to successors
+        // Remove dependency_type check - this task is the predecessor, so cascade to all its successors
+        if (array_key_exists('status', $validated) && $oldStatus !== $newStatus) {
+            // Refresh the task to get the latest data after update
+            $task->refresh();
+            $this->cascadeSSStatusChange($project, $task, $newStatus);
+        }
+
         // Propagate plan date changes to successor tasks, then recalculate actual starts
         $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
 
@@ -496,26 +538,6 @@ class ProjectTaskController extends Controller
         }
         if (array_key_exists('end_date_actual', $syncUpdateData) || $shouldCascadeActual) {
             $resolver->cascadeActualStartDates($project, $task);
-        }
-
-        // SS (Start-to-Start) dependency cascading for status changes (full update method)
-        // When predecessor changes status (any status change), cascade to successors
-        if (array_key_exists('status', $validated) && $oldStatus !== $newStatus) {
-            if ($task->dependency_type === 'start_to_start') {
-                // Refresh the task to get the latest data after update
-                $task->refresh();
-                $this->cascadeSSStatusChange($project, $task, $newStatus);
-            }
-        }
-
-        // ES (End-to-Start) dependency cascading for status changes (full update method)
-        // When predecessor changes status, cascade to successors based on ES rules
-        if (array_key_exists('status', $validated) && $oldStatus !== $newStatus) {
-            if ($task->dependency_type === 'end_to_start') {
-                // Refresh the task to get the latest data after update
-                $task->refresh();
-                $this->cascadeESStatusChange($project, $task, $oldStatus, $newStatus);
-            }
         }
 
         // Recalculate progress for affected phase(s) and project
@@ -763,10 +785,16 @@ class ProjectTaskController extends Controller
         $newStatus = $updateData['status'] ?? $oldStatus;
         $newProgress = $updateData['progress_actual'] ?? $oldProgress;
 
+        // Determine if user explicitly changed the progress (not just inherited the existing value)
+        $userChangedProgress = array_key_exists('progress_actual', $updateData) && (int) $updateData['progress_actual'] !== $oldProgress;
+
         // When status changes to "completed"
         if (array_key_exists('status', $updateData) && $updateData['status'] === 'completed' && $oldStatus !== 'completed') {
-            $updateData['progress_actual'] = 100;
-            $newProgress = 100;
+            // Set progress to 100% only if user didn't explicitly change progress
+            if (!$userChangedProgress) {
+                $updateData['progress_actual'] = 100;
+                $newProgress = 100;
+            }
             // Set end_date_actual to today if not already set
             if (!$task->end_date_actual) {
                 $updateData['end_date_actual'] = now()->format('Y-m-d');
@@ -777,25 +805,53 @@ class ProjectTaskController extends Controller
             }
         }
 
-        // When status changes from "completed" to any other status
-        if (array_key_exists('status', $updateData) && $oldStatus === 'completed' && $newStatus !== 'completed') {
+        // When status changes from "completed" to "in_progress"
+        if (array_key_exists('status', $updateData) && $oldStatus === 'completed' && $newStatus === 'in_progress') {
             // Clear end_date_actual to reopen the task
             $updateData['end_date_actual'] = null;
-            // If progress was 100%, reduce it to 99% to indicate it's no longer complete
-            if ($oldProgress === 100) {
+            // If progress was 100% and user didn't explicitly change progress, set to 99%
+            if ($oldProgress === 100 && !$userChangedProgress) {
                 $updateData['progress_actual'] = 99;
                 $newProgress = 99;
             }
+            // Do NOT clear start_date_actual - keep the existing start date
         }
 
-        // When status changes to "not_started"
-        if (array_key_exists('status', $updateData) && $updateData['status'] === 'not_started') {
+        // When status changes from "completed" to "not_started"
+        if (array_key_exists('status', $updateData) && $oldStatus === 'completed' && $newStatus === 'not_started') {
+            // Clear end_date_actual to reopen the task
+            $updateData['end_date_actual'] = null;
+            // Clear start_date_actual when resetting to not_started
+            $updateData['start_date_actual'] = null;
+            // If progress was 100% and user didn't explicitly change progress, set to 0%
+            if ($oldProgress === 100 && !$userChangedProgress) {
+                $updateData['progress_actual'] = 0;
+                $newProgress = 0;
+            }
+        }
+
+        // When status changes from "completed" to other statuses (on_hold, cancelled)
+        if (array_key_exists('status', $updateData) && $oldStatus === 'completed' && !in_array($newStatus, ['completed', 'in_progress', 'not_started'])) {
+            // Clear end_date_actual to reopen the task
+            $updateData['end_date_actual'] = null;
+            // If progress was 100% and user didn't explicitly change progress, set to 99%
+            if ($oldProgress === 100 && !$userChangedProgress) {
+                $updateData['progress_actual'] = 99;
+                $newProgress = 99;
+            }
+            // Do NOT clear start_date_actual - keep the existing start date
+        }
+
+        // When status changes to "not_started" (from non-completed status)
+        if (array_key_exists('status', $updateData) && $updateData['status'] === 'not_started' && $oldStatus !== 'completed') {
             // Clear all actual dates
             $updateData['start_date_actual'] = null;
             $updateData['end_date_actual'] = null;
-            // Set progress to 0%
-            $updateData['progress_actual'] = 0;
-            $newProgress = 0;
+            // Set progress to 0% only if user didn't explicitly change progress
+            if (!$userChangedProgress) {
+                $updateData['progress_actual'] = 0;
+                $newProgress = 0;
+            }
         }
 
         // When status changes from "not_started" to any other status
@@ -897,32 +953,31 @@ class ProjectTaskController extends Controller
 
         $task->refresh();
 
+        // ES (End-to-Start) dependency cascading for status changes
+        // When predecessor changes status, cascade to successors based on ES rules
+        // Call this BEFORE cascadeActualStartDates to ensure successors are reset properly
+        // Remove dependency_type check - this task is the predecessor, so cascade to all its successors
+        if (array_key_exists('status', $updateData) && $oldStatus !== $newStatus) {
+            // Refresh the task to get the latest data after update
+            $task->refresh();
+            $this->cascadeESStatusChange($project, $task, $oldStatus, $newStatus);
+        }
+
+        // SS (Start-to-Start) dependency cascading for status changes
+        // When predecessor changes status (any status change except to/from not_started), cascade to successors
+        // Remove dependency_type check - this task is the predecessor, so cascade to all its successors
+        if (array_key_exists('status', $updateData) && $oldStatus !== $newStatus) {
+            // Refresh the task to get the latest data after update
+            $task->refresh();
+            $this->cascadeSSStatusChange($project, $task, $newStatus);
+        }
+
         if (array_key_exists('start_date_plan', $updateData) || array_key_exists('end_date_plan', $updateData)) {
             $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
         }
 
         if (array_key_exists('start_date_actual', $updateData) || $shouldCascadeActual) {
             $resolver->cascadeActualStartDates($project, $task);
-        }
-
-        // SS (Start-to-Start) dependency cascading for status changes
-        // When predecessor changes status (any status change except to/from not_started), cascade to successors
-        if (array_key_exists('status', $updateData) && $oldStatus !== $newStatus) {
-            if ($task->dependency_type === 'start_to_start') {
-                // Refresh the task to get the latest data after update
-                $task->refresh();
-                $this->cascadeSSStatusChange($project, $task, $newStatus);
-            }
-        }
-
-        // ES (End-to-Start) dependency cascading for status changes
-        // When predecessor changes status, cascade to successors based on ES rules
-        if (array_key_exists('status', $updateData) && $oldStatus !== $newStatus) {
-            if ($task->dependency_type === 'end_to_start') {
-                // Refresh the task to get the latest data after update
-                $task->refresh();
-                $this->cascadeESStatusChange($project, $task, $oldStatus, $newStatus);
-            }
         }
 
         $shouldRecalc = array_key_exists('progress_actual', $updateData)
@@ -1030,6 +1085,14 @@ class ProjectTaskController extends Controller
         // Ensure predecessor has the latest data
         $predecessor->refresh();
 
+        $logPath = storage_path('logs/cascade_es_debug.log');
+        $log = function ($line) use ($logPath) {
+            file_put_contents($logPath, '[' . now()->format('Y-m-d H:i:s') . '] ' . $line . PHP_EOL, FILE_APPEND | LOCK_EX);
+        };
+        $log('=== cascadeESStatusChange ===');
+        $log('Predecessor id=' . $predecessor->id . ' name=' . $predecessor->task_name . ' oldStatus=' . $oldStatus . ' newStatus=' . $newStatus);
+        $log('Predecessor actual_start=' . ($predecessor->start_date_actual?->format('Y-m-d') ?? 'null') . ' actual_end=' . ($predecessor->end_date_actual?->format('Y-m-d') ?? 'null') . ' plan_start=' . ($predecessor->start_date_plan?->format('Y-m-d') ?? 'null') . ' plan_end=' . ($predecessor->end_date_plan?->format('Y-m-d') ?? 'null'));
+
         $tasks = $project->tasks()->with('predecessorTask')->get();
         $successors = $tasks->where('predecessor_task_id', $predecessor->id)
             ->where('dependency_type', 'end_to_start');
@@ -1037,8 +1100,9 @@ class ProjectTaskController extends Controller
         foreach ($successors as $successor) {
             // Predecessor: completed → in_progress/on_hold/cancelled/not_started
             // Successor should reset to not_started with cleared dates and progress
+            // Always reset regardless of is_actual_start_manual flag
             if ($oldStatus === 'completed' && $newStatus !== 'completed') {
-                $successor->update([
+                $successor->updateQuietly([
                     'start_date_actual' => null,
                     'end_date_actual' => null,
                     'status' => 'not_started',
@@ -1048,22 +1112,40 @@ class ProjectTaskController extends Controller
             }
 
             // Predecessor: in_progress → completed
-            // Successor should change to in_progress and set actual start (preserving the gap)
+            // Successor should set actual start to predecessor's actual end + gap
+            // This always runs when predecessor completes, regardless of successor's current status
             if ($newStatus === 'completed' && $oldStatus !== 'completed') {
-                if ($successor->status === 'not_started') {
-                    $predecessorEndDate = $predecessor->end_date_actual ?: now()->format('Y-m-d');
-                    // Preserve the original gap: successor.actual_start = predecessor.actual_end + gap
-                    if ($predecessor->end_date_plan && $successor->start_date_plan) {
-                        $gap = $successor->start_date_plan->diffInDays($predecessor->end_date_plan);
-                        $successorStartDate = \Carbon\Carbon::parse($predecessorEndDate)->addDays($gap)->format('Y-m-d');
-                    } else {
-                        $successorStartDate = date('Y-m-d', strtotime($predecessorEndDate . ' +1 day'));
+                $log('--- successor id=' . $successor->id . ' name=' . $successor->task_name . ' status=' . $successor->status . ' current_start=' . ($successor->start_date_actual?->format('Y-m-d') ?? 'null') . ' current_end=' . ($successor->end_date_actual?->format('Y-m-d') ?? 'null') . ' plan_start=' . ($successor->start_date_plan?->format('Y-m-d') ?? 'null'));
+                $predecessorEndDate = $predecessor->end_date_actual ?: now()->format('Y-m-d');
+                // Preserve the original gap: successor.actual_start = predecessor.actual_end + gap
+                // gap = successor.plan_start - predecessor.plan_end (always non-negative for ES)
+                if ($predecessor->end_date_plan && $successor->start_date_plan) {
+                    $gap = (int) $predecessor->end_date_plan->diffInDays($successor->start_date_plan, false);
+                    $gap = max(0, $gap);
+                    $successorStartDate = \Carbon\Carbon::parse($predecessorEndDate)->addDays($gap)->format('Y-m-d');
+                    $log('Using plan gap: gap=' . $gap . ' predecessorEnd=' . $predecessorEndDate . ' => newStart=' . $successorStartDate);
+                } else {
+                    $successorStartDate = date('Y-m-d', strtotime($predecessorEndDate . ' +1 day'));
+                    $log('Falling back to +1 day: predecessorEnd=' . $predecessorEndDate . ' => newStart=' . $successorStartDate);
+                }
+
+                // Only update the actual start if it changed
+                if ($successor->start_date_actual?->format('Y-m-d') !== $successorStartDate) {
+                    $updateData = ['start_date_actual' => $successorStartDate];
+                    if ($successor->start_date_actual && $successor->end_date_actual) {
+                        // Keep the same duration by shifting the end date too
+                        $duration = $successor->start_date_actual->diffInDays($successor->end_date_actual);
+                        $updateData['end_date_actual'] = \Carbon\Carbon::parse($successorStartDate)->addDays($duration)->format('Y-m-d');
                     }
-                    $successor->update([
-                        'start_date_actual' => $successorStartDate,
-                        'status' => 'in_progress',
-                        'is_actual_start_manual' => false,
-                    ]);
+                    // Only set status to in_progress if successor is not yet started
+                    if ($successor->status === 'not_started') {
+                        $updateData['status'] = 'in_progress';
+                    }
+                    $updateData['is_actual_start_manual'] = false;
+                    $successor->update($updateData);
+                    $log('Updated successor with: ' . json_encode($updateData));
+                } else {
+                    $log('No update needed, current start already ' . $successorStartDate);
                 }
             }
         }

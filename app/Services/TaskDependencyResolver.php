@@ -95,10 +95,11 @@ class TaskDependencyResolver
                 if ($drivingDate) {
                     if ($fromSide === 'end') {
                         // ES (End-to-Start): Preserve the original gap between tasks
-                        // gap = successor.plan_start - predecessor.plan_end
+                        // gap = successor.plan_start - predecessor.plan_end (always non-negative for ES)
                         // successor.actual_start = predecessor.actual_end + gap
                         if ($task->predecessorTask->end_date_plan && $task->start_date_plan) {
-                            $gap = $task->start_date_plan->diffInDays($task->predecessorTask->end_date_plan);
+                            $gap = (int) $task->predecessorTask->end_date_plan->diffInDays($task->start_date_plan, false);
+                            $gap = max(0, $gap);
                             $newStart = $drivingDate->copy()->addDays($gap);
                         } else {
                             $newStart = $drivingDate->copy()->addDay();
@@ -420,6 +421,13 @@ class TaskDependencyResolver
      */
     public function cascadeActualStartDates(Project $project, ProjectTask $changedTask): void
     {
+        $logPath = storage_path('logs/cascade_actual_debug.log');
+        $log = function ($line) use ($logPath) {
+            file_put_contents($logPath, '[' . now()->format('Y-m-d H:i:s') . '] ' . $line . PHP_EOL, FILE_APPEND | LOCK_EX);
+        };
+        $log('=== cascadeActualStartDates ===');
+        $log('Changed task id=' . $changedTask->id . ' name=' . $changedTask->task_name . ' actual_start=' . ($changedTask->start_date_actual?->format('Y-m-d') ?? 'null') . ' actual_end=' . ($changedTask->end_date_actual?->format('Y-m-d') ?? 'null'));
+
         $tasks = $project->tasks()->with('predecessorTask')->get();
         $successorsByPredecessor = $tasks->groupBy('predecessor_task_id');
 
@@ -471,7 +479,9 @@ class TaskDependencyResolver
                     : !empty($predecessor->start_date_actual);
 
                 // Only set successor actual_start if predecessor is complete
+                $log('  isPredecessorComplete=' . ($isPredecessorComplete ? 'true' : 'false') . ' for predecessor id=' . $predecessor->id);
                 if (!$isPredecessorComplete) {
+                    $log('  Resetting successor because predecessor is not complete');
                     // Reset successor entirely: no actual dates, 0% progress, not started
                     $task->updateQuietly([
                         'start_date_actual' => null,
@@ -500,20 +510,29 @@ class TaskDependencyResolver
                     $predecessorDates = $this->getLaneBaseDates($predecessor, 'actual');
                     $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
 
+                    $log('Processing successor id=' . $task->id . ' name=' . $task->task_name);
+                    $log('  dependency_type=' . $task->dependency_type . ' fromSide=' . $fromSide);
+                    $log('  predecessor id=' . $predecessor->id . ' actual_start=' . ($predecessor->start_date_actual?->format('Y-m-d') ?? 'null') . ' actual_end=' . ($predecessor->end_date_actual?->format('Y-m-d') ?? 'null') . ' plan_start=' . ($predecessor->start_date_plan?->format('Y-m-d') ?? 'null') . ' plan_end=' . ($predecessor->end_date_plan?->format('Y-m-d') ?? 'null'));
+                    $log('  successor current actual_start=' . ($task->start_date_actual?->format('Y-m-d') ?? 'null') . ' actual_end=' . ($task->end_date_actual?->format('Y-m-d') ?? 'null') . ' plan_start=' . ($task->start_date_plan?->format('Y-m-d') ?? 'null'));
+
                     if ($drivingDate) {
                         if ($fromSide === 'end') {
                             // ES (End-to-Start): Preserve the original gap between tasks
-                            // gap = successor.plan_start - predecessor.plan_end
+                            // gap = successor.plan_start - predecessor.plan_end (always non-negative for ES)
                             // successor.actual_start = predecessor.actual_end + gap
                             if ($predecessor->end_date_plan && $task->start_date_plan) {
-                                $gap = $task->start_date_plan->diffInDays($predecessor->end_date_plan);
+                                $gap = (int) $predecessor->end_date_plan->diffInDays($task->start_date_plan, false);
+                                $gap = max(0, $gap);
                                 $newStart = $drivingDate->copy()->addDays($gap);
+                                $log('  ES gap=' . $gap . ' drivingDate=' . $drivingDate->format('Y-m-d') . ' => newStart=' . $newStart->format('Y-m-d'));
                             } else {
                                 $newStart = $drivingDate->copy()->addDay();
+                                $log('  ES fallback +1 day: drivingDate=' . $drivingDate->format('Y-m-d') . ' => newStart=' . $newStart->format('Y-m-d'));
                             }
                         } else {
                             // SS (Start-to-Start): Successor follows predecessor's actual start directly
                             $newStart = $drivingDate->copy();
+                            $log('  SS: drivingDate=' . $drivingDate->format('Y-m-d') . ' => newStart=' . $newStart->format('Y-m-d'));
                         }
 
                         $currentStart = $task->start_date_actual;
@@ -521,29 +540,33 @@ class TaskDependencyResolver
                         $hasEnd = $currentStart && $currentEnd;
                         $duration = $hasEnd ? $currentStart->diffInDays($currentEnd) : null;
 
-                        // Only update if the user hasn't manually locked the actual start
-                        if (!$task->is_actual_start_manual) {
-                            if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
-                                $updateData = ['start_date_actual' => $newStart];
-                                if ($hasEnd) {
-                                    $updateData['end_date_actual'] = $newStart->copy()->addDays($duration);
-                                }
-                                $task->updateQuietly($updateData);
-                                $task->start_date_actual = $newStart;
-                                if ($hasEnd) {
-                                    $task->end_date_actual = $newStart->copy()->addDays($duration);
-                                }
+                        // Always update when predecessor completes (ignore is_actual_start_manual flag)
+                        // This ensures successors follow the predecessor's actual end even if they had manual dates
+                        if (!$currentStart || $currentStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
+                            $updateData = ['start_date_actual' => $newStart];
+                            if ($hasEnd) {
+                                $updateData['end_date_actual'] = $newStart->copy()->addDays($duration);
+                            }
+                            $log('  Updating successor with: ' . json_encode($updateData));
+                            $task->updateQuietly($updateData);
+                            $task->start_date_actual = $newStart;
+                            if ($hasEnd) {
+                                $task->end_date_actual = $newStart->copy()->addDays($duration);
+                            }
 
-                                // Refresh the task instance in the collection so deeper cascades see the new dates
-                                $taskInCollection = $tasks->firstWhere('id', $task->id);
-                                if ($taskInCollection) {
-                                    $taskInCollection->start_date_actual = $newStart;
-                                    if ($hasEnd) {
-                                        $taskInCollection->end_date_actual = $newStart->copy()->addDays($duration);
-                                    }
+                            // Refresh the task instance in the collection so deeper cascades see the new dates
+                            $taskInCollection = $tasks->firstWhere('id', $task->id);
+                            if ($taskInCollection) {
+                                $taskInCollection->start_date_actual = $newStart;
+                                if ($hasEnd) {
+                                    $taskInCollection->end_date_actual = $newStart->copy()->addDays($duration);
                                 }
                             }
+                        } else {
+                            $log('  No update needed, current start already ' . $newStart->format('Y-m-d'));
                         }
+                    } else {
+                        $log('  No driving date for predecessor');
                     }
                 }
 
