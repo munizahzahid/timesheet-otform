@@ -31,12 +31,16 @@
                     <label for="start_date_plan" class="block text-xs font-medium text-gray-600 mb-1">Start Date</label>
                     <input type="date" name="start_date_plan" id="start_date_plan"
                            value="{{ old('start_date_plan', $isEdit && $phase->start_date_plan ? $phase->start_date_plan->format('Y-m-d') : '') }}"
+                           @if(isset($minPlanStart)) min="{{ $minPlanStart }}" @endif
+                           @if(isset($maxPlanEnd)) max="{{ $maxPlanEnd }}" @endif
                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 </div>
                 <div>
                     <label for="end_date_plan" class="block text-xs font-medium text-gray-600 mb-1">End Date</label>
                     <input type="date" name="end_date_plan" id="end_date_plan"
                            value="{{ old('end_date_plan', $isEdit && $phase->end_date_plan ? $phase->end_date_plan->format('Y-m-d') : '') }}"
+                           @if(isset($minPlanStart)) min="{{ $minPlanStart }}" @endif
+                           @if(isset($maxPlanEnd)) max="{{ $maxPlanEnd }}" @endif
                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 </div>
             </div>

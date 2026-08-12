@@ -113,7 +113,12 @@ class ProjectTaskController extends Controller
         $tasks = $project->tasks()->orderBy('task_order')->get();
         $users = \App\Models\User::where('is_active', true)->get();
         $defaultPhaseId = $request->query('phase_id');
-        return view('admin.project.tasks.create', compact('project', 'phases', 'tasks', 'users', 'defaultPhaseId'));
+
+        // Determine min/max plan dates for validation (use project dates as default)
+        $minPlanStart = $project->start_date_plan ? $project->start_date_plan->format('Y-m-d') : null;
+        $maxPlanEnd = $project->end_date_plan ? $project->end_date_plan->format('Y-m-d') : null;
+
+        return view('admin.project.tasks.create', compact('project', 'phases', 'tasks', 'users', 'defaultPhaseId', 'minPlanStart', 'maxPlanEnd'));
     }
 
     /**
@@ -182,6 +187,16 @@ class ProjectTaskController extends Controller
             return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with dependency rules.');
         }
 
+        // Plan date constraint validation (parent phase or project)
+        $tempTaskForPlan = new ProjectTask($validated);
+        $planDateErrors = $resolver->validatePlanDateConstraints($tempTaskForPlan, $proposedDates, $project);
+        if (!empty($planDateErrors)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => $planDateErrors, 'message' => 'The proposed dates conflict with parent/project plan dates.'], 422);
+            }
+            return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with parent/project plan dates.');
+        }
+
         $task = ProjectTask::create($validated);
 
         // Hybrid sync logic for store: if status is "completed", set progress to 100% and actual dates
@@ -245,7 +260,18 @@ class ProjectTaskController extends Controller
         $phases = $project->phases()->orderBy('phase_order')->get();
         $tasks = $project->tasks()->where('id', '!=', $task->id)->orderBy('task_order')->get();
         $users = \App\Models\User::where('is_active', true)->get();
-        return view('admin.project.tasks.edit', compact('project', 'task', 'phases', 'tasks', 'users'));
+
+        // Determine min/max plan dates for validation
+        $parentPhase = $task->phase_id ? $phases->firstWhere('id', $task->phase_id) : null;
+        if ($parentPhase) {
+            $minPlanStart = $parentPhase->start_date_plan ? $parentPhase->start_date_plan->format('Y-m-d') : null;
+            $maxPlanEnd = $parentPhase->end_date_plan ? $parentPhase->end_date_plan->format('Y-m-d') : null;
+        } else {
+            $minPlanStart = $project->start_date_plan ? $project->start_date_plan->format('Y-m-d') : null;
+            $maxPlanEnd = $project->end_date_plan ? $project->end_date_plan->format('Y-m-d') : null;
+        }
+
+        return view('admin.project.tasks.edit', compact('project', 'task', 'phases', 'tasks', 'users', 'minPlanStart', 'maxPlanEnd'));
     }
 
     /**
@@ -326,6 +352,15 @@ class ProjectTaskController extends Controller
                 return response()->json(['success' => false, 'errors' => $dateErrors, 'message' => 'The proposed dates conflict with dependency rules.'], 422);
             }
             return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with dependency rules.');
+        }
+
+        // Plan date constraint validation (parent phase or project)
+        $planDateErrors = $resolver->validatePlanDateConstraints($task, $proposedDates, $project);
+        if (!empty($planDateErrors)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => $planDateErrors, 'message' => 'The proposed dates conflict with parent/project plan dates.'], 422);
+            }
+            return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with parent/project plan dates.');
         }
 
         // Dependency validation for status changes (full update method)
@@ -747,6 +782,16 @@ class ProjectTaskController extends Controller
                     'success' => false,
                     'message' => 'The proposed dates conflict with dependency rules.',
                     'errors' => $dateErrors,
+                ], 422);
+            }
+
+            // Plan date constraint validation (parent phase or project)
+            $planDateErrors = $resolver->validatePlanDateConstraints($task, $proposedDateFields, $project);
+            if (!empty($planDateErrors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The proposed dates conflict with parent/project plan dates.',
+                    'errors' => $planDateErrors,
                 ], 422);
             }
         }

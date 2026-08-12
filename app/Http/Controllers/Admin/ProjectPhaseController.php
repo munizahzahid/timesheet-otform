@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\ProjectPhase;
 use App\Models\ProjectTask;
 use App\Services\GanttChangeLogger;
+use App\Services\TaskDependencyResolver;
 use Illuminate\Http\Request;
 
 class ProjectPhaseController extends Controller
@@ -25,7 +26,11 @@ class ProjectPhaseController extends Controller
      */
     public function create(Project $project)
     {
-        return view('admin.project.phases.create', compact('project'));
+        // Determine min/max plan dates for validation (use project dates)
+        $minPlanStart = $project->start_date_plan ? $project->start_date_plan->format('Y-m-d') : null;
+        $maxPlanEnd = $project->end_date_plan ? $project->end_date_plan->format('Y-m-d') : null;
+
+        return view('admin.project.phases.create', compact('project', 'minPlanStart', 'maxPlanEnd'));
     }
 
     /**
@@ -47,6 +52,23 @@ class ProjectPhaseController extends Controller
         $validated['project_id'] = $project->id;
         $validated['progress_plan'] = 0;
         $validated['progress_actual'] = 0;
+
+        // Plan date constraint validation (phases must be within project plan dates)
+        $resolver = new TaskDependencyResolver();
+        $dateFields = ['start_date_plan', 'end_date_plan'];
+        $proposedDates = array_intersect_key($validated, array_flip($dateFields));
+        if (!empty($proposedDates)) {
+            // Create a temporary task-like object for validation
+            $tempPhase = new ProjectPhase($validated);
+            $tempPhase->phase_id = null; // No parent, so validate against project
+            $planDateErrors = $resolver->validatePlanDateConstraints($tempPhase, $proposedDates, $project);
+            if (!empty($planDateErrors)) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'errors' => $planDateErrors, 'message' => 'The proposed dates conflict with project plan dates.'], 422);
+                }
+                return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with project plan dates.');
+            }
+        }
 
         $phase = ProjectPhase::create($validated);
 
@@ -89,7 +111,11 @@ class ProjectPhaseController extends Controller
      */
     public function edit(Project $project, ProjectPhase $phase)
     {
-        return view('admin.project.phases.edit', compact('project', 'phase'));
+        // Determine min/max plan dates for validation (use project dates)
+        $minPlanStart = $project->start_date_plan ? $project->start_date_plan->format('Y-m-d') : null;
+        $maxPlanEnd = $project->end_date_plan ? $project->end_date_plan->format('Y-m-d') : null;
+
+        return view('admin.project.phases.edit', compact('project', 'phase', 'minPlanStart', 'maxPlanEnd'));
     }
 
     /**
@@ -116,6 +142,23 @@ class ProjectPhaseController extends Controller
         }
 
         $validated = $validator->validated();
+
+        // Plan date constraint validation (phases must be within project plan dates)
+        $resolver = new TaskDependencyResolver();
+        $dateFields = ['start_date_plan', 'end_date_plan'];
+        $proposedDates = array_intersect_key($validated, array_flip($dateFields));
+        if (!empty($proposedDates)) {
+            // Create a temporary task-like object for validation
+            $tempPhase = clone $phase;
+            $tempPhase->phase_id = null; // No parent, so validate against project
+            $planDateErrors = $resolver->validatePlanDateConstraints($tempPhase, $proposedDates, $project);
+            if (!empty($planDateErrors)) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'errors' => $planDateErrors, 'message' => 'The proposed dates conflict with project plan dates.'], 422);
+                }
+                return redirect()->back()->withInput()->with('error', 'The proposed dates conflict with project plan dates.');
+            }
+        }
 
         $oldValues = $phase->getOriginal();
         $phase->update($validated);

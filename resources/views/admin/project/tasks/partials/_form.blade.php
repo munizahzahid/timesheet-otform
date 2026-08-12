@@ -113,12 +113,16 @@
                     <label for="start_date_plan" class="block text-[10px] font-medium text-gray-500 mb-1 uppercase">Start</label>
                     <input type="date" name="start_date_plan" id="start_date_plan"
                            value="{{ old('start_date_plan', $isEdit && $task->start_date_plan ? $task->start_date_plan->format('Y-m-d') : '') }}"
+                           @if(isset($minPlanStart)) min="{{ $minPlanStart }}" @endif
+                           @if(isset($maxPlanEnd)) max="{{ $maxPlanEnd }}" @endif
                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 </div>
                 <div>
                     <label for="end_date_plan" class="block text-[10px] font-medium text-gray-500 mb-1 uppercase">End</label>
                     <input type="date" name="end_date_plan" id="end_date_plan"
                            value="{{ old('end_date_plan', $isEdit && $task->end_date_plan ? $task->end_date_plan->format('Y-m-d') : '') }}"
+                           @if(isset($minPlanStart)) min="{{ $minPlanStart }}" @endif
+                           @if(isset($maxPlanEnd)) max="{{ $maxPlanEnd }}" @endif
                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                 </div>
             </div>
@@ -206,3 +210,52 @@
         {{ $isEdit ? 'Update Subtask' : 'Create Subtask' }}
     </button>
 </div>
+
+@php
+// Pass phase data to JavaScript for dynamic validation
+$phasesData = [];
+foreach($phases as $phase) {
+    $phasesData[$phase->id] = [
+        'start' => $phase->start_date_plan ? $phase->start_date_plan->format('Y-m-d') : null,
+        'end' => $phase->end_date_plan ? $phase->end_date_plan->format('Y-m-d') : null,
+    ];
+}
+@endphp
+
+<script>
+(function() {
+    const phaseSelect = document.getElementById('phase_id');
+    const startDatePlan = document.getElementById('start_date_plan');
+    const endDatePlan = document.getElementById('end_date_plan');
+    const phasesData = {{ json_encode($phasesData) }};
+    const projectMinStart = {{ isset($minPlanStart) ? "'" . $minPlanStart . "'" : 'null' }};
+    const projectMaxEnd = {{ isset($maxPlanEnd) ? "'" . $maxPlanEnd . "'" : 'null' }};
+
+    function updateDateConstraints() {
+        const selectedPhaseId = phaseSelect ? phaseSelect.value : null;
+        let minStart = projectMinStart;
+        let maxEnd = projectMaxEnd;
+
+        if (selectedPhaseId && phasesData[selectedPhaseId]) {
+            minStart = phasesData[selectedPhaseId].start || projectMinStart;
+            maxEnd = phasesData[selectedPhaseId].end || projectMaxEnd;
+        }
+
+        if (startDatePlan) {
+            startDatePlan.min = minStart || '';
+            startDatePlan.max = maxEnd || '';
+        }
+        if (endDatePlan) {
+            endDatePlan.min = minStart || '';
+            endDatePlan.max = maxEnd || '';
+        }
+    }
+
+    if (phaseSelect) {
+        phaseSelect.addEventListener('change', updateDateConstraints);
+    }
+
+    // Initialize on page load
+    updateDateConstraints();
+})();
+</script>

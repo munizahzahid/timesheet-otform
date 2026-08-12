@@ -860,4 +860,71 @@ class TaskDependencyResolver
 
         return null;
     }
+
+    /**
+     * Validate plan date constraints against parent phase and project.
+     * Plan dates must be within the parent phase's plan dates (if has parent)
+     * or within the project's plan dates (if no parent).
+     *
+     * @param ProjectTask|ProjectPhase $entity The task or phase being validated
+     * @param array<string, string|null> $dates Array of field => value
+     * @param Project $project The project
+     * @return array<string, string> Array of field => error message
+     */
+    public function validatePlanDateConstraints($entity, array $dates, Project $project): array
+    {
+        $errors = [];
+
+        // Only validate plan dates
+        $planFields = ['start_date_plan', 'end_date_plan'];
+        $proposedPlanDates = array_intersect_key($dates, array_flip($planFields));
+
+        if (empty($proposedPlanDates)) {
+            return $errors;
+        }
+
+        // Determine the parent (phase) or project constraints
+        $parentPhase = null;
+        if ($entity instanceof ProjectTask && $entity->phase_id) {
+            $parentPhase = $project->phases()->where('id', $entity->phase_id)->first();
+        }
+
+        if ($parentPhase) {
+            // Subtask: must be within parent phase's plan dates
+            $minStart = $parentPhase->start_date_plan;
+            $maxEnd = $parentPhase->end_date_plan;
+            $parentName = $parentPhase->phase_name;
+        } else {
+            // Phase/Task: must be within project's plan dates
+            $minStart = $project->start_date_plan;
+            $maxEnd = $project->end_date_plan;
+            $parentName = $project->project_name;
+        }
+
+        // Validate start_date_plan
+        if (isset($proposedPlanDates['start_date_plan']) && $minStart) {
+            try {
+                $newStart = Carbon::parse($proposedPlanDates['start_date_plan'])->startOfDay();
+                if ($newStart->lt($minStart->startOfDay())) {
+                    $errors['start_date_plan'] = "Start date cannot be earlier than {$parentName}'s plan start ({$minStart->format('Y-m-d')}).";
+                }
+            } catch (\Exception $e) {
+                $errors['start_date_plan'] = 'Invalid date format.';
+            }
+        }
+
+        // Validate end_date_plan
+        if (isset($proposedPlanDates['end_date_plan']) && $maxEnd) {
+            try {
+                $newEnd = Carbon::parse($proposedPlanDates['end_date_plan'])->startOfDay();
+                if ($newEnd->gt($maxEnd->startOfDay())) {
+                    $errors['end_date_plan'] = "End date cannot be later than {$parentName}'s plan end ({$maxEnd->format('Y-m-d')}).";
+                }
+            } catch (\Exception $e) {
+                $errors['end_date_plan'] = 'Invalid date format.';
+            }
+        }
+
+        return $errors;
+    }
 }
