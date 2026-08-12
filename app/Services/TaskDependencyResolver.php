@@ -93,24 +93,19 @@ class TaskDependencyResolver
             if ($isPredecessorComplete) {
                 $drivingDate = $fromSide === 'end' ? $predecessorActualDates['end_date'] : $predecessorActualDates['start_date'];
                 if ($drivingDate) {
-                    // Calculate predecessor's offset from plan and apply to successor's plan start
-                    $offset = $this->calculatePredecessorOffset($task->predecessorTask, $fromSide);
-                    if ($offset !== null && $task->start_date_plan) {
-                        $newStart = $task->start_date_plan->copy()->addDays($offset);
-                    } else {
-                        $newStart = $drivingDate->copy();
-                    }
-
-                    // Apply dependency constraint (successor can't start before predecessor's actual date)
                     if ($fromSide === 'end') {
-                        $minStart = $drivingDate->copy()->addDay();
-                        if ($newStart->lt($minStart)) {
-                            $newStart = $minStart;
+                        // ES (End-to-Start): Preserve the original gap between tasks
+                        // gap = successor.plan_start - predecessor.plan_end
+                        // successor.actual_start = predecessor.actual_end + gap
+                        if ($task->predecessorTask->end_date_plan && $task->start_date_plan) {
+                            $gap = $task->start_date_plan->diffInDays($task->predecessorTask->end_date_plan);
+                            $newStart = $drivingDate->copy()->addDays($gap);
+                        } else {
+                            $newStart = $drivingDate->copy()->addDay();
                         }
                     } else {
-                        if ($newStart->lt($drivingDate)) {
-                            $newStart = $drivingDate->copy();
-                        }
+                        // SS (Start-to-Start): Successor follows predecessor's actual start directly
+                        $newStart = $drivingDate->copy();
                     }
 
                     if (!$actualStart || $actualStart->format('Y-m-d') !== $newStart->format('Y-m-d')) {
@@ -506,24 +501,19 @@ class TaskDependencyResolver
                     $drivingDate = $fromSide === 'end' ? $predecessorDates['end_date'] : $predecessorDates['start_date'];
 
                     if ($drivingDate) {
-                        // Calculate predecessor's offset from plan and apply to successor's plan start
-                        $offset = $this->calculatePredecessorOffset($predecessor, $fromSide);
-                        if ($offset !== null && $task->start_date_plan) {
-                            $newStart = $task->start_date_plan->copy()->addDays($offset);
-                        } else {
-                            $newStart = $drivingDate->copy();
-                        }
-
-                        // Apply dependency constraint (successor can't start before predecessor's actual date)
                         if ($fromSide === 'end') {
-                            $minStart = $drivingDate->copy()->addDay();
-                            if ($newStart->lt($minStart)) {
-                                $newStart = $minStart;
+                            // ES (End-to-Start): Preserve the original gap between tasks
+                            // gap = successor.plan_start - predecessor.plan_end
+                            // successor.actual_start = predecessor.actual_end + gap
+                            if ($predecessor->end_date_plan && $task->start_date_plan) {
+                                $gap = $task->start_date_plan->diffInDays($predecessor->end_date_plan);
+                                $newStart = $drivingDate->copy()->addDays($gap);
+                            } else {
+                                $newStart = $drivingDate->copy()->addDay();
                             }
                         } else {
-                            if ($newStart->lt($drivingDate)) {
-                                $newStart = $drivingDate->copy();
-                            }
+                            // SS (Start-to-Start): Successor follows predecessor's actual start directly
+                            $newStart = $drivingDate->copy();
                         }
 
                         $currentStart = $task->start_date_actual;

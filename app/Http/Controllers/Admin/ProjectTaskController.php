@@ -979,7 +979,7 @@ class ProjectTaskController extends Controller
      * When predecessor changes status, successors follow the same status (except completed)
      * Exception: predecessor changing to "completed" does NOT cascade status to successor
      * If predecessor changes back to "not_started", successors also reset to "not_started"
-     * When predecessor changes from "not_started" to any status, both get TODAY as start_date_actual
+     * When predecessor changes from "not_started" to any status, successor follows predecessor's actual start
      */
     private function cascadeSSStatusChange(Project $project, ProjectTask $predecessor, string $newStatus): void
     {
@@ -995,9 +995,6 @@ class ProjectTaskController extends Controller
         $successors = $tasks->where('predecessor_task_id', $predecessor->id)
             ->where('dependency_type', 'start_to_start');
 
-        // Always use today's date for SS dependency when starting
-        $today = now()->format('Y-m-d');
-
         foreach ($successors as $successor) {
             if ($newStatus === 'not_started') {
                 // Predecessor is resetting to not_started, so successor should also reset
@@ -1012,8 +1009,10 @@ class ProjectTaskController extends Controller
                 // Predecessor is changing to a non-completed status
                 // Only cascade if successor is still not_started
                 if ($successor->status === 'not_started') {
+                    // Successor follows predecessor's actual start (SS dependency)
+                    $startDate = $predecessor->start_date_actual ?: now()->format('Y-m-d');
                     $successor->update([
-                        'start_date_actual' => $today, // Always use today
+                        'start_date_actual' => $startDate,
                         'status' => $newStatus, // Follow the predecessor's status
                         'is_actual_start_manual' => false,
                     ]);
@@ -1049,11 +1048,17 @@ class ProjectTaskController extends Controller
             }
 
             // Predecessor: in_progress → completed
-            // Successor should change to in_progress and set actual start
+            // Successor should change to in_progress and set actual start (preserving the gap)
             if ($newStatus === 'completed' && $oldStatus !== 'completed') {
                 if ($successor->status === 'not_started') {
                     $predecessorEndDate = $predecessor->end_date_actual ?: now()->format('Y-m-d');
-                    $successorStartDate = date('Y-m-d', strtotime($predecessorEndDate . ' +1 day'));
+                    // Preserve the original gap: successor.actual_start = predecessor.actual_end + gap
+                    if ($predecessor->end_date_plan && $successor->start_date_plan) {
+                        $gap = $successor->start_date_plan->diffInDays($predecessor->end_date_plan);
+                        $successorStartDate = \Carbon\Carbon::parse($predecessorEndDate)->addDays($gap)->format('Y-m-d');
+                    } else {
+                        $successorStartDate = date('Y-m-d', strtotime($predecessorEndDate . ' +1 day'));
+                    }
                     $successor->update([
                         'start_date_actual' => $successorStartDate,
                         'status' => 'in_progress',
