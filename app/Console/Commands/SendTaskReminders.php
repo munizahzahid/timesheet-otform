@@ -286,7 +286,7 @@ class SendTaskReminders extends Command
             'status' => ucfirst(str_replace('_', ' ', $task->status)),
             'actual_progress' => $task->progress_actual,
             'plan_progress' => $this->calculatePlanProgress($task),
-            'url' => url('/admin/project/projects/' . $task->project_id),
+            'url' => url('/project/projects/' . $task->project_id),
         ];
 
         switch ($notificationType) {
