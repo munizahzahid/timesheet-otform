@@ -20,7 +20,6 @@ class TelegramMessageTemplates
 The timesheet is pending approval. Please review it.
 
 <a href="{$url}">View Timesheet</a>
-{$url}
 TEXT;
     }
 
@@ -39,7 +38,6 @@ TEXT;
 Your timesheet has been approved.
 
 <a href="{$url}">View Timesheet</a>
-{$url}
 TEXT;
     }
 
@@ -59,7 +57,6 @@ TEXT;
 Your timesheet has been rejected. Please make corrections and resubmit.
 
 <a href="{$url}">View Timesheet</a>
-{$url}
 TEXT;
     }
 
@@ -78,7 +75,6 @@ TEXT;
 Please submit your timesheet for this month if you haven't already.
 
 <a href="{$url}">Submit Timesheet</a>
-{$url}
 TEXT;
     }
 
@@ -99,7 +95,6 @@ TEXT;
 Your OT form is pending approval.
 
 <a href="{$url}">View OT Form</a>
-{$url}
 TEXT;
     }
 
@@ -119,7 +114,6 @@ TEXT;
 Your OT form has been approved.
 
 <a href="{$url}">View OT Form</a>
-{$url}
 TEXT;
     }
 
@@ -139,7 +133,6 @@ TEXT;
 Your OT form has been rejected. Please make corrections and resubmit.
 
 <a href="{$url}">View OT Form</a>
-{$url}
 TEXT;
     }
 
@@ -158,7 +151,6 @@ TEXT;
 Please submit your OT form for this date if you haven't already.
 
 <a href="{$url}">Submit OT Form</a>
-{$url}
 TEXT;
     }
 
@@ -180,7 +172,6 @@ TEXT;
 This subtask is scheduled to start today. Please ensure you are prepared to begin.
 
 <a href="{$url}">View Subtask</a>
-{$url}
 TEXT;
     }
 
@@ -202,7 +193,6 @@ TEXT;
 This subtask is 90% through its planned timeline and is approaching its due date. Please ensure you complete it on time.
 
 <a href="{$url}">View Subtask</a>
-{$url}
 TEXT;
     }
 
@@ -225,7 +215,6 @@ TEXT;
 This subtask's planned end date is today. Please ensure you complete it today or update its status if it has been completed.
 
 <a href="{$url}">View Subtask</a>
-{$url}
 TEXT;
     }
 }
