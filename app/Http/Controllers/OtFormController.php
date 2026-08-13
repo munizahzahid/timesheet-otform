@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\OtAutoFillService;
 use App\Services\OtEmailNotificationService;
 use App\Services\OtFormExcelExport;
+use App\Services\TelegramMessageTemplates;
+use App\Services\TelegramNotificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -26,6 +28,29 @@ class OtFormController extends Controller
     public function __construct(OtEmailNotificationService $emailService)
     {
         $this->emailService = $emailService;
+    }
+
+    private function sendTelegramPendingApproval(OtForm $otForm, User $approver): void
+    {
+        $telegram = new TelegramNotificationService();
+        if (!$telegram->isConfigured()) {
+            return;
+        }
+
+        if (!$approver->telegram_chat_id) {
+            return;
+        }
+
+        $data = [
+            'date' => $otForm->date->format('F j, Y'),
+            'staff_name' => $otForm->user->name,
+            'hours' => $otForm->total_ot_hours,
+            'project' => $otForm->project->project_name ?? 'Not specified',
+            'url' => url('/approvals/ot-forms/' . $otForm->id),
+        ];
+
+        $message = TelegramMessageTemplates::otFormPendingApproval($data);
+        $telegram->sendMessage($approver->telegram_chat_id, $message);
     }
 
     public function index()
@@ -582,6 +607,7 @@ class OtFormController extends Controller
             $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
             foreach ($hrUsers as $hrUser) {
                 $this->emailService->sendSubmissionNotification($otForm, $hrUser);
+                $this->sendTelegramPendingApproval($otForm, $hrUser);
             }
         }
 
@@ -598,6 +624,7 @@ class OtFormController extends Controller
             $l1Approver = User::find($otForm->user->ot_approver_id);
             if ($l1Approver) {
                 $this->emailService->sendSubmissionNotification($otForm, $l1Approver);
+                $this->sendTelegramPendingApproval($otForm, $l1Approver);
             }
         }
 

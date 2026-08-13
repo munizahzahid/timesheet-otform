@@ -259,7 +259,7 @@
                     </label>
                 </div>
             </div>
-            <a id="gantt-export-excel-btn" href="{{ route('admin.project.projects.tasks.gantt-export-excel', $project) }}"
+            <a id="gantt-export-excel-btn" href="{{ route('project.projects.tasks.gantt-export-excel', $project) }}"
                class="inline-flex items-center px-2 py-1 bg-green-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-green-700 transition">
                 Download Excel
             </a>
@@ -290,7 +290,7 @@
             <p class="text-xs text-gray-400 mt-1">Add tasks and subtasks to see the Gantt chart.</p>
         </div>
     @else
-        <div id="gantt-chart-container" class="relative" data-recent-changes-url="{{ route('admin.project.projects.tasks.gantt-changes', $project) }}">
+        <div id="gantt-chart-container" class="relative" data-recent-changes-url="{{ route('project.projects.tasks.gantt-changes', $project) }}">
             <div class="overflow-x-auto">
             <div id="gantt-wrapper" class="relative inline-block" style="min-width: max-content;">
                 @if($showTodayLine)
@@ -305,7 +305,7 @@
                 <thead>
                     <tr class="bg-gray-50">
                         <th class="sticky left-0 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-64">
-                            Subtask
+                            Task/Subtask
                         </th>
                         <th class="sticky left-64 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
                             Assigned To
@@ -389,8 +389,8 @@
                                         <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Task actions"
                                                 data-edit-type="phase"
                                                 data-edit-id="{{ $phase->id }}"
-                                                data-update-url="{{ route('admin.project.projects.phases.update', [$project, $phase]) }}"
-                                                data-delete-action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
+                                                data-update-url="{{ route('project.projects.phases.update', [$project, $phase]) }}"
+                                                data-delete-action="{{ route('project.projects.phases.destroy', [$project, $phase]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
                                                 data-delete-confirm="Delete this task and all its subtasks?"
                                                 data-phase-name="{{ $phase->phase_name }}"
                                                 data-phase-order="{{ $phase->phase_order }}"
@@ -673,7 +673,7 @@
                 </svg>
             </button>
         </div>
-        <form id="task-create-form" method="POST" action="{{ route('admin.project.projects.phases.store', $project) }}" class="p-4 space-y-4">
+        <form id="task-create-form" method="POST" action="{{ route('project.projects.phases.store', $project) }}" class="p-4 space-y-4">
             @csrf
             <input type="hidden" name="redirect" value="{{ request()->fullUrl() }}">
             <div>
@@ -722,7 +722,7 @@
                 </svg>
             </button>
         </div>
-        <form id="subtask-create-form" method="POST" action="{{ route('admin.project.projects.tasks.store', $project) }}" class="p-4 space-y-4">
+        <form id="subtask-create-form" method="POST" action="{{ route('project.projects.tasks.store', $project) }}" class="p-4 space-y-4">
             @csrf
             <input type="hidden" name="tab" value="schedule">
             <input type="hidden" name="view" value="">
@@ -2040,7 +2040,7 @@
     }
 
     // --- Drag-to-Create Dependency ---
-    var ganttUpdateDependencyUrl = '{{ route("admin.project.projects.tasks.dependency.update", ["project" => $project->id, "task" => ":taskId"]) }}';
+    var ganttUpdateDependencyUrl = '{{ route("project.projects.tasks.dependency.update", ["project" => $project->id, "task" => ":taskId"]) }}';
     var ganttDragState = { isDragging: false, startDot: null, tempPath: null };
 
     function ganttGetWrapperPoint(e) {

@@ -9,6 +9,8 @@ use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\ProjectTaskEmailLog;
 use App\Models\User;
+use App\Services\TelegramMessageTemplates;
+use App\Services\TelegramNotificationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -102,6 +104,9 @@ class SendTaskReminders extends Command
             'recipients' => $recipients,
         ]);
 
+        // Send Telegram notification
+        $this->sendTelegramNotification($task, 'start_reminder', $recipients);
+
         $this->info("Start reminder sent for task: {$task->task_name}");
     }
 
@@ -135,6 +140,9 @@ class SendTaskReminders extends Command
             'sent_at' => now(),
             'recipients' => $recipients,
         ]);
+
+        // Send Telegram notification
+        $this->sendTelegramNotification($task, 'due_warning', $recipients);
 
         $this->info("Due warning sent for task: {$task->task_name}");
     }
@@ -170,6 +178,9 @@ class SendTaskReminders extends Command
             'sent_at' => now(),
             'recipients' => $recipients,
         ]);
+
+        // Send Telegram notification
+        $this->sendTelegramNotification($task, 'deadline_alert', $recipients);
 
         $this->info("Deadline alert sent for task: {$task->task_name}");
     }
@@ -247,5 +258,88 @@ class SendTaskReminders extends Command
 
         $elapsed = $start->diffInDays($today);
         return (int) round(($elapsed / $totalDays) * 100);
+    }
+
+    private function sendTelegramNotification(ProjectTask $task, string $notificationType, array $emailRecipients): void
+    {
+        $telegram = new TelegramNotificationService();
+        if (!$telegram->isConfigured()) {
+            Log::warning('Telegram bot token not configured, skipping Telegram notification');
+            return;
+        }
+
+        // Get Telegram chat IDs from recipients
+        $telegramChatIds = $this->getTelegramChatIds($task, $emailRecipients);
+        if (empty($telegramChatIds)) {
+            Log::info('No Telegram chat IDs found for task: ' . $task->task_name);
+            return;
+        }
+
+        // Format message based on notification type
+        $phaseName = $task->phase ? $task->phase->phase_name : '';
+        $data = [
+            'subtask_name' => $task->task_name,
+            'project_name' => $task->project->project_name,
+            'task_name' => $phaseName,
+            'start_date' => $task->start_date_plan ? $task->start_date_plan->format('F j, Y') : 'Not set',
+            'end_date' => $task->end_date_plan ? $task->end_date_plan->format('F j, Y') : 'Not set',
+            'status' => ucfirst(str_replace('_', ' ', $task->status)),
+            'actual_progress' => $task->progress_actual,
+            'plan_progress' => $this->calculatePlanProgress($task),
+            'url' => url('/admin/project/projects/' . $task->project_id),
+        ];
+
+        switch ($notificationType) {
+            case 'start_reminder':
+                $message = TelegramMessageTemplates::subtaskStartReminder($data);
+                break;
+            case 'due_warning':
+                $message = TelegramMessageTemplates::subtaskDueWarning($data);
+                break;
+            case 'deadline_alert':
+                $message = TelegramMessageTemplates::subtaskDeadlineAlert($data);
+                break;
+            default:
+                return;
+        }
+
+        // Send to all chat IDs
+        $results = $telegram->sendMessageToMultiple($telegramChatIds, $message);
+        $successCount = count(array_filter($results, fn($r) => $r === true));
+        Log::info("Telegram notification sent to {$successCount} recipients for task: {$task->task_name}");
+    }
+
+    private function getTelegramChatIds(ProjectTask $task, array $emailRecipients): array
+    {
+        $chatIds = [];
+
+        // Get assigned user's chat ID
+        if ($task->assignedTo && $task->assignedTo->telegram_chat_id) {
+            $chatIds[] = $task->assignedTo->telegram_chat_id;
+        }
+
+        // Get manager's chat ID
+        $manager = $this->getUserByStaffId($task->project->project_manager_staff_id);
+        if ($manager && $manager->telegram_chat_id) {
+            if (empty($chatIds)) {
+                $chatIds[] = $manager->telegram_chat_id;
+            } else {
+                $chatIds[] = $manager->telegram_chat_id;
+            }
+        }
+
+        // Get deskmen's chat IDs
+        $deskman1 = $this->getUserByStaffId($task->project->deskman_1_staff_id);
+        if ($deskman1 && $deskman1->telegram_chat_id) {
+            $chatIds[] = $deskman1->telegram_chat_id;
+        }
+
+        $deskman2 = $this->getUserByStaffId($task->project->deskman_2_staff_id);
+        if ($deskman2 && $deskman2->telegram_chat_id) {
+            $chatIds[] = $deskman2->telegram_chat_id;
+        }
+
+        // Remove duplicates
+        return array_unique($chatIds);
     }
 }

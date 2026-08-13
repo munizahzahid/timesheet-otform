@@ -36,8 +36,12 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile/test-telegram', [ProfileController::class, 'testTelegram'])->name('profile.test-telegram');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Alternative route for testing telegram
+    Route::post('/test-telegram-notification', [ProfileController::class, 'testTelegram'])->name('test.telegram');
 
     // Timesheets
     Route::get('/timesheets', [TimesheetController::class, 'index'])->name('timesheets.index');
@@ -124,38 +128,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/training-attendance/{trainingSession}/export-pdf', [TrainingAttendanceController::class, 'exportPdf'])->name('training-attendance.export-pdf');
     Route::delete('/training-attendance/attendance/{attendance}', [TrainingAttendanceController::class, 'destroyAttendee'])->name('training-attendance.attendance.destroy');
     Route::post('/training-attendance/{trainingSession}/add-attendee', [TrainingAttendanceController::class, 'addAttendee'])->name('training-attendance.add-attendee');
-});
 
-// Admin routes
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    // User management
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
-    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-
-    // System config
-    Route::get('/settings', [SystemConfigController::class, 'index'])->name('settings.index');
-    Route::put('/settings', [SystemConfigController::class, 'update'])->name('settings.update');
-
-    // Public holidays
-    Route::get('/holidays', [PublicHolidayController::class, 'index'])->name('holidays.index');
-    Route::post('/holidays', [PublicHolidayController::class, 'store'])->name('holidays.store');
-    Route::put('/holidays/{holiday}', [PublicHolidayController::class, 'update'])->name('holidays.update');
-    Route::delete('/holidays/{holiday}', [PublicHolidayController::class, 'destroy'])->name('holidays.destroy');
-
-    // Desknet sync
-    Route::get('/desknet-sync', [DesknetSyncController::class, 'index'])->name('desknet-sync.index');
-    Route::post('/desknet-sync/run', [DesknetSyncController::class, 'run'])->name('desknet-sync.run');
-    Route::post('/desknet-sync/test', [DesknetSyncController::class, 'test'])->name('desknet-sync.test');
-
-    // Project codes
-    Route::get('/project-codes', [ProjectCodeController::class, 'index'])->name('project-codes.index');
-    Route::post('/project-codes', [ProjectCodeController::class, 'store'])->name('project-codes.store');
-
-    // Audit logs
-    Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
-
-    // Project Management (Admin Only - Draft)
+    // Project Management (All authenticated users)
     Route::prefix('project')->name('project.')->group(function () {
         Route::get('/', [ProjectController::class, 'dashboard'])->name('dashboard');
         Route::get('/calendar', [ProjectController::class, 'calendar'])->name('calendar');
@@ -208,6 +182,36 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
             });
         });
     });
+});
+
+// Admin routes
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    // User management
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+
+    // System config
+    Route::get('/settings', [SystemConfigController::class, 'index'])->name('settings.index');
+    Route::put('/settings', [SystemConfigController::class, 'update'])->name('settings.update');
+
+    // Public holidays
+    Route::get('/holidays', [PublicHolidayController::class, 'index'])->name('holidays.index');
+    Route::post('/holidays', [PublicHolidayController::class, 'store'])->name('holidays.store');
+    Route::put('/holidays/{holiday}', [PublicHolidayController::class, 'update'])->name('holidays.update');
+    Route::delete('/holidays/{holiday}', [PublicHolidayController::class, 'destroy'])->name('holidays.destroy');
+
+    // Desknet sync
+    Route::get('/desknet-sync', [DesknetSyncController::class, 'index'])->name('desknet-sync.index');
+    Route::post('/desknet-sync/run', [DesknetSyncController::class, 'run'])->name('desknet-sync.run');
+    Route::post('/desknet-sync/test', [DesknetSyncController::class, 'test'])->name('desknet-sync.test');
+
+    // Project codes
+    Route::get('/project-codes', [ProjectCodeController::class, 'index'])->name('project-codes.index');
+    Route::post('/project-codes', [ProjectCodeController::class, 'store'])->name('project-codes.store');
+
+    // Audit logs
+    Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 });
 
 require __DIR__.'/auth.php';

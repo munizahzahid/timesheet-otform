@@ -1,10 +1,10 @@
 @php
     $tab = $tab ?? request('tab', 'dashboard');
     $tabs = [
-        'dashboard' => ['label' => 'Dashboard', 'route' => route('admin.project.projects.show', $project) . '?tab=dashboard'],
-        'details' => ['label' => 'Details', 'route' => route('admin.project.projects.show', $project) . '?tab=details'],
-        'schedule' => ['label' => 'Gantt', 'route' => route('admin.project.projects.show', $project) . '?tab=schedule'],
-        'tasks' => ['label' => 'Kanban', 'route' => route('admin.project.projects.show', $project) . '?tab=tasks'],
+        'dashboard' => ['label' => 'Dashboard', 'route' => route('project.projects.show', $project) . '?tab=dashboard'],
+        'details' => ['label' => 'Details', 'route' => route('project.projects.show', $project) . '?tab=details'],
+        'schedule' => ['label' => 'Gantt', 'route' => route('project.projects.show', $project) . '?tab=schedule'],
+        'tasks' => ['label' => 'Kanban', 'route' => route('project.projects.show', $project) . '?tab=tasks'],
     ];
 @endphp
 

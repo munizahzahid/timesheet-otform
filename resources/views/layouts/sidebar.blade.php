@@ -42,13 +42,13 @@
             @endif
         </a>
 
-        {{-- Project (Admin Only) --}}
-        @if(Auth::user()->isAdmin() && Route::has('admin.project.dashboard'))
-            <a href="{{ route('admin.project.dashboard') }}"
+        {{-- Project (All authenticated users) --}}
+        @if(Route::has('project.dashboard'))
+            <a href="{{ route('project.dashboard') }}"
                x-bind:title="collapsed ? 'Project' : null"
                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
-                      {{ !$viewingOtherUser && request()->routeIs('admin.project.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
-                <svg class="w-5 h-5 flex-shrink-0 transition-colors {{ !$viewingOtherUser && request()->routeIs('admin.project.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {{ !$viewingOtherUser && request()->routeIs('project.*') ? 'bg-blue-700 text-white shadow-lg shadow-blue-700/40 border-l-4 border-blue-600' : 'text-gray-300 hover:bg-blue-800 hover:text-white' }}">
+                <svg class="w-5 h-5 flex-shrink-0 transition-colors {{ !$viewingOtherUser && request()->routeIs('project.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
                 </svg>
                 <span class="nav-label">Project</span>

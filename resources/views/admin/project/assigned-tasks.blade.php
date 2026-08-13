@@ -45,12 +45,12 @@
                                 @endphp
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <a href="{{ route('admin.project.projects.tasks.show', [$task->project, $task]) }}" class="text-sm font-medium text-gray-900 hover:text-indigo-600">
+                                        <a href="{{ route('project.projects.tasks.show', [$task->project, $task]) }}" class="text-sm font-medium text-gray-900 hover:text-indigo-600">
                                             {{ $task->task_name }}
                                         </a>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <a href="{{ route('admin.project.projects.show', $task->project) }}?tab=tasks" class="text-sm text-gray-600 hover:text-indigo-600">
+                                        <a href="{{ route('project.projects.show', $task->project) }}?tab=tasks" class="text-sm text-gray-600 hover:text-indigo-600">
                                             {{ $task->project->project_name }}
                                         </a>
                                     </td>

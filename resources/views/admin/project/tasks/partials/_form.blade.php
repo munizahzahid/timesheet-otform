@@ -201,7 +201,7 @@
 
 {{-- Form Actions --}}
 <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-    <a href="{{ route('admin.project.projects.show', $project) . '?' . http_build_query(array_filter(['tab' => old('tab', request('tab', 'tasks')), 'view' => old('view', request('view'))])) }}"
+    <a href="{{ route('project.projects.show', $project) . '?' . http_build_query(array_filter(['tab' => old('tab', request('tab', 'tasks')), 'view' => old('view', request('view'))])) }}"
        class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
         Cancel
     </a>

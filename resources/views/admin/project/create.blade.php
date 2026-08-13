@@ -7,7 +7,7 @@
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="bg-white border border-gray-200 rounded-lg p-6">
-            <form method="POST" action="{{ route('admin.project.projects.store') }}">
+            <form method="POST" action="{{ route('project.projects.store') }}">
                 @csrf
                 @include('admin.project.partials._form')
             </form>

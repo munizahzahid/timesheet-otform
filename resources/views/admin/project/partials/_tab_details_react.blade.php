@@ -41,7 +41,7 @@
 
     $detailsProps = [
         'project' => $projectData,
-        'editUrl' => route('admin.project.projects.show', ['project' => $project, 'edit' => 1, 'tab' => 'details']),
+        'editUrl' => route('project.projects.show', ['project' => $project, 'edit' => 1, 'tab' => 'details']),
     ];
 @endphp
 

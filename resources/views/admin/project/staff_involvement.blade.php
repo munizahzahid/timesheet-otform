@@ -6,7 +6,7 @@
     </x-slot>
 
     @push('top-left-actions')
-        <a href="{{ route('admin.project.dashboard') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Back</a>
+        <a href="{{ route('project.dashboard') }}" class="text-sm text-indigo-600 hover:text-indigo-900">&larr; Back</a>
     @endpush
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">

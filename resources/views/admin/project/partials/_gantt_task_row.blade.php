@@ -59,7 +59,7 @@
     $actualProgress = $task->progress_actual ?? 0;
 @endphp
 
-<tr class="hover:bg-gray-50 task-row gantt-draggable-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-task-order="{{ $task->task_order }}" data-predecessor-id="{{ $task->predecessor_task_id }}" data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}" data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}" data-task-name="{{ $task->task_name }}">
+<tr class="hover:bg-gray-50 task-row gantt-draggable-row task-phase-{{ $task->phase_id ?? 'standalone' }}" data-phase-id="{{ $task->phase_id ?? '' }}" data-task-id="{{ $task->id }}" data-task-order="{{ $task->task_order }}" data-predecessor-id="{{ $task->predecessor_task_id }}" data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}" data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}" data-task-name="{{ $task->task_name }}">
     <td class="sticky left-0 bg-white z-40 px-4 py-2 border-r border-gray-200 pl-8">
         <div class="flex items-center gap-2">
             <div class="gantt-drag-handle text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100 cursor-grab" draggable="true" title="Drag to reorder">
@@ -76,8 +76,8 @@
                 <button type="button" class="gantt-menu-btn text-gray-400 hover:text-gray-600 focus:outline-none p-0.5 rounded hover:bg-gray-100" title="Subtask actions"
                         data-edit-type="task"
                         data-edit-id="{{ $task->id }}"
-                        data-update-url="{{ route('admin.project.projects.tasks.update', [$project, $task]) }}"
-                        data-delete-action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
+                        data-update-url="{{ route('project.projects.tasks.update', [$project, $task]) }}"
+                        data-delete-action="{{ route('project.projects.tasks.destroy', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=schedule') }}"
                         data-delete-confirm="Delete this subtask?"
                         data-task-name="{{ $task->task_name }}"
                         data-task-order="{{ $task->task_order }}"
@@ -106,7 +106,7 @@
     </td>
     <td class="bg-white px-4 py-2 border-r border-gray-200 text-xs text-gray-600 text-center w-16">
         <div class="gantt-weight-cell cursor-pointer hover:bg-indigo-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition inline-block min-w-[2rem]"
-             data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+             data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
              data-task-name="{{ $task->task_name }}"
              data-weight="{{ $task->weight ?? 0 }}">
             {{ $task->weight ?? '' }}
@@ -132,7 +132,7 @@
         <div class="space-y-0.5">
             @if($task->start_date_plan)
                 <div class="gantt-date-cell cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition"
-                     data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                     data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                      data-task-name="{{ $task->task_name }}"
                      data-field="start_date_plan"
                      data-date="{{ $task->start_date_plan->format('Y-m-d') }}"
@@ -144,7 +144,7 @@
             @endif
             @if($task->start_date_revise)
                 <div class="gantt-date-cell cursor-pointer hover:bg-orange-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition"
-                     data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                     data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                      data-task-name="{{ $task->task_name }}"
                      data-field="start_date_revise"
                      data-date="{{ $task->start_date_revise->format('Y-m-d') }}"
@@ -156,7 +156,7 @@
             @endif
             @if($task->start_date_actual)
                 <div class="gantt-date-cell cursor-pointer hover:bg-green-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition"
-                     data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                     data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                      data-task-name="{{ $task->task_name }}"
                      data-field="start_date_actual"
                      data-date="{{ $task->start_date_actual->format('Y-m-d') }}"
@@ -168,7 +168,7 @@
             @else
                 <div class="py-0.5">
                     <button type="button" class="gantt-start-actual-btn text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded hover:bg-green-200 transition"
-                            data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                            data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                             data-task-name="{{ $task->task_name }}"
                             data-predecessor-id="{{ $task->predecessor_task_id }}"
                             data-dependency-type="{{ $task->dependency_type ?? 'end_to_start' }}"
@@ -184,7 +184,7 @@
         <div class="space-y-0.5">
             @if($task->end_date_plan)
                 <div class="gantt-date-cell cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition"
-                     data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                     data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                      data-task-name="{{ $task->task_name }}"
                      data-field="end_date_plan"
                      data-date="{{ $task->end_date_plan->format('Y-m-d') }}"
@@ -194,7 +194,7 @@
             @endif
             @if($task->end_date_revise)
                 <div class="gantt-date-cell cursor-pointer hover:bg-orange-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition"
-                     data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                     data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                      data-task-name="{{ $task->task_name }}"
                      data-field="end_date_revise"
                      data-date="{{ $task->end_date_revise->format('Y-m-d') }}"
@@ -204,7 +204,7 @@
             @endif
             @if($task->end_date_actual)
                 <div class="gantt-date-cell cursor-pointer hover:bg-green-50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition"
-                     data-update-url="{{ route('admin.project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
+                     data-update-url="{{ route('project.projects.tasks.inline-update', ['project' => $project, 'task' => $task]) }}"
                      data-task-name="{{ $task->task_name }}"
                      data-field="end_date_actual"
                      data-date="{{ $task->end_date_actual->format('Y-m-d') }}"

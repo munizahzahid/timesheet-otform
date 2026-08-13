@@ -22,16 +22,16 @@
         ];
     })->values()->toArray();
 
-    $redirectUrl = request()->input('redirect') ?? route('admin.project.projects.show', ['project' => $project, 'tab' => 'details']);
+    $redirectUrl = request()->input('redirect') ?? route('project.projects.show', ['project' => $project, 'tab' => 'details']);
 
     $formProps = [
         'project' => $projectData,
         'staffList' => $staffData,
         'statusOptions' => $statusOptions,
         'csrfToken' => csrf_token(),
-        'updateUrl' => route('admin.project.projects.update', $project),
+        'updateUrl' => route('project.projects.update', $project),
         'cancelUrl' => $redirectUrl,
-        'redirectUrl' => route('admin.project.projects.show', ['project' => $project, 'tab' => 'details']),
+        'redirectUrl' => route('project.projects.show', ['project' => $project, 'tab' => 'details']),
     ];
 @endphp
 

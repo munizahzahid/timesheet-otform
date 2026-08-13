@@ -7,6 +7,8 @@ use App\Models\Timesheet;
 use App\Models\TimesheetApprovalLog;
 use App\Models\User;
 use App\Services\TimesheetEmailNotificationService;
+use App\Services\TelegramMessageTemplates;
+use App\Services\TelegramNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +20,39 @@ class TimesheetApprovalController extends Controller
     public function __construct(TimesheetEmailNotificationService $emailService)
     {
         $this->emailService = $emailService;
+    }
+
+    private function sendTelegramNotification(Timesheet $timesheet, string $type, ?string $reason = null): void
+    {
+        $telegram = new TelegramNotificationService();
+        if (!$telegram->isConfigured()) {
+            return;
+        }
+
+        if (!$timesheet->user->telegram_chat_id) {
+            return;
+        }
+
+        $data = [
+            'month' => Carbon::parse($timesheet->month)->format('F Y'),
+            'staff_name' => $timesheet->user->name,
+            'total_hours' => $timesheet->total_hours ?? 0,
+            'reason' => $reason ?? 'Not specified',
+            'url' => url('/approvals/timesheets/' . $timesheet->id),
+        ];
+
+        switch ($type) {
+            case 'approved':
+                $message = TelegramMessageTemplates::timesheetApproved($data);
+                break;
+            case 'rejected':
+                $message = TelegramMessageTemplates::timesheetRejected($data);
+                break;
+            default:
+                return;
+        }
+
+        $telegram->sendMessage($timesheet->user->telegram_chat_id, $message);
     }
 
     /**
@@ -329,6 +364,7 @@ class TimesheetApprovalController extends Controller
                 ]);
 
                 $this->emailService->sendApprovalNotification($timesheet);
+                $this->sendTelegramNotification($timesheet, 'approved');
             } else {
                 $timesheet->update([
                     'status' => 'pending_l1',
@@ -346,6 +382,7 @@ class TimesheetApprovalController extends Controller
                     $l1Approver = User::find($l1ApproverId);
                     if ($l1Approver) {
                         $this->emailService->sendSubmissionNotification($timesheet, $l1Approver);
+                        $this->sendTelegramPendingApproval($timesheet, $l1Approver);
                     }
                 }
             }
@@ -392,6 +429,7 @@ class TimesheetApprovalController extends Controller
         ]);
 
         $this->emailService->sendRejectionNotification($timesheet, Auth::user(), $request->remarks);
+        $this->sendTelegramNotification($timesheet, 'rejected', $request->remarks);
 
         return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
@@ -432,6 +470,7 @@ class TimesheetApprovalController extends Controller
             ]);
 
             $this->emailService->sendApprovalNotification($timesheet);
+            $this->sendTelegramNotification($timesheet, 'approved');
 
             return response()->json(['success' => true, 'status' => $timesheet->status]);
         } catch (\Exception $e) {
@@ -474,6 +513,7 @@ class TimesheetApprovalController extends Controller
         ]);
 
         $this->emailService->sendRejectionNotification($timesheet, Auth::user(), $request->remarks);
+        $this->sendTelegramNotification($timesheet, 'rejected', $request->remarks);
 
         return response()->json(['success' => true, 'status' => $timesheet->status]);
     }
@@ -643,7 +683,30 @@ private function notifyTimesheetApprovers(Timesheet $timesheet, string $status):
         $recipient = User::find($recipientId);
         if ($recipient) {
             $this->emailService->sendSubmissionNotification($timesheet, $recipient);
+            $this->sendTelegramPendingApproval($timesheet, $recipient);
         }
     }
+}
+
+private function sendTelegramPendingApproval(Timesheet $timesheet, User $approver): void
+{
+    $telegram = new TelegramNotificationService();
+    if (!$telegram->isConfigured()) {
+        return;
+    }
+
+    if (!$approver->telegram_chat_id) {
+        return;
+    }
+
+    $data = [
+        'month' => Carbon::parse($timesheet->month)->format('F Y'),
+        'staff_name' => $timesheet->user->name,
+        'total_hours' => $timesheet->total_hours ?? 0,
+        'url' => url('/approvals/timesheets/' . $timesheet->id),
+    ];
+
+    $message = TelegramMessageTemplates::timesheetPendingApproval($data);
+    $telegram->sendMessage($approver->telegram_chat_id, $message);
 }
 }

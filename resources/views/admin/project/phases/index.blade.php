@@ -7,7 +7,7 @@
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="mb-6">
-            <a href="{{ route('admin.project.projects.show', $project) }}" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <a href="{{ route('project.projects.show', $project) }}" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -20,7 +20,7 @@
                 <h3 class="text-lg font-medium text-gray-900">Project Tasks</h3>
                 <p class="text-sm text-gray-500">{{ $phases->count() }} task{{ $phases->count() != 1 ? 's' : '' }}</p>
             </div>
-            <a href="{{ route('admin.project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
+            <a href="{{ route('project.projects.phases.create', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                 Add Task
             </a>
@@ -74,8 +74,8 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="{{ route('admin.project.projects.phases.edit', [$project, $phase]) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
-                                    <form action="{{ route('admin.project.projects.phases.destroy', [$project, $phase]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this phase and all its tasks?')">
+                                    <a href="{{ route('project.projects.phases.edit', [$project, $phase]) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                    <form action="{{ route('project.projects.phases.destroy', [$project, $phase]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this phase and all its tasks?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>

@@ -18,6 +18,7 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'telegram_chat_id' => ['nullable', 'string', 'regex:/^-?\d+$/'],
         ];
     }
 }

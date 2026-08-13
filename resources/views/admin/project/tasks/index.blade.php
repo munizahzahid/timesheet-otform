@@ -7,7 +7,7 @@
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="mb-6">
-            <a href="{{ route('admin.project.projects.show', $project) }}?tab=tasks" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <a href="{{ route('project.projects.show', $project) }}?tab=tasks" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -24,16 +24,16 @@
             </div>
             <div class="flex items-center gap-2">
                 <div class="inline-flex rounded-md shadow-sm" role="group">
-                    <a href="{{ route('admin.project.projects.tasks.index', $project) }}"
+                    <a href="{{ route('project.projects.tasks.index', $project) }}"
                        class="px-3 py-1.5 text-xs font-medium border rounded-l-md focus:z-10 focus:ring-2 focus:ring-indigo-500 {{ $isKanban ? 'text-gray-700 bg-white border-gray-200 hover:bg-gray-100' : 'text-indigo-700 bg-indigo-50 border-indigo-200' }}">
                         Table
                     </a>
-                    <a href="{{ route('admin.project.projects.tasks.index', $project) }}?view=kanban"
+                    <a href="{{ route('project.projects.tasks.index', $project) }}?view=kanban"
                        class="px-3 py-1.5 text-xs font-medium border-t border-b border-r rounded-r-md focus:z-10 focus:ring-2 focus:ring-indigo-500 {{ $isKanban ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-100' }}">
                         Kanban
                     </a>
                 </div>
-                <a href="{{ route('admin.project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}"
+                <a href="{{ route('project.projects.tasks.create', $project) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}"
                    class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                     Add Subtask
                 </a>
@@ -132,8 +132,8 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
-                                    <form action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this task?')">
+                                    <a href="{{ route('project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                    <form action="{{ route('project.projects.tasks.destroy', [$project, $task]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this task?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
@@ -173,8 +173,8 @@
                                                     </svg>
                                                 </button>
                                                 <div class="kanban-menu-dropdown hidden absolute right-0 mt-1 w-28 bg-white rounded-md shadow-lg border border-gray-200 z-20 py-1">
-                                                    <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}" class="block px-4 py-2 text-xs text-gray-700 hover:bg-gray-100">Edit</a>
-                                                    <form action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}" method="POST" onsubmit="return confirm('Delete this task?')">
+                                                    <a href="{{ route('project.projects.tasks.edit', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks') }}" class="block px-4 py-2 text-xs text-gray-700 hover:bg-gray-100">Edit</a>
+                                                    <form action="{{ route('project.projects.tasks.destroy', [$project, $task]) }}" method="POST" onsubmit="return confirm('Delete this task?')">
                                                         @csrf
                                                         @method('DELETE')
                                                         <input type="hidden" name="tab" value="{{ request('tab', 'tasks') }}">
@@ -237,7 +237,7 @@
                                                                     </div>
                                                                     <p class="text-gray-600 whitespace-pre-wrap">{{ $comment->comment }}</p>
                                                                     @if($comment->user_id === auth()->id())
-                                                                        <form action="{{ route('admin.project.projects.tasks.comments.destroy', [$project, $task, $comment]) }}" method="POST" class="mt-1">
+                                                                        <form action="{{ route('project.projects.tasks.comments.destroy', [$project, $task, $comment]) }}" method="POST" class="mt-1">
                                                                             @csrf
                                                                             @method('DELETE')
                                                                             <button type="submit" class="text-red-500 hover:text-red-700 text-[10px]">Delete</button>
@@ -247,7 +247,7 @@
                                                             @endforeach
                                                         </div>
                                                     @endif
-                                                    <form action="{{ route('admin.project.projects.tasks.comments.store', [$project, $task]) }}?{{ request()->getQueryString() }}" method="POST" class="flex flex-col gap-1">
+                                                    <form action="{{ route('project.projects.tasks.comments.store', [$project, $task]) }}?{{ request()->getQueryString() }}" method="POST" class="flex flex-col gap-1">
                                                         @csrf
                                                         <input type="hidden" name="view" value="{{ request('view') }}">
                                                         <textarea name="comment" rows="2" placeholder="Add a comment..." class="w-full rounded border-gray-300 text-xs focus:border-indigo-500 focus:ring-indigo-500 resize-none" required></textarea>
@@ -259,11 +259,11 @@
                                                         <div class="space-y-1 max-h-40 overflow-y-auto">
                                                             @foreach($task->attachments as $attachment)
                                                                 <div class="bg-gray-50 rounded p-2 text-xs flex items-center justify-between gap-2">
-                                                                    <a href="{{ route('admin.project.projects.tasks.attachments.show', [$project, $task, $attachment]) }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 truncate" title="{{ $attachment->file_name }}">
+                                                                    <a href="{{ route('project.projects.tasks.attachments.show', [$project, $task, $attachment]) }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 truncate" title="{{ $attachment->file_name }}">
                                                                         {{ $attachment->file_name }}
                                                                     </a>
                                                                     @if($attachment->user_id === auth()->id())
-                                                                        <form action="{{ route('admin.project.projects.tasks.attachments.destroy', [$project, $task, $attachment]) }}?{{ request()->getQueryString() }}" method="POST" onsubmit="return confirm('Delete this file?')">
+                                                                        <form action="{{ route('project.projects.tasks.attachments.destroy', [$project, $task, $attachment]) }}?{{ request()->getQueryString() }}" method="POST" onsubmit="return confirm('Delete this file?')">
                                                                             @csrf
                                                                             @method('DELETE')
                                                                             <button type="submit" class="text-red-500 hover:text-red-700 text-[10px] whitespace-nowrap">Delete</button>
@@ -273,7 +273,7 @@
                                                             @endforeach
                                                         </div>
                                                     @endif
-                                                    <form action="{{ route('admin.project.projects.tasks.attachments.store', [$project, $task]) }}?{{ request()->getQueryString() }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-1">
+                                                    <form action="{{ route('project.projects.tasks.attachments.store', [$project, $task]) }}?{{ request()->getQueryString() }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-1">
                                                         @csrf
                                                         <input type="hidden" name="view" value="{{ request('view') }}">
                                                         <label class="flex items-center gap-2 cursor-pointer">

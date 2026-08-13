@@ -7,7 +7,7 @@
 
     <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="mb-6">
-            <a href="{{ route('admin.project.projects.phases.index', $project) }}" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <a href="{{ route('project.projects.phases.index', $project) }}" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                 </svg>
@@ -135,7 +135,7 @@
         <div class="bg-white border border-gray-200 rounded-lg">
             <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Subtasks ({{ $phase->tasks->count() }})</h3>
-                <a href="{{ route('admin.project.projects.tasks.create', $project) }}?phase_id={{ $phase->id }}"
+                <a href="{{ route('project.projects.tasks.create', $project) }}?phase_id={{ $phase->id }}"
                    class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                     Add Task
                 </a>
@@ -177,8 +177,8 @@
                                         {{ ucfirst(str_replace('_', ' ', $task->status ?? 'Not Set')) }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('admin.project.projects.tasks.edit', [$project, $task]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
-                                        <form action="{{ route('admin.project.projects.tasks.destroy', [$project, $task]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this task?')">
+                                        <a href="{{ route('project.projects.tasks.edit', [$project, $task]) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                        <form action="{{ route('project.projects.tasks.destroy', [$project, $task]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this task?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>

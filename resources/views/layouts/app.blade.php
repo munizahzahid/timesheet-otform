@@ -69,7 +69,7 @@
                 'routes' => [
                     'dashboard' => route('dashboard'),
                     'timesheets' => route('timesheets.index'),
-                    'project' => Route::has('admin.project.dashboard') ? route('admin.project.dashboard') : null,
+                    'project' => Route::has('project.dashboard') ? route('project.dashboard') : null,
                     'history' => request()->has('user_id') ? route('history.index', ['user_id' => request('user_id')]) : route('history.index'),
                     'pendingTracker' => route('approvals.pending-tracker.index'),
                     'otApprovals' => route('approvals.ot-forms.index'),
@@ -84,7 +84,7 @@
                 'active' => [
                     'dashboard' => !$viewingOtherUser && request()->routeIs('dashboard'),
                     'timesheets' => !$viewingOtherUser && (request()->routeIs('timesheets.*') || request()->routeIs('ot-forms.*') || request()->routeIs('training-attendance.*')),
-                    'project' => !$viewingOtherUser && request()->routeIs('admin.project.*'),
+                    'project' => !$viewingOtherUser && request()->routeIs('project.*'),
                     'history' => !$viewingOtherUser && request()->routeIs('history.*'),
                     'pendingTracker' => !$viewingOtherUser && request()->routeIs('approvals.pending-tracker.*'),
                     'otApprovals' => !$viewingOtherUser && request()->routeIs('approvals.ot-forms.*'),

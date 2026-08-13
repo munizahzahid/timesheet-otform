@@ -19,7 +19,7 @@
                 'months' => $months,
                 'periodStart' => $periodStart?->format('Y-m-d'),
                 'periodEnd' => $periodEnd?->format('Y-m-d'),
-                'calendarUrl' => route('admin.project.calendar'),
+                'calendarUrl' => route('project.calendar'),
             ];
         @endphp
         <script type="application/json" id="project-calendar-props">@json($calendarProps)</script>

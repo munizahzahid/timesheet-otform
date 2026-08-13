@@ -11,12 +11,12 @@
             </h2>
             <div class="flex items-center gap-2">
                 @if($editMode)
-                    <a href="{{ route('admin.project.projects.show', ['project' => $project, 'tab' => 'details']) }}"
+                    <a href="{{ route('project.projects.show', ['project' => $project, 'tab' => 'details']) }}"
                        class="inline-flex items-center px-3 py-1.5 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 transition">
                         Cancel
                     </a>
                 @else
-                    <a href="{{ route('admin.project.projects.edit', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
+                    <a href="{{ route('project.projects.edit', $project) . '?' . http_build_query(['redirect' => request()->fullUrl()]) }}"
                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 transition">
                         Edit Project
                     </a>
@@ -26,7 +26,7 @@
     </x-slot>
 
     @push('top-left-actions')
-        <a href="{{ route('admin.project.projects.index') }}"
+        <a href="{{ route('project.projects.index') }}"
            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>

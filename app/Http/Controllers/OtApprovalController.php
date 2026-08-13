@@ -10,6 +10,8 @@ use App\Models\Project;
 use App\Models\PublicHoliday;
 use App\Models\User;
 use App\Services\OtEmailNotificationService;
+use App\Services\TelegramMessageTemplates;
+use App\Services\TelegramNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,63 @@ class OtApprovalController extends Controller
     public function __construct(OtEmailNotificationService $emailService)
     {
         $this->emailService = $emailService;
+    }
+
+    private function sendTelegramNotification(OtForm $otForm, string $type, ?string $reason = null): void
+    {
+        $telegram = new TelegramNotificationService();
+        if (!$telegram->isConfigured()) {
+            return;
+        }
+
+        if (!$otForm->user->telegram_chat_id) {
+            return;
+        }
+
+        $data = [
+            'date' => $otForm->date->format('F j, Y'),
+            'staff_name' => $otForm->user->name,
+            'hours' => $otForm->total_ot_hours,
+            'project' => $otForm->project->project_name ?? 'Not specified',
+            'reason' => $reason ?? 'Not specified',
+            'url' => url('/approvals/ot-forms/' . $otForm->id),
+        ];
+
+        switch ($type) {
+            case 'approved':
+                $message = TelegramMessageTemplates::otFormApproved($data);
+                break;
+            case 'rejected':
+                $message = TelegramMessageTemplates::otFormRejected($data);
+                break;
+            default:
+                return;
+        }
+
+        $telegram->sendMessage($otForm->user->telegram_chat_id, $message);
+    }
+
+    private function sendTelegramPendingApproval(OtForm $otForm, User $approver): void
+    {
+        $telegram = new TelegramNotificationService();
+        if (!$telegram->isConfigured()) {
+            return;
+        }
+
+        if (!$approver->telegram_chat_id) {
+            return;
+        }
+
+        $data = [
+            'date' => $otForm->date->format('F j, Y'),
+            'staff_name' => $otForm->user->name,
+            'hours' => $otForm->total_ot_hours,
+            'project' => $otForm->project->project_name ?? 'Not specified',
+            'url' => url('/approvals/ot-forms/' . $otForm->id),
+        ];
+
+        $message = TelegramMessageTemplates::otFormPendingApproval($data);
+        $telegram->sendMessage($approver->telegram_chat_id, $message);
     }
 
     /**
@@ -182,11 +241,13 @@ class OtApprovalController extends Controller
             $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
             foreach ($hrUsers as $hrUser) {
                 $this->emailService->sendSubmissionNotification($otForm, $hrUser);
+                $this->sendTelegramPendingApproval($otForm, $hrUser);
             }
         }
 
         if ($nextStatus === 'approved') {
             $this->emailService->sendApprovalNotification($otForm);
+            $this->sendTelegramNotification($otForm, 'approved');
         }
 
         $message = match ($nextStatus) {
@@ -242,6 +303,7 @@ class OtApprovalController extends Controller
         }
         if ($ceoUser) {
             $this->emailService->sendSubmissionNotification($otForm, $ceoUser);
+            $this->sendTelegramPendingApproval($otForm, $ceoUser);
         }
 
         // Notify staff that the form has been reviewed and forwarded to CEO
@@ -559,6 +621,7 @@ class OtApprovalController extends Controller
 
         // Send email notification to employee
         $this->emailService->sendRejectionNotification($otForm, $user, $request->remarks);
+        $this->sendTelegramNotification($otForm, 'rejected', $request->remarks);
 
         return response()->json([
             'success' => true,

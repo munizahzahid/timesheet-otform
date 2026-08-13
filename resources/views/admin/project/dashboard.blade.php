@@ -26,7 +26,7 @@
                     return [
                         'id' => $project['id'],
                         'name' => $project['name'],
-                        'url' => route('admin.project.projects.show', $project['id']),
+                        'url' => route('project.projects.show', $project['id']),
                         'start_week' => $project['start_week'],
                         'duration_weeks' => $project['duration_weeks'],
                         'color_index' => $project['color_index'] ?? 0,
@@ -68,7 +68,7 @@
             'on_hold' => $p['on_hold'],
             'cancelled' => $p['cancelled'],
         ])->values()->toArray(),
-        'dashboardUrl' => route('admin.project.dashboard'),
+        'dashboardUrl' => route('project.dashboard'),
     ];
     @endphp
 

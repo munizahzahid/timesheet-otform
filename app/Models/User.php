@@ -25,7 +25,7 @@ class User extends Authenticatable
     protected $fillable = [
         'desknet_id', 'staff_no', 'name', 'short_name', 'email', 'password',
         'role', 'category', 'department_id', 'reports_to', 'designation',
-        'is_active', 'last_synced_at',
+        'is_active', 'last_synced_at', 'telegram_chat_id',
         'timesheet_approver_id', 'timesheet_hod_approver_id',
         'ot_approver_id', 'ot_final_approver_id',
         'ot_exec_approver_id', 'ot_exec_final_approver_id',
