@@ -503,6 +503,27 @@ class TaskDependencyResolver
                         $taskInCollection->status = 'not_started';
                         $taskInCollection->is_actual_start_manual = false;
                     }
+                    // Also update the predecessor in the collection so other successors see the reset
+                    $predecessorInCollection = $tasks->firstWhere('id', $predecessor->id);
+                    if ($predecessorInCollection) {
+                        $predecessorInCollection->start_date_actual = null;
+                        $predecessorInCollection->end_date_actual = null;
+                    }
+                    // Update all tasks that have this predecessor to see the reset
+                    foreach ($tasks as $t) {
+                        if ($t->predecessor_task_id === $predecessor->id && $t->predecessorTask && $t->predecessorTask->id === $predecessor->id) {
+                            $t->predecessorTask->start_date_actual = null;
+                            $t->predecessorTask->end_date_actual = null;
+                        }
+                    }
+                    // Still enqueue successors of this task for cascading (don't skip)
+                    // This ensures indirect successors are also reset
+                    foreach ($successorsByPredecessor->get($task->id, collect()) as $nextSuccessor) {
+                        if (!isset($queued[$nextSuccessor->id])) {
+                            $queued[$nextSuccessor->id] = true;
+                            $queue->enqueue($nextSuccessor);
+                        }
+                    }
                     continue;
                 }
 

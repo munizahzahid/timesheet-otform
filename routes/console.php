@@ -26,8 +26,8 @@ Schedule::command('project:recalculate-progress')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/project-progress.log'));
 
-// Daily project task reminders at 9:00 AM
+// Daily project task reminders at 9:40 AM
 Schedule::command('project:send-task-reminders')
-    ->dailyAt('09:00')
+    ->dailyAt('09:40')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/task-reminders.log'));
