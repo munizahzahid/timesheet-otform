@@ -358,9 +358,9 @@ export default function ProjectDashboard({
                     </div>
                 </div>
 
-                {/* Top right: task status */}
+                {/* Top right: subtask status */}
                 <div className="col-span-12 lg:col-span-4 flex flex-col">
-                    <Card title="Task Status by Project" subtitle="Active projects task breakdown" className="flex-1">
+                    <Card title="Subtask Status By Project" subtitle="Active projects subtask breakdown" className="flex-1">
                         {projectTaskStatusData.length > 0 ? (
                             <div style={{ height: 280 }}>
                                 <canvas ref={projectTaskStatusRef}></canvas>

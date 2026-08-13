@@ -155,9 +155,9 @@ export default function ProjectTabDashboard({
                 <StatCard title="Overdue Subtask" value={delayedTasks} valueColor={delayedTasks > 0 ? 'text-red-600' : 'text-green-600'} />
             </div>
 
-            {/* Task status cards */}
+            {/* Subtask status cards */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <Card title="Task Status Distribution" className="md:col-span-2">
+                <Card title="Subtask Status Distribution" className="md:col-span-2">
                     {taskStatusDistribution.some(s => s.count > 0) ? (
                         <div className="flex items-center gap-5">
                             <div style={{ width: 150, height: 150 }}>
@@ -177,7 +177,7 @@ export default function ProjectTabDashboard({
                     )}
                 </Card>
 
-                <Card title="Task Status Breakdown" className="md:col-span-3">
+                <Card title="Subtask Status Breakdown" className="md:col-span-3">
                     <table className="w-full text-xs">
                         <thead>
                             <tr className="border-b border-gray-200">
@@ -204,8 +204,8 @@ export default function ProjectTabDashboard({
                 </Card>
             </div>
 
-            {/* Phase progress bar chart */}
-            <Card title="Phase Progress" subtitle="Plan vs actual progress for each phase">
+            {/* Task progress bar chart */}
+            <Card title="Task Progress" subtitle="Plan vs actual progress for each task">
                 {phaseProgress.length > 0 ? (
                     <div style={{ height: 220 }}>
                         <canvas ref={barRef}></canvas>
@@ -215,9 +215,9 @@ export default function ProjectTabDashboard({
                 )}
             </Card>
 
-            {/* Phase timeline */}
+            {/* Task timeline */}
             {phaseProgress.length > 0 && (
-                <Card title="Phase Timeline" subtitle="Completion status of project phases">
+                <Card title="Task Timeline" subtitle="Completion status of project tasks">
                     <div className="w-full bg-gray-200 rounded-full h-2.5 mb-5">
                         <div className="bg-blue-500 h-2.5 rounded-full transition-all" style={{ width: `${overallActualProgress}%` }}></div>
                     </div>

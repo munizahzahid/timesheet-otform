@@ -265,7 +265,7 @@
             </a>
             <button type="button" onclick="openTaskCreateModal()"
                     class="inline-flex items-center px-2 py-1 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-wider hover:bg-indigo-700 transition">
-                Add Task
+                Add Subtask
             </button>
             <button type="button" onclick="openSubtaskCreateModal()"
                     class="inline-flex items-center px-2 py-1 bg-white border border-gray-200 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-wider hover:bg-gray-50 hover:shadow-sm transition">
@@ -305,7 +305,7 @@
                 <thead>
                     <tr class="bg-gray-50">
                         <th class="sticky left-0 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-64">
-                            Task
+                            Subtask
                         </th>
                         <th class="sticky left-64 bg-gray-50 z-40 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 w-24">
                             Assigned To
@@ -535,17 +535,17 @@
                             </td>
                         </tr>
 
-                        {{-- Phase Tasks --}}
+                        {{-- Task Subtasks --}}
                         @foreach($phase->tasks as $task)
                             @include('admin.project.partials._gantt_task_row', ['task' => $task, 'timelineStart' => $timelineStart, 'totalDays' => $totalDays, 'dayWidth' => $dayWidth, 'effectiveDates' => $effectiveDates, 'todayOffset' => $todayOffset])
                         @endforeach
                     @endforeach
 
-                    {{-- Standalone Tasks --}}
+                    {{-- Standalone Subtasks --}}
                     @if($standaloneTasks->isNotEmpty())
                         <tr class="bg-gray-100">
                             <td class="sticky left-0 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200">
-                                <span class="font-semibold text-gray-900">Standalone Tasks</span>
+                                <span class="font-semibold text-gray-900">Standalone Subtasks</span>
                             </td>
                             <td class="sticky left-64 bg-gray-100 z-40 px-4 py-2 border-r border-gray-200 text-xs text-gray-500">—</td>
                             <td class="bg-gray-100 px-4 py-2 border-r border-gray-200 text-xs text-gray-500 text-center w-16">—</td>
@@ -590,7 +590,7 @@
     @endif
 </div>
 
-{{-- Task Quick Update Modal --}}
+{{-- Subtask Quick Update Modal --}}
 <div id="task-quick-update-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
     <div class="bg-white rounded-2xl shadow-xl w-96 max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -655,18 +655,18 @@
                     Cancel
                 </button>
                 <button type="submit" class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
-                    Save Task
+                    Save Subtask
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-{{-- Task Create Modal --}}
+{{-- Subtask Create Modal --}}
 <div id="task-create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background-color: rgba(0, 0, 0, 0.5);">
     <div class="bg-white rounded-2xl shadow-xl w-[420px] max-w-full mx-4 overflow-hidden">
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h4 class="text-sm font-semibold text-gray-800">Create Task</h4>
+            <h4 class="text-sm font-semibold text-gray-800">Create Subtask</h4>
             <button type="button" onclick="closeTaskCreateModal()" class="text-gray-400 hover:text-gray-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -2347,7 +2347,7 @@
             e.stopPropagation();
             if (!ganttDraggedRow || this === ganttDraggedRow) return;
             if (ganttDraggedPhaseId !== this.dataset.phaseId) {
-                alert('Tasks can only be reordered within the same phase.');
+                alert('Subtasks can only be reordered within the same task.');
                 return;
             }
             var rect = this.getBoundingClientRect();

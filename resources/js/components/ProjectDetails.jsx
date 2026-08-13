@@ -111,7 +111,7 @@ export default function ProjectDetails({ project, editUrl }) {
 
                 {project.phases?.length > 0 && (
                     <div className="mt-6 pt-6 border-t border-gray-100">
-                        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4">Phases ({project.phases.length})</h4>
+                        <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4">Tasks ({project.phases.length})</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {project.phases.map((phase) => (
                                 <div key={phase.id} className="bg-slate-50/70 rounded-xl p-3 border border-gray-100">

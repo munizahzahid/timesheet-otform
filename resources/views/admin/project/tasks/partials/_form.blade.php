@@ -3,7 +3,7 @@
 <input type="hidden" name="tab" value="{{ old('tab', request('tab', 'tasks')) }}">
 <input type="hidden" name="view" value="{{ old('view', request('view')) }}">
 
-{{-- Task Name --}}
+{{-- Subtask Name --}}
 <div class="mb-5">
     <label for="task_name" class="block text-sm font-medium text-gray-700 mb-1">Subtask Name <span class="text-red-500">*</span></label>
     <input type="text" name="task_name" id="task_name"

@@ -166,7 +166,7 @@
                 </div>
             </div>
 
-            {{-- Phases Summary --}}
+            {{-- Tasks Summary --}}
             @if($project->phases->count() > 0)
                 <div class="mt-6 pt-6 border-t border-gray-100">
                     <h4 class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4">Tasks ({{ $project->phases->count() }})</h4>
