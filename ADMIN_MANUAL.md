@@ -1,5 +1,4 @@
 # TSSB Portal Admin Manual
-## Timesheet & OT Form Management System - Administrator Guide
 
 ---
 
@@ -7,337 +6,299 @@
 
 1. [Introduction](#introduction)
 2. [User Management](#user-management)
-3. [Project Codes](#project-codes)
-4. [Holidays](#holidays)
-5. [Desknet Sync](#desknet-sync)
-6. [Audit Logs](#audit-logs)
-7. [System Settings](#system-settings)
-8. [Approvals](#approvals)
-9. [Troubleshooting](#troubleshooting)
+3. [Project Management](#project-management)
+4. [Project Codes](#project-codes)
+5. [Holidays](#holidays)
+6. [Desknet Sync](#desknet-sync)
+7. [Audit Logs](#audit-logs)
+8. [System Settings](#system-settings)
+9. [Approvals](#approvals)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Introduction
 
-This admin manual is for system administrators who manage the TSSB Portal. As an admin, you have access to:
+This manual is for system administrators who manage the TSSB Portal. As an admin, you can:
 
-- User management and role assignment
-- Project code management
-- Holiday management
-- Desknet integration and sync
-- System audit logs
-- System configuration settings
-- Approval workflow management
+- Manage users and their roles
+- Manage project codes
+- Set up public holidays
+- Sync data with Desknet
+- View system activity logs
+- Configure system settings
+- Approve timesheets and OT forms
 
 ---
 
 ## User Management
 
-### Access User Management
+### How to Access
 
-1. Click menu "Admin" → "Users"
-2. View all users in the system
+1. Click **Admin** → **Users**
 
-### User List Features
+### What You Can Do
 
-The user list displays:
-- **Staff No** - Employee staff number
-- **Name** - User name and email
-- **Department** - User's department
-- **Designation** - Job title
-- **Reports To** - Direct supervisor
-- **TS Approver** - Timesheet approver (specific or role-based)
-- **OT Exec** - OT form approver for executive staff
-- **OT Non-Exec** - OT form approver for non-executive staff
-- **Status** - Active/Inactive status
+**View Users**
+- See all staff in the system
+- Search by name, staff number, or email
+- Filter by department or status
 
-### Filtering Users
-
-- **Search** - Filter by name, staff no, or email
-- **Department** - Filter by department
-- **Status** - Filter by active/inactive
-
-### Editing Users
-
-1. Click "Edit" on a user row
-2. Update user information:
-   - Name
-   - Email
-   - Staff No
-   - Department
-   - Designation
-   - Role (Admin, Manager_HOD, Assistant_Manager, Staff, CEO)
-   - Reports To (supervisor)
-   - Timesheet Approver (specific user or role-based)
-   - OT Approver - Executive (specific user or role-based)
-   - OT Approver - Non-Executive (specific user or role-based)
-   - Document Type Approvers (for different document types)
+**Edit User**
+1. Click **Edit** on a user row
+2. Update information:
+   - Name, email, staff number
+   - Department, designation
+   - Role (Admin, Manager, Staff, etc.)
+   - Reports to (supervisor)
+   - Timesheet approver
+   - OT approver
    - Status (Active/Inactive)
-3. Click "Save"
+3. Click **Save**
 
-### Viewing User History
-
-1. Click "History" on a user row
-2. View all timesheets and OT forms submitted by that user
-3. Click on any item to view details
+**View User History**
+1. Click **History** on a user row
+2. See all timesheets and OT forms submitted by that user
 
 ### User Roles
 
-- **Admin** - Full system access, can manage all settings and users
+- **Admin** - Full system access
 - **CEO** - Can approve timesheets and OT forms
 - **Manager_HOD** - Can approve timesheets and OT forms
 - **Assistant_Manager** - Limited approval permissions
+- **HR** - Review OT Form, View Pending Tracker, View Summary
+- **Finance** - View Summary
 - **Staff** - Regular user, no approval permissions
-
-### Approval Routes
-
-Users can have specific approvers assigned or use role-based approval:
-- **Role-based** - Approvers determined by user role hierarchy
-- **Specific** - Specific user assigned as approver
 
 ---
 
 ## Project Codes
 
-### Access Project Codes
+### How to Access
 
-1. Click menu "Admin" → "Project Codes"
-2. View all project codes in the system
+1. Click **Admin** → **Project Codes**
 
-### Project Code List
+### What You Can Do
 
-The list displays:
-- **Code** - Project code identifier
-- **Name** - Project name
-- **Status** - Active/Inactive
-- **Last Synced** - Last sync date from Desknet
-
-### Managing Project Codes
-
-Project codes are typically synced from Desknet. However, you can:
 - View all project codes
-- Check sync status
-- Manually add/edit project codes if needed
+- Check sync status with Desknet
+- Add or edit project codes manually if needed
 
-### Desknet Sync
+**Note:** Project codes are usually synced automatically from Desknet. See [Desknet Sync](#desknet-sync) section.
 
-Project codes are automatically synced from Desknet. See [Desknet Sync](#desknet-sync) section for details.
+---
+
+## Project Management
+
+### How to Access
+
+1. Click **Project** → **Projects**
+2. Select a project to view details
+
+### What You Can Do
+
+**Create Project**
+1. Click **+ New Project**
+2. Enter project details:
+   - Project name
+   - Project code
+   - Start date (plan)
+   - End date (plan)
+   - Budget
+   - Value
+3. Click **Save**
+
+**Manage Phases**
+1. Go to a project's **Schedule** tab
+2. Click **+ Add Phase**
+3. Enter phase details:
+   - Phase name
+   - Phase order
+   - Plan dates
+   - Revise dates (optional)
+   - Actual dates (optional)
+4. Click **Save**
+
+**Manage Tasks (Subtasks)**
+1. Go to a project's **Schedule** tab
+2. Click **+ Add Task**
+3. Enter task details:
+   - Task name
+   - Assigned to
+   - Weight (for progress calculation)
+   - Plan dates
+   - Revise dates (optional)
+   - Actual dates (optional)
+   - Predecessor task (for dependencies)
+   - Dependency type (End-to-Start or Start-to-Start)
+4. Click **Save**
+
+**Gantt Chart Features**
+- **Three-Lane Timeline**: Plan (blue), Revise (orange), Actual (green)
+- **Drag to Resize**: Drag bar edges to change dates
+- **Drag to Move**: Drag bar center to move entire task
+- **Dependency Lines**: Visual connections between dependent tasks
+- **Today Indicator**: Vertical line showing current date
+- **Progress Shadows**: Colored fill showing today's position on timeline
+- **Phase Auto-Update**: Phase dates automatically follow subtask dates
+
+**Important Notes**:
+- Phase plan dates automatically update to match the earliest/latest subtask dates
+- Subtasks can have plan end dates beyond the current phase end date
+- Phase will automatically extend to accommodate the latest subtask
+- Progress is calculated based on task weights and completion status
+- Dependencies prevent tasks from starting before predecessors complete
 
 ---
 
 ## Holidays
 
-### Access Holidays
+### How to Access
 
-1. Click menu "Admin" → "Holidays"
-2. View all public holidays
+1. Click **Admin** → **Holidays**
 
-### Holiday List
+### What You Can Do
 
-The list displays:
-- **Date** - Holiday date
-- **Name** - Holiday name
-- **Type** - Public holiday type
-- **Status** - Active/Inactive
+**Add Holiday**
+1. Click **+ Add Holiday**
+2. Enter date, name, and type
+3. Click **Save**
 
-### Adding Holidays
+**Edit Holiday**
+1. Click **Edit** on a holiday row
+2. Update details
+3. Click **Save**
 
-1. Click "+ Add Holiday"
-2. Enter holiday details:
-   - Date
-   - Name
-   - Type
-3. Click "Save"
-
-### Editing Holidays
-
-1. Click "Edit" on a holiday row
-2. Update holiday details
-3. Click "Save"
-
-### Deleting Holidays
-
-1. Click "Delete" on a holiday row
+**Delete Holiday**
+1. Click **Delete** on a holiday row
 2. Confirm deletion
 
-Holiday dates affect timesheet calculations - days marked as holidays automatically show 0 attendance hours.
+**Important:** Holiday dates affect timesheet calculations - days marked as holidays automatically show 0 attendance hours.
 
 ---
 
 ## Desknet Sync
 
-### Access Desknet Sync
+### What is Desknet Sync?
 
-1. Click menu "Admin" → "Desknet Sync"
-2. View sync status and logs
+The system can pull staff list and project details from Desknet AppSuite automatically.
 
-### Sync Features
+### How to Access
 
-The Desknet sync integrates with Desknet AppSuite to:
-- **Sync Staff List** - Import users, departments, and designations
-- **Sync Project Codes** - Import project codes
+1. Click **Admin** → **Desknet Sync**
 
-### Sync Status
+### What You Can Do
 
-The dashboard shows:
-- **Last Staff Sync** - Last successful staff sync date/time
-- **Last Project Sync** - Last successful project codes sync date/time
-- **Sync Logs** - History of sync attempts with status
+**Test Connection**
+1. Click **Test Connection**
+2. See if the system can connect to Desknet
 
-### Testing Connection
+**Run Manual Sync**
+1. Choose what to sync:
+   - **Staff** - Pulls user/staff data
+   - **Project Codes** - Pulls project data
+   - **All** - Syncs both
+2. Click **Run Sync**
+3. View results in the sync log
 
-1. Click "Test Connection" button
-2. The system will test the Desknet API connection
-3. Results show:
-   - Connection status (OK/Failed)
-   - HTTP status code
-   - Error details if failed
+**View Sync Status**
+- Last successful sync date/time
+- History of sync attempts with status
 
-### Running Manual Sync
+### Automatic Sync
 
-1. Select sync type:
-   - **Staff** - Sync staff list only
-   - **Project Codes** - Sync project codes only
-   - **All** - Sync both staff and project codes
-2. Click "Run Sync"
-3. Monitor sync progress in the logs
+The system is set to sync automatically every day at 1:00 AM. Your server administrator needs to set up a cron job for this.
 
-### Sync Configuration
+### Sync Settings
 
-Desknet sync settings are configured in System Settings:
-- **Desknet API URL** - Desknet API endpoint
-- **Desknet API Key** - Authentication key
-- **Project Codes App ID** - Desknet app ID for project codes (default: 308)
-- **Staff List App ID** - Desknet app ID for staff list (default: 29)
-
-### Troubleshooting Desknet Sync
-
-**HTTP 403 Error:**
-- Invalid API key or Desknet External Connection disabled
-- Verify API key in System Settings
-- Check Desknet External Connection Settings in Desknet admin panel
-- Ensure your server IP is whitelisted in Desknet
-
-**Connection Timeout:**
-- Check network connectivity to Desknet server
-- Verify API URL is correct
-- Check firewall settings
-
-**Sync Partial Failure:**
-- Check sync logs for specific errors
-- Verify app IDs are correct
-- Check Desknet database for missing records
+Configure these in **System Settings**:
+- Desknet API URL
+- Desknet API Key
+- Project Codes App ID (default: 308)
+- Staff List App ID (default: 29)
 
 ---
 
 ## Audit Logs
 
-### Access Audit Logs
+### How to Access
 
-1. Click menu "Admin" → "Audit Logs"
-2. View all system activity logs
+1. Click **Admin** → **Audit Logs**
 
-### Audit Log Features
+### What You Can See
 
-The audit log displays:
-- **Date/Time** - When the action occurred
-- **User** - Who performed the action (name and email)
-- **Action** - Type of action (Created/Updated/Deleted)
-- **Model** - What was changed (e.g., User #2, Timesheet #15)
+- **Date/Time** - When the action happened
+- **User** - Who did it
+- **Action** - Created/Updated/Deleted
+- **Model** - What was changed (e.g., User #2)
 - **Description** - What happened
-- **IP Address** - Where the action originated
+- **IP Address** - Where it came from
 
-### Filtering Audit Logs
+### Filtering
 
-- **Action** - Filter by action type (created/updated/deleted)
-- **Model Type** - Filter by model type (User, Timesheet, etc.)
-- **Date Range** - Filter by date range
+- Filter by action type
+- Filter by model type
+- Filter by date range
 
-### Audit Log Benefits
+### Why It's Useful
 
-- **Security Monitoring** - Track who made changes and when
-- **Accountability** - Know exactly which user performed each action
-- **Troubleshooting** - Investigate issues by seeing what changed
-- **Compliance** - Maintain audit trail for regulatory requirements
-- **Fraud Detection** - Identify suspicious activity patterns
-- **Forensic Analysis** - Trace back changes to identify issues
-
-### Currently Tracked Models
-
-- **User** - User creation, updates, and deletion
+- Track who made changes and when
+- Investigate issues
+- Security monitoring
+- Compliance records
 
 ---
 
 ## System Settings
 
-### Access System Settings
+### How to Access
 
-1. Click menu "Account" → "Profile"
-2. Click submenu "System Settings" (admin only)
+1. Click **Account** → **Profile**
+2. Click **System Settings** (admin only)
 
-### Settings Groups
+### Settings You Can Change
 
-#### Work Hours
-- **Default Work Start Time** - Default work day start time
-- **Lunch Break Start** - Lunch break start time
-- **Lunch Break End** - Lunch break end time
-- **Default Hours (Mon-Thu)** - Standard work hours Monday-Thursday
-- **Default Hours (Friday)** - Standard work hours Friday
+**Work Hours**
+- Default work start time
+- Lunch break start/end
+- Standard work hours for Monday-Thursday
+- Standard work hours for Friday
 
-#### Desknet Integration
-- **Desknet API URL** - Desknet API endpoint
-- **Desknet API Key** - Authentication key (masked)
-- **Project Codes App ID** - Desknet app ID for project codes
-- **Staff List App ID** - Desknet app ID for staff list
-- **Desknet Sync Enabled** - Enable/disable automatic sync
+**Desknet Integration**
+- Desknet API URL
+- Desknet API Key
+- Project Codes App ID
+- Staff List App ID
+- Enable/disable automatic sync
 
-#### Other Settings
+**Other Settings**
 - Additional system configuration options
 
-### Saving Settings
+### Saving Changes
 
 1. Update settings as needed
-2. Click "Save All Settings"
-3. Settings are applied immediately
+2. Click **Save All Settings**
+3. Changes take effect immediately
 
-### Important Notes
-
-- API keys are sensitive - keep them secure
-- Work hours affect timesheet calculations
-- Desknet settings must match your Desknet configuration
+**Important:** API keys are sensitive - keep them secure.
 
 ---
 
 ## Approvals
 
-### Access Approvals
-
-Admins with approval permissions can access:
-
-1. **Timesheet Approvals** - Click menu "Approvals" → "Timesheet Approvals"
-2. **OT Approvals** - Click menu "Approvals" → "OT Approvals"
-
 ### Timesheet Approvals
 
-1. View pending timesheets
-2. Click "Review" to see full details
-3. Review timesheet data:
-   - Attendance hours
-   - Project hours
-   - Total hours
-4. **Approve** - Sign and approve the timesheet
-5. **Reject** - Reject with remarks for staff to correct
+1. Click **Approvals** → **Timesheet Approvals**
+2. Click **Review** on a timesheet
+3. Review the details
+4. Click **Approve** to approve, or **Reject** to return with remarks
 
-### OT Approvals
+### OT Form Approvals
 
-1. View pending OT forms
-2. Click "Review" to see full details
-3. Review OT form data:
-   - Planned vs actual hours
-   - Total OT hours
-   - Supporting documents
-4. **Approve** - Sign and approve the OT form
-5. **Reject** - Reject with remarks for staff to correct
+1. Click **Approvals** → **OT Approvals**
+2. Click **Review** on an OT form
+3. Review the planned vs actual hours
+4. Click **Approve** or **Reject** with remarks
 
 ### Approval Workflow
 
@@ -345,47 +306,45 @@ Admins with approval permissions can access:
 - Approvers review and approve/reject
 - Approved items are finalized
 - Rejected items return to staff for correction
-- Audit logs track all approval actions
+- All actions are logged in audit logs
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Users Cannot Login
 
-#### Users Cannot Login
-
-1. Check user status is Active
+1. Check user status is **Active**
 2. Verify email and password are correct
-3. Check if user account exists in system
+3. Check if user account exists
 4. Reset password if needed
 
-#### Sync Fails
+### Sync Fails
 
 1. Test Desknet connection
 2. Verify API credentials
 3. Check Desknet External Connection is enabled
-4. Review sync logs for specific errors
+4. Review sync logs for errors
 
-#### Timesheet Errors
+### Timesheet Errors
 
-1. Check user has valid project codes assigned
+1. Check user has valid project codes
 2. Verify attendance PDF is in correct format
-3. Check work hours settings are correct
-4. Review audit logs for error details
+3. Check work hours settings
+4. Review audit logs
 
-#### Approval Issues
+### Approval Issues
 
 1. Verify user has correct approval permissions
 2. Check approval routes are configured
 3. Ensure approvers are active users
-4. Review approval logs for issues
+4. Review approval logs
 
 ### Getting Help
 
 If you encounter issues:
 1. Check audit logs for error details
-2. Review system settings configuration
+2. Review system settings
 3. Check Desknet sync status
 4. Contact IT support with error details
 
@@ -393,5 +352,5 @@ If you encounter issues:
 
 ## Document Version
 
-Version: 1.0  
-Last Updated: May 2026
+Version: 2.0  
+Last Updated: August 2026

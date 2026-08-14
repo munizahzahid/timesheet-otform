@@ -1,5 +1,4 @@
 # TSSB Portal User Manual
-## Timesheet & OT Form Management System
 
 ---
 
@@ -11,19 +10,24 @@
 4. [Timesheet](#timesheet)
 5. [OT Form](#ot-form)
 6. [History](#history)
-7. [Approvals](#approvals)
-8. [Profile](#profile)
-9. [Frequently Asked Questions (FAQ)](#frequently-asked-questions-faq)
+7. [Project Management](#project-management)
+8. [Approvals](#approvals)
+9. [All Records](#all-records)
+10. [Training Attendance](#training-attendance)
+11. [Profile](#profile)
+12. [FAQ](#faq)
 
 ---
 
 ## Introduction
 
-TSSB Portal is a timesheet and overtime (OT) form management system for Talent Synergy Sdn Bhd. This system allows staff to:
-- Manage monthly timesheets
-- Submit OT requests
+TSSB Portal is a system for managing timesheets, overtime requests, and projects. You can use it to:
+
+- Submit monthly timesheets
+- Request overtime (OT) approval
 - Track approval status
-- Manage personal profiles
+- View your history
+- Manage projects (if you're a project manager)
 
 ---
 
@@ -32,158 +36,253 @@ TSSB Portal is a timesheet and overtime (OT) form management system for Talent S
 ### How to Login
 
 1. Open your web browser and go to the system URL
-2. Enter your email address
-3. Enter your password
-4. Click the "Log In" button
+2. Enter your **email address**
+3. Enter your **password**
+4. Click **Log In**
 
-### Security Features
+### Signature Tips
 
-- You only need to type your name before "BIN/BINTI/B/BT" to sign
-- The system will automatically complete your full name
-- Example: Name "AHMAD FAIZAL BIN ALI" → You only need to type "AHMAD FAIZAL"
+When a form asks for your signature, you only need to type the part of your name before `BIN`, `BINTI`, `B`, or `BT`. The system will auto-complete the rest.
+
+**Example:** For **AHMAD FAIZAL BIN ALI**, type only `AHMAD FAIZAL`
 
 ---
 
 ## Dashboard
 
-The Dashboard is your home page showing a quick summary of your account.
+The Dashboard is your home page. It shows:
 
-### Dashboard Features
-
-- **Quick Links** - Quick access to Timesheets and OT Forms
-- **Summary** - Overview of your timesheets and OT forms
-- **Admin Cards** - For admin users, shows active users, project codes, and Desknet sync status
+- **Quick Links** - Fast access to Timesheets, OT Forms, and Projects
+- **Summary Cards** - Your pending, submitted, and approved items
+- **Charts** - Visual breakdown of your OT hours
+- **Project Status** - Active project progress (if applicable)
 
 ---
 
 ## Timesheet
 
-### Creating a New Timesheet
+### Creating a Timesheet
 
-1. Click menu "HR" → "Timesheet"
-2. Click button "+ New Timesheet"
-3. Select month and year
-4. Click "Create"
+1. Click **HR** → **Timesheet**
+2. Click **+ New Timesheet**
+3. Select **month** and **year**
+4. Click **Create**
 
-### Filling in Timesheet
+### Filling in Your Timesheet
 
-1. Click "Edit" on the timesheet you want to fill in
-2. **Upload Attendance** - Upload your Infotech attendance PDF
-3. **Admin Hours** - Hours are automatically populated from attendance data
+1. Click **Edit** on your timesheet
+2. **Upload Attendance** - Upload your attendance PDF or Excel file
+3. **Admin Hours** - Normal and OT hours fill automatically
 4. **Project Rows** - Add project codes and enter hours:
-   - Normal NC (Normal - Non-Chargeable)
-   - Normal COBQ (Normal - Chargeable on Bill Quotation)
-   - OT NC (Overtime - Non-Chargeable)
-   - OT COBQ (Overtime - Chargeable on Bill Quotation)
-5. **Auto-Save** - Changes are saved automatically as you type
-6. **Submit** - Click "Submit" button to send for approval
+   - **Normal NC** - Normal Non-Chargeable hours
+   - **Normal COBQ** - Normal Chargeable on Bill Quotation hours
+   - **OT NC** - Overtime Non-Chargeable hours
+   - **OT COBQ** - Overtime Chargeable on Bill Quotation hours
+5. Values save automatically as you type
+6. Click **Submit** when done
+7. Use **Print**, **Export Excel**, or **Export PDF** to download
 
-### Infotech Attendance PDF Rules
+### Attendance Rules
 
-When uploading attendance PDF from Infotech, the system will read attendance data and automatically fill hours based on the following rules:
-
-#### Absent (ABS)
-- If there is **no clock out** on that day → considered absent
-- If there is **no clock in and clock out** on that day → considered absent
-- If the reason on the attendance PDF writes **"ABS"** → absent
-- **Action:** Enter **0** on that day's column. No need to fill in any hours
-
-#### Leave (ML / EL / AL)
-- If the reason on the attendance PDF writes:
-  - **"ML"** — Medical Leave
-  - **"EL"** — Emergency Leave
-  - **"AL"** — Annual Leave
-- **Action:** Enter **7 or 8 hours** on the **MC/LEAVE** row for that day
-
-#### Rules Summary
-
-| Condition | Reason | Action |
-|-----------|--------|--------|
-| No clock in & clock out | ABS | Enter 0 hours |
-| No clock out only | ABS | Enter 0 hours |
-| Medical leave | ML | Enter 7/8 hours on MC/LEAVE row |
-| Emergency leave | EL | Enter 7/8 hours on MC/LEAVE row |
-| Annual leave | AL | Enter 7/8 hours on MC/LEAVE row |
-| Normal attendance | — | Hours automatically filled from clock in/out |
+| Reason Code | Meaning | What to Do |
+|-------------|---------|------------|
+| **ABS** | Absent without leave/MC | Enter **0** hours |
+| **ML** | Medical Leave | Enter **7 or 8** hours on MC/LEAVE row |
+| **EL** | Emergency Leave | Enter **7 or 8** hours on MC/LEAVE row |
+| **AL** | Annual Leave | Enter **7 or 8** hours on MC/LEAVE row |
+| **PH** | Public Holiday | Enter **0** hours |
+| **RES** | Rest day | Enter **0** hours |
 
 ### Timesheet Status
 
-- **Draft** - Not yet submitted, still editable
-- **Pending** - Waiting for approval
-- **Approved** - Approved by supervisor
+- **Draft** - Still editable, not submitted
+- **Pending HOD** - Waiting for Head of Department approval
+- **Pending L1** - Waiting for Assistant Manager approval
+- **Pending L2** - Waiting for Manager approval
+- **Pending L3** - Waiting for Senior Manager/CEO approval
+- **Approved** - Fully approved
 - **Rejected** - Returned for corrections
-
-### Tips
-
-- Scroll horizontally to see all days of the month
-- The summary row shows totals per day
-- Make sure project hours match available hours for each day
 
 ---
 
 ## OT Form
 
-### Creating a New OT Form
+### Creating an OT Form
 
-1. Click menu "HR" → "OT Form"
-2. Click button "+ OT Form Baru"
+1. Click **HR** → **OT Form**
+2. Click **+ OT Form Baru**
 3. Select:
-   - Month and year
-   - Form type (Executive / Non-Executive)
-   - Company
-4. Click "Create"
+   - **Month** and **year**
+   - **Form type** (Executive / Non-Executive)
+   - **Company**
+4. Click **Create**
 
-### Filling in OT Form
+### Filling in Your OT Form
 
-1. Click "Edit" on the form you want to fill in
-2. **Plan** - Enter planned start/end times for anticipated OT
-3. **Auto-Fill Actual** - Click the "Auto-Fill from Attendance" button to populate actual times from your uploaded attendance PDF
-   *Note: Make sure you have uploaded the attendance PDF in your timesheet first*
-4. **Save** - Click "Save" to save your progress
-5. **Submit** - Click "Submit for Approval" when ready
-6. **Print** - Use the "Print" button to print the form
+1. Click **Edit** on your OT form
+2. **Plan** - Enter planned start/end times for expected overtime
+3. **Actual** - Enter actual start/end times, or click **Auto-Fill from Attendance**
+   - *Note: Upload attendance PDF in your timesheet first*
+4. Click **Save** to save progress
+5. Click **Submit for Approval** when ready
+6. Use **Print**, **Export Excel**, or **Export PDF** to download
 
 ### Form Types
 
-- **Executive** - For executive-level staff
-- **Non-Executive** - For non-executive staff with additional fields
+- **Executive** - Simplified form for executive staff
+- **Non-Executive** - Detailed form with additional fields
 
 ### OT Form Status
 
 - **Draft** - Not yet submitted
 - **Pending** - Waiting for approval
-- **Approved** - Approved by manager
+- **Pending Manager** - Waiting for manager approval
+- **Pending HR** - Waiting for HR review
+- **Approved** - Approved
+- **Completed** - Fully processed
 - **Rejected** - Rejected with remarks
+- **Returned** - Returned by HR for correction
 
 ---
 
 ## History
 
-The History page shows all your activities:
+The **History** page shows your past submissions:
+
 - Submitted timesheets
 - Submitted OT forms
-- Approval status
-- Activity dates
+- Approval status and dates
+- Rejection remarks
+
+---
+
+## Project Management
+
+*Available to project managers and admins*
+
+### Executive Dashboard
+
+1. Click **Project Management** → **Executive Dashboard**
+2. View:
+   - Total, active, completed, and delayed projects
+   - Staff allocation timeline
+   - Budget vs actual
+   - Task status distribution
+
+### Creating a Project
+
+1. Click **Project Management** → **List of Project**
+2. Click **+ New Project**
+3. Fill in project code, name, client, dates, and team
+4. Click **Save**
+
+### Project Phases
+
+1. Open a project and go to **Phases** tab
+2. Click **+ New Phase**
+3. Enter phase name, dates, and order
+4. Click **Save**
+
+### Project Tasks
+
+1. Open a project and go to **Tasks** tab
+2. Click **+ New Task**
+3. Enter task name, assign user, set dates and weight (0-100)
+4. Click **Save**
+
+**Note:** Task weights within the same phase must not exceed 100% total.
+
+### Gantt Chart
+
+1. Open a project and go to **Schedule** tab
+2. View project timeline with phases and tasks
+3. Colors: Blue = Plan, Orange = Revise, Green = Actual
+
+**Gantt Chart Features:**
+- **Three-Lane Timeline**: Plan (blue), Revise (orange), Actual (green) bars
+- **Drag to Resize**: Drag bar edges to change dates
+- **Drag to Move**: Drag bar center to move entire task
+- **Dependency Lines**: Visual connections between dependent tasks
+- **Today Indicator**: Vertical line showing current date
+- **Progress Shadows**: Colored fill showing today's position on timeline
+- **Phase Auto-Update**: Phase dates automatically follow subtask dates
+
+**Phase-Task Relationship:**
+- Phase plan dates automatically update to match the earliest/latest subtask dates
+- When you change a subtask's plan end date, the phase end date automatically extends
+- This allows flexible planning while maintaining timeline integrity
+- The phase bar shadow shows today's date position, not the progress percentage
+
+**Task Dependencies:**
+- Set predecessor tasks to create dependencies
+- **End-to-Start**: Task cannot start until predecessor completes
+- **Start-to-Start**: Task can start when predecessor starts
+- Dependencies are enforced when changing status or dates
+
+### Task Progress
+
+- Progress is calculated automatically from actual start/end dates
+- You cannot edit progress directly - update the dates instead
+- Phase and project progress are weighted averages of task progress
+- Task weights determine how much each task contributes to phase progress
+
+### Comments and Attachments
+
+- Open a task to add comments
+- Upload attachments for reference
 
 ---
 
 ## Approvals
 
-For managers and admins with approval permissions:
+*For managers and approvers*
 
 ### Timesheet Approvals
 
-1. Click menu "Approvals" → "Timesheet Approvals"
-2. Click "Review" to see full timesheet details
-3. **Approve** - Sign and approve the timesheet
-4. **Reject** - Reject with remarks for the staff to correct
+1. Click **Approvals** → **Timesheet Approvals**
+2. Click **Review** on a timesheet
+3. Review details, sign if required
+4. Click **Approve** or **Reject** with remarks
 
-### OT Approvals
+### OT Form Approvals
 
-1. Click menu "Approvals" → "OT Approvals"
-2. Click "Review" to see full OT form details
-3. **Approve** - Sign and approve the OT form
-4. **Reject** - Reject with remarks for the staff to correct
+1. Click **Approvals** → **OT Approvals**
+2. Click **Review** on an OT form
+3. Review planned vs actual hours
+4. Click **Approve** or **Reject** with remarks
+5. HR can also **Forward** or **Return** forms
+
+### Pending Tracker
+
+1. Click **Approvals** → **Pending Tracker**
+2. See all items awaiting your action
+
+---
+
+## All Records
+
+*For managers and above*
+
+View historical data:
+
+- **Timesheets** - All submitted timesheets
+- **Timesheet Summary** - Monthly summary report
+- **OT Forms** - All submitted OT forms
+- **OT Summary** - Overtime summary
+
+Use export buttons to download reports.
+
+---
+
+## Training Attendance
+
+*For HR and admins*
+
+1. Click **HR** → **Training Attendance**
+2. Click **+ New Training** to create a session
+3. Enter training details (title, date, time, venue, trainer)
+4. Mark attendees or allow staff to mark attendance
+5. Export attendance as PDF
 
 ---
 
@@ -191,64 +290,65 @@ For managers and admins with approval permissions:
 
 ### Update Profile
 
-1. Click menu "Account" → "Profile"
-2. Click submenu "My Profile"
-3. Update your name and email
-4. Click "Save"
+1. Click **Account** → **Profile**
+2. Update name, short name, email, or category
+3. Click **Save**
 
 ### Change Password
 
-1. Click menu "Account" → "Profile"
-2. Click submenu "My Profile"
-3. Password section - Change your login password
-4. Enter your current password
-5. Enter your new password
-6. Confirm your new password
-7. Click "Save"
+1. Click **Account** → **Profile**
+2. Go to **Password** section
+3. Enter current password
+4. Enter and confirm new password
+5. Click **Save**
 
 ### Delete Account
 
-1. Click menu "Account" → "Profile"
-2. Delete Account section - Permanently remove your account
-3 *Note: This action cannot be undone*
+1. Click **Account** → **Profile**
+2. Go to **Delete Account** section
+3. Confirm the action
+   *Note: This cannot be undone*
 
 ---
 
-## Frequently Asked Questions (FAQ)
+## FAQ
 
-### Q: How to auto-fill OT time from attendance?
-A: Make sure you have uploaded the attendance PDF in your timesheet first, then use the "Auto-Fill from Attendance" button in the OT form.
+### Q: How do I auto-fill OT time from attendance?
+A: Upload the attendance PDF in your timesheet first. Then in the OT form, click **Auto-Fill from Attendance**.
 
-### Q: What is the difference between Executive and Non-Executive?
-A: Executive form is for executive-level staff, while Non-Executive form is for non-executive staff with additional fields.
+### Q: What's the difference between Executive and Non-Executive OT forms?
+A: Executive forms are simplified. Non-Executive forms include detailed breakdown and additional fields.
 
-### Q: Can I delete a submitted timesheet?
-A: No, only draft timesheets can be deleted.
+### Q: Can I delete a submitted timesheet or OT form?
+A: No. Only draft items can be deleted. Ask an approver to reject or return it.
 
 ### Q: How do I know my approval status?
-A: Status is shown on the Timesheet, OT Form, and History pages.
+A: Status is shown on the Timesheet, OT Form, History, and Pending Tracker pages.
 
-### Q: Who can approve timesheets and OT?
-A: Managers, GM, CEO, and admins with approval permissions.
+### Q: Who can approve my timesheets and OT forms?
+A: Approval depends on your role and the approvers in your user profile. Common approvers are HOD, L1 (Assistant Manager), L2 (Manager), L3 (Senior Manager/CEO), and HR.
 
 ### Q: What should I do if my timesheet is rejected?
-A: Review the rejection remarks, make the necessary corrections, and resubmit.
+A: Read the rejection remarks, make corrections, and resubmit.
 
-### Q: How long does approval take?
-A: It depends on your supervisor. Please contact your supervisor if there is a delay.
+### Q: Why is my attendance not auto-filling correctly?
+A: Make sure the file is in the correct Infotech format. Check that clock in/out rows are clear and reason codes are readable.
+
+### Q: Can I edit task progress directly?
+A: No. Progress is calculated from actual start/end dates. Update the dates and the system will recalculate.
 
 ---
 
 ## Technical Support
 
-If you encounter any issues or need assistance:
-- Contact IT Support via the help button "?" at the bottom right of the screen
-- Send an email to support@talentsynergy.com
-- Call IT phone number: [Insert number]
+If you need help:
+- Click the **?** help button at the bottom right
+- Email: support@talentsynergy.com
+- Contact IT Support
 
 ---
 
 ## Document Version
 
-Version: 1.0  
-Last Updated: April 2026
+Version: 2.0  
+Last Updated: August 2026

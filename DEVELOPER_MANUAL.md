@@ -1,5 +1,7 @@
 # TSSB Portal - Developer Manual
 
+---
+
 ## Table of Contents
 
 1. [System Overview](#system-overview)
@@ -10,37 +12,47 @@
 6. [Database Schema](#database-schema)
 7. [Authentication & Authorization](#authentication--authorization)
 8. [Key Features](#key-features)
-9. [API Endpoints](#api-endpoints)
-10. [Excel Export Services](#excel-export-services)
-11. [Desknet Integration](#desknet-integration)
-12. [Testing](#testing)
-13. [Deployment](#deployment)
-14. [Troubleshooting](#troubleshooting)
+9. [Controllers](#controllers)
+10. [Services](#services)
+11. [Models](#models)
+12. [Routes](#routes)
+13. [Email Notifications](#email-notifications)
+14. [Telegram Notifications](#telegram-notifications)
+15. [Console Commands](#console-commands)
+16. [Frontend Components](#frontend-components)
+17. [Testing](#testing)
+18. [Deployment](#deployment)
+19. [Troubleshooting](#troubleshooting)
+20. [Redundant/Legacy Code](#redundantlegacy-code)
 
 ---
 
 ## System Overview
 
-TSSB Portal is a Laravel-based web application for managing employee timesheets and overtime (OT) forms. The system integrates with Desknet for staff and project data synchronization.
+TSSB Portal is a Laravel-based web application for managing employee timesheets, overtime (OT) forms, and project management. The system integrates with Desknet for staff and project data synchronization and supports Telegram notifications.
 
-### Key Features
-- Timesheet management with attendance PDF upload
-- OT form submission and approval workflow
-- Multi-level approval system (HOD, L1, L2, L3)
-- Excel export functionality
-- Desknet API integration
-- Role-based access control
+### Core Modules
+
+- **Timesheet Management** - Monthly timesheet submission with attendance PDF parsing
+- **OT Form Management** - Overtime request submission with executive/non-executive forms
+- **Approval Workflow** - Multi-level approval system (HOD, L1, L2, L3, HR)
+- **Project Management** - Gantt chart, task weights, automatic progress calculation
+- **HR Module** - Training attendance, record viewing, OT form review
+- **Desknet Integration** - Automatic staff and project data sync
+- **Notification System** - Email and Telegram notifications
 
 ---
 
 ## Tech Stack
 
 - **Backend Framework**: Laravel 12.x
-- **Frontend**: Blade Templates, Tailwind CSS, Alpine.js
+- **Frontend**: Blade Templates, Tailwind CSS, Alpine.js, React (for Gantt chart)
 - **Database**: MySQL/MariaDB
 - **PHP Version**: 8.2+
 - **Excel Library**: PhpSpreadsheet
-- **PDF Processing**: smalot/pdfparser for attendance data
+- **PDF Processing**: smalot/pdfparser
+- **Gantt Chart Library**: gantt-task-react
+- **Chart Library**: Chart.js
 
 ---
 
@@ -49,41 +61,31 @@ TSSB Portal is a Laravel-based web application for managing employee timesheets 
 ```
 Timesheet_Website/
 ├── app/
+│   ├── Console/
+│   │   └── Commands/          # Artisan commands
 │   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── TimesheetController.php
-│   │   │   ├── OtFormController.php
-│   │   │   ├── ApprovalController.php
-│   │   │   └── Admin/
-│   │   ├── Middleware/
-│   │   └── Requests/
-│   ├── Models/
-│   │   ├── User.php
-│   │   ├── Timesheet.php
-│   │   ├── OtForm.php
-│   │   ├── ProjectCode.php
-│   │   └── DesknetSyncLog.php
-│   ├── Services/
-│   │   ├── TimesheetExcelExport.php
-│   │   └── OtFormExcelExport.php
-│   └── Policies/
+│   │   ├── Controllers/       # All controllers
+│   │   ├── Middleware/        # Custom middleware
+│   │   └── Requests/          # Form request validation
+│   ├── Mail/                  # Email mailable classes
+│   ├── Models/                # Eloquent models
+│   ├── Services/              # Business logic services
+│   └── Observers/             # Model observers
 ├── database/
-│   ├── migrations/
-│   └── seeders/
+│   ├── migrations/           # Database migrations
+│   └── seeders/              # Database seeders
 ├── resources/
-│   ├── views/
-│   │   ├── layouts/
-│   │   ├── timesheets/
-│   │   ├── ot-forms/
-│   │   ├── approvals/
-│   │   ├── admin/
-│   │   └── components/
-│   └── css/
+│   ├── views/                # Blade templates
+│   │   ├── layouts/          # Layout templates
+│   │   ├── admin/            # Admin views
+│   │   ├── emails/           # Email templates
+│   │   └── components/       # Blade components
+│   └── js/                   # React components
 ├── routes/
-│   ├── web.php
-│   └── api.php
-└── public/
-    └── images/
+│   ├── web.php               # Web routes
+│   ├── api.php               # API routes
+│   └── console.php           # Console routes
+└── public/                   # Public assets
 ```
 
 ---
@@ -91,14 +93,15 @@ Timesheet_Website/
 ## Installation
 
 ### Prerequisites
+
 - PHP 8.2 or higher
 - Composer
 - MySQL/MariaDB
-- Node.js & NPM (for asset compilation, if needed)
+- Node.js & NPM
 
 ### Steps
 
-1. **Clone the repository**
+1. **Clone repository**
    ```bash
    git clone <repository-url>
    cd Timesheet_Website
@@ -116,8 +119,7 @@ Timesheet_Website/
    php artisan key:generate
    ```
 
-4. **Configure database**
-   Edit `.env` file:
+4. **Configure database** in `.env`
    ```env
    DB_CONNECTION=mysql
    DB_HOST=127.0.0.1
@@ -132,17 +134,17 @@ Timesheet_Website/
    php artisan migrate
    ```
 
-6. **Seed data (optional)**
-   ```bash
-   php artisan db:seed
-   ```
-
-7. **Link storage**
+6. **Link storage**
    ```bash
    php artisan storage:link
    ```
 
-8. **Start development server**
+7. **Build assets**
+   ```bash
+   npm run build
+   ```
+
+8. **Start server**
    ```bash
    php artisan serve
    ```
@@ -153,7 +155,7 @@ Timesheet_Website/
 
 ### Environment Variables
 
-Key environment variables in `.env`:
+Key variables in `.env`:
 
 ```env
 APP_NAME="TSSB Portal"
@@ -176,504 +178,664 @@ DESKNET_SYNC_ENABLED=true
 
 # Mail Configuration
 MAIL_MAILER=smtp
-MAIL_HOST=smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-MAIL_FROM_ADDRESS="noreply@talentsynergy.com"
-MAIL_FROM_NAME="${APP_NAME}"
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=tssbingress@gmail.com
+MAIL_PASSWORD="your_password"
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=tssbingress@gmail.com
+MAIL_FROM_NAME="TSSB Portal"
+
+# Telegram
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
-
-### Config Files
-
-- `config/app.php` - Application configuration
-- `config/auth.php` - Authentication settings
-- `config/filesystems.php` - Storage configuration
 
 ---
 
 ## Database Schema
 
-### Users Table
-```sql
-- id
-- name (string)
-- email (string, unique)
-- email_verified_at (timestamp, nullable)
-- password (hashed)
-- role (enum: admin, user)
-- designation (string)
-- department_id (foreign key)
-- employee_code (string)
-- can_approve_ot_form_level_1 (boolean)
-- can_approve_timesheet_hod (boolean)
-- can_approve_timesheet_l1 (boolean)
-- can_approve_timesheet_l2 (boolean)
-- can_approve_timesheet_l3 (boolean)
-- reports_to_id (foreign key to users)
-- is_active (boolean, default true)
-- timesheet_approver_id (foreign key to users, nullable)
-- ot_exec_approver_id (foreign key to users, nullable)
-- ot_non_exec_approver_id (foreign key to users, nullable)
-- created_at, updated_at
-```
+### Core Tables
 
-### Timesheets Table
-```sql
-- id
-- user_id (foreign key)
-- month (integer)
-- year (integer)
-- status (enum: draft, pending_hod, pending_l1, pending_l2, pending_l3, approved, rejected)
-- admin_hours (json)
-- project_rows (json)
-- attendance_pdf_path (string)
-- hod_signature (string)
-- l1_signature (string)
-- l2_signature (string)
-- l3_signature (string)
-- hod_rejected_at (timestamp)
-- l1_rejected_at (timestamp)
-- l2_rejected_at (timestamp)
-- l3_rejected_at (timestamp)
-- rejected_remarks (text)
-- created_at, updated_at
-```
+#### users
+- Authentication and user profile data
+- Role-based access control
+- Approval chain configuration
+- Telegram chat ID for notifications
 
-### OT Forms Table
-```sql
-- id
-- user_id (foreign key)
-- month (integer)
-- year (integer)
-- form_type (enum: executive, non_executive)
-- company (string)
-- status (enum: draft, pending, approved, rejected)
-- planned_data (json)
-- actual_data (json)
-- executive_plan (json, for executive type)
-- non_executive_plan (json, for non-executive type)
-- manager_signature (string)
-- manager_rejected_at (timestamp)
-- rejected_remarks (text)
-- created_at, updated_at
-```
+#### timesheets
+- Monthly timesheet records
+- Status workflow (draft → pending_* → approved/rejected)
+- Signature tracking for each approval level
 
-### Project Codes Table
-```sql
-- id
-- code (string, unique)
-- name (string, nullable)
-- client (string)
-- manager (string)
-- year (integer)
-- status (enum: active, inactive)
-- desknet_id (string)
-- created_at, updated_at
-```
+#### timesheet_admin_hours
+- Admin hours (normal, OT) per day
+- Parsed from attendance PDF
 
-### Timesheet Day Metadata Table
-```sql
-- id
-- timesheet_id (foreign key)
-- entry_date (date)
-- day_of_week (enum: MON, TUE, WED, THU, FRI, SAT, SUN)
-- day_type (enum: working, off_day, public_holiday, mc, leave, absent)
-- available_hours (decimal)
-- time_in (time, nullable)
-- time_out (time, nullable)
-- late_hours (decimal)
-- ot_eligible_hours (decimal)
-- attendance_hours (decimal)
-- created_at, updated_at
-```
+#### timesheet_project_rows & timesheet_project_hours
+- Project-specific hours per day
+- Four buckets: normal_nc, normal_cobq, ot_nc, ot_cobq
 
-### Audit Logs Table
-```sql
-- id
-- user_id (foreign key to users)
-- action (string: created, updated, deleted)
-- model_type (string)
-- model_id (bigint)
-- description (text, nullable)
-- ip_address (string, nullable)
-- old_values (json, nullable)
-- new_values (json, nullable)
-- created_at, updated_at
-```
+#### timesheet_day_metadata
+- Day type classification (working, off_day, public_holiday, mc, leave, absent)
+- Available hours calculation
+- Time in/out tracking
 
----
+#### ot_forms
+- OT form records
+- Executive vs non-executive form types
+- Status workflow (draft → pending_* → approved/completed/rejected/returned)
 
-## Attendance Parsing Logic
+#### ot_form_entries
+- Individual OT entries per day
+- Hour split calculations (normal_day, rest_day, ph_hours)
+- HR correction tracking
 
-### PDF Parsing (PdfParsingService)
+#### pm_projects (merged from project_codes)
+- Project management data
+- Desknet sync integration
+- Budget and value tracking
 
-Located at `app/Services/PdfParsingService.php`
+#### pm_project_phases
+- Project phases with dates and progress
 
-**Purpose:** Parses Infotech attendance PDF files to extract clock in/out times and reason codes.
+#### pm_project_tasks
+- Tasks with weights, dependencies, and progress
+- Predecessor task relationships
 
-**Key Logic:**
-```php
-// Reason code handling
-if ($reason === 'ABS') {
-    // Absent: leave blank (no hours), staff can fill manually
-    $dayType = 'absent';
-    $availableHours = 0;
-} elseif ($reason === 'PH' || isset($holidays[$day])) {
-    $dayType = 'public_holiday';
-    $availableHours = 0;
-} elseif ($reason === 'CAL' || (!$hasValidClockData && !in_array($dow, [Carbon::SATURDAY, Carbon::SUNDAY]))) {
-    // No clock data on weekday = MC/Leave
-    $dayType = 'mc';
-    $availableHours = $dow === Carbon::FRIDAY ? $defaultHoursFri : $defaultHoursMon;
-}
-```
+#### project_progress_logs
+- Change tracking for progress updates
 
-**Reason Codes:**
-- **ABS** - Absent without leave/MC → 0 hours, staff can fill manually
-- **PH** - Public Holiday → 0 hours
-- **CAL** - Leave (ML/EL/AL) → Standard hours (7 or 8)
-- **RES** - Rest day → 0 hours
+#### training_sessions & training_attendances
+- Training session management
+- Staff attendance tracking
 
-### Excel Parsing (ExcelParsingService)
+#### audit_logs
+- System activity tracking
+- Model change history
 
-Located at `app/Services/ExcelParsingService.php`
-
-**Purpose:** Parses Infotech attendance Excel files to extract clock in/out times and reason codes.
-
-**Key Logic:**
-```php
-// Extract reason code from formatted row text
-$reason = '';
-$rowText = implode(' ', array_filter(array_map('strval', $fmtCells)));
-if (preg_match('/(PH|CAL|RES|ABS)/i', $rowText, $m)) {
-    $reason = strtoupper($m[1]);
-}
-
-// Apply same day_type logic as PDF parsing
-if ($reason === 'ABS') {
-    $dayType = 'absent';
-    $availableHours = 0;
-}
-```
-
-**Important:** Both PDF and Excel parsers use the same day_type logic to ensure consistent behavior.
-
----
-
-## Audit Logging System
-
-### UserObserver
-
-Located at `app/Observers/UserObserver.php`
-
-**Purpose:** Automatically logs all User model changes (created, updated, deleted).
-
-**How it works:**
-```php
-public function updated(User $user): void
-{
-    $this->logAudit($user, 'updated', 'Updated user: ' . $user->name);
-}
-
-private function logAudit(User $user, string $action, string $description): void
-{
-    if (!Auth::check()) return;
-
-    AuditLog::create([
-        'user_id' => Auth::id(),
-        'action' => $action,
-        'model_type' => User::class,
-        'model_id' => $user->id,
-        'description' => $description,
-        'ip_address' => request()->ip(),
-    ]);
-}
-```
-
-**Tracked Actions:**
-- User creation
-- User updates (including email changes)
-- User deletion
-
-**Benefits:**
-- Security monitoring
-- Accountability tracking
-- Troubleshooting aid
-- Compliance audit trail
-
-**Adding Audit Logging to Other Models:**
-To add audit logging to other models (e.g., Timesheet, OtForm):
-1. Create an Observer for the model
-2. Register it in `app/Providers/EventServiceProvider.php`
-3. Follow the same pattern as UserObserver
+#### desknet_sync_logs
+- Sync operation tracking
+- Error logging
 
 ---
 
 ## Authentication & Authorization
 
 ### Authentication
-- Laravel's built-in authentication system
-- Session-based authentication
+
+- Laravel's built-in session-based authentication
 - Password hashing using bcrypt
+- Default admin user created by migration
 
-### Authorization
-- Role-based access control using Policies
-- User roles: `admin`, `user`
-- Approval permissions:
-  - `canApproveOTFormLevel1()`
-  - `canApproveTimesheetHOD()`
-  - `canApproveTimesheetL1()`
-  - `canApproveTimesheetL2()`
-  - `canApproveTimesheetL3()`
+### User Roles
 
-### Middleware
-- `auth` - Require authentication
-- `admin` - Require admin role
-- Timesheet submission restrictions based on status
+- **admin** - Full system access
+- **ceo** - Can approve timesheets and OT forms
+- **manager_hod** - HOD approval permissions
+- **assistant_manager** - L1 approval permissions
+- **staff** - Regular user
+- **hr** - HR review and record viewing
+- **finance** - Financial reporting access
 
----
+### Authorization Methods
 
-## Key Features
+Located in `app/Models/User.php`:
 
-### Timesheet Management
-
-**Creating a Timesheet**
-```php
-// Route: POST /timesheets
-public function store(Request $request)
-{
-    $validated = $request->validate([
-        'month' => 'required|integer|min:1|max:12',
-        'year' => 'required|integer|min:2020|max:2100',
-    ]);
-    
-    // Check if timesheet already exists
-    $existing = Timesheet::where('user_id', auth()->id())
-        ->where('month', $validated['month'])
-        ->where('year', $validated['year'])
-        ->first();
-    
-    if ($existing) {
-        return back()->with('error', 'Timesheet already exists');
-    }
-    
-    $timesheet = Timesheet::create([
-        'user_id' => auth()->id(),
-        'month' => $validated['month'],
-        'year' => $validated['year'],
-        'status' => 'draft',
-    ]);
-    
-    return redirect()->route('timesheets.edit', $timesheet);
-}
-```
-
-**Auto-Fill from Attendance PDF**
-```php
-// Parses uploaded PDF to extract clock in/out times
-// Stores in admin_hours JSON structure
-```
-
-### OT Form Management
-
-**Executive Plan**
-- Simplified structure for executive staff
-- Planned vs Actual hours tracking
-- Auto-fill from attendance data
-
-**Non-Executive Plan**
-- Additional fields for non-executive staff
-- More detailed breakdown of OT hours
-
-### Approval Workflow
-
-**Timesheet Approval Levels**
-1. HOD (Head of Department)
-2. L1 (Assistant Manager)
-3. L2 (Manager)
-4. L3 (Senior Manager/GM/CEO)
-
-**OT Form Approval**
-- Single-level approval by manager
-- Can reject with remarks
+- `isAdmin()` - Admin check
+- `isHR()` - HR role check
+- `canApproveTimesheetHOD()` - HOD approval
+- `canApproveTimesheetL1()` - L1 approval
+- `canApproveTimesheetL2()` - L2 approval
+- `canApproveTimesheetL3()` - L3 approval
+- `canApproveOTFormLevel1()` - Manager OT approval
+- `canApproveOTFormLevel2()` - CEO/GM OT approval
+- `canReviewOTForm()` - HR review access
+- `canViewAllRecords()` - Historical record access
 
 ---
 
-## API Endpoints
+## Project Management Module
 
-### Timesheets
+### Gantt Chart Features
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/timesheets` | List user's timesheets |
-| POST | `/timesheets` | Create new timesheet |
-| GET | `/timesheets/{id}` | View timesheet details |
-| PUT | `/timesheets/{id}` | Update timesheet |
-| POST | `/timesheets/{id}/submit` | Submit for approval |
-| POST | `/timesheets/{id}/approve-hod` | HOD approval |
-| POST | `/timesheets/{id}/approve-l1` | L1 approval |
-| POST | `/timesheets/{id}/approve-l2` | L2 approval |
-| POST | `/timesheets/{id}/approve-l3` | L3 approval |
-| POST | `/timesheets/{id}/reject-hod` | HOD rejection |
-| DELETE | `/timesheets/{id}` | Delete draft timesheet |
+The project management module includes a Gantt chart for visualizing project timelines with the following features:
 
-### OT Forms
+#### Three-Lane Timeline
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/ot-forms` | List user's OT forms |
-| POST | `/ot-forms` | Create new OT form |
-| GET | `/ot-forms/{id}` | View OT form details |
-| PUT | `/ot-forms/{id}` | Update OT form |
-| POST | `/ot-forms/{id}/submit` | Submit for approval |
-| POST | `/ot-forms/{id}/approve` | Manager approval |
-| POST | `/ot-forms/{id}/reject` | Manager rejection |
-| DELETE | `/ot-forms/{id}` | Delete draft OT form |
+- **Plan Lane (Blue)**: Planned dates with shadow showing today's position
+- **Revise Lane (Orange)**: Revised dates with shadow showing today's position  
+- **Actual Lane (Green)**: Actual execution dates with progress percentage
 
-### Approvals
+#### Task Dependencies
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/approvals/timesheets` | List pending timesheet approvals |
-| GET | `/approvals/timesheets/{id}` | View timesheet for approval |
-| GET | `/approvals/ot-forms` | List pending OT form approvals |
-| GET | `/approvals/ot-forms/{id}` | View OT form for approval |
+- **End-to-Start (ES)**: Successor cannot start until predecessor completes
+- **Start-to-Start (SS)**: Successor can start when predecessor starts
+- Dependency lines connect tasks visually in the Gantt chart
+- Implemented in `TaskDependencyResolver` service
 
-### Admin
+#### Phase-Task Date Synchronization
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admin/users` | List all users |
-| GET | `/admin/settings` | System settings |
-| POST | `/admin/settings` | Update system settings |
-| GET | `/admin/project-codes` | List project codes |
-| POST | `/admin/desknet-sync/staff` | Sync staff from Desknet |
-| POST | `/admin/desknet-sync/projects` | Sync projects from Desknet |
-| POST | `/admin/desknet-sync/all` | Sync all data from Desknet |
+**Phase Plan Dates Follow Subtasks**:
+- Phase `start_date_plan` automatically updates to the earliest task `start_date_plan`
+- Phase `end_date_plan` automatically updates to the latest task `end_date_plan`
+- Triggered on: task creation, update, deletion, and Gantt drag operations
+- Implemented in `ProjectTaskController::updatePhasePlanDates()`
 
----
+**Subtask Date Validation**:
+- Subtasks can have plan end dates beyond the current phase plan end date
+- Phase will automatically extend to accommodate the latest subtask end date
+- Validation skipped for subtasks in `TaskDependencyResolver::validatePlanDateConstraints()`
+- This allows flexible planning while maintaining timeline integrity
 
-## Excel Export Services
+**Shadow Positioning**:
+- Plan bar shadows follow today's date position (not progress percentage)
+- Calculated including both start and end days for accuracy
+- Applies to both subtask bars and phase bars
+- Text display still shows calculated progress percentage based on subtask plan progress
+- Implemented in `_gantt_task_row.blade.php` and `_gantt.blade.php`
 
-### TimesheetExcelExport
+#### Dependency Cascading
 
-Located at `app/Services/TimesheetExcelExport.php`
+- **Plan Date Cascading**: When a task's plan dates change, successor tasks adjust based on dependency type
+- **Actual Date Cascading**: When a task completes, successor tasks can start based on dependency rules
+- **Status Cascading**: Status changes propagate to successors based on dependency type
 
-**Features:**
-- Generates Excel files for timesheet submission
-- Includes staff information, project hours, and admin hours
-- Supports both executive and non-executive plans
-- Auto-calculates totals and summaries
+#### Automatic Progress Calculation
 
-**Usage:**
-```php
-$export = new TimesheetExcelExport($timesheet);
-$export->generate();
-return $export->download();
-```
-
-### OtFormExcelExport
-
-Located at `app/Services/OtFormExcelExport.php`
-
-**Features:**
-- Generates Excel files for OT form submission
-- Separate methods for executive and non-executive plans
-- Includes planned vs actual hours comparison
-- Auto-calculates OT totals
-
-**Executive Plan:**
-```php
-public function buildExecutive($sheet, $form)
-{
-    // Executive-specific Excel structure
-    // Includes planned/actual comparison
-}
-```
-
-**Non-Executive Plan:**
-```php
-public function buildNonExecutive($sheet, $form)
-{
-    // Non-executive Excel structure
-    // Additional fields for detailed breakdown
-}
-```
+- Weighted progress calculation based on task completion
+- Phase progress = weighted average of task progress
+- Project progress = weighted average of phase progress
+- Implemented in `ProjectProgressCalculator` service
 
 ---
 
-## Desknet Integration
+## Controllers
 
-### API Configuration
+### TimesheetController
 
-Desknet API credentials configured in `.env`:
-```env
-DESKNET_API_KEY=your_api_key
-DESKNET_API_BASE_URL=https://desknet.example.com/api
-DESKNET_SYNC_ENABLED=true
-```
+**Location**: `app/Http/Controllers/TimesheetController.php`
 
-### Sync Services
+**Key Methods**:
+- `index()` - List user's timesheets
+- `store()` - Create new timesheet
+- `edit()` - Edit timesheet view
+- `save()` - Save timesheet data (AJAX)
+- `destroy()` - Delete draft timesheet
+- `print()` - Print view
+- `exportExcel()` - Export to Excel
+- `exportPdf()` - Export to PDF
 
-**Staff Sync**
+### OtFormController
+
+**Location**: `app/Http/Controllers/OtFormController.php`
+
+**Key Methods**:
+- `index()` - List user's OT forms
+- `store()` - Create new OT form
+- `edit()` - Edit OT form view
+- `save()` - Save OT form data (AJAX)
+- `submitPlan()` - Submit for approval
+- `autoFillFromAttendance()` - Auto-fill from attendance
+- `addEntry()` - Add OT entry
+- `deleteEntry()` - Delete OT entry
+- `exportExcel()` - Export to Excel
+- `exportPdf()` - Export to PDF
+
+### TimesheetApprovalController
+
+**Location**: `app/Http/Controllers/TimesheetApprovalController.php`
+
+**Key Methods**:
+- `index()` - Pending timesheets
+- `approved()` - Approved timesheets
+- `show()` - Review timesheet
+- `submit()` - Submit for approval
+- `approveHOD()` - HOD approval
+- `rejectHOD()` - HOD rejection
+- `approveL1()` - L1 approval
+- `rejectL1()` - L1 rejection
+- `unsubmit()` - Unsubmit timesheet
+
+### OtApprovalController
+
+**Location**: `app/Http/Controllers/OtApprovalController.php`
+
+**Key Methods**:
+- `index()` - Pending OT forms
+- `approved()` - Approved OT forms
+- `show()` - Review OT form
+- `approve()` - Approve OT form
+- `reject()` - Reject OT form
+- `hrForward()` - HR forward to CEO/GM
+- `hrReturn()` - HR return to staff
+- `hrEdit()` - HR edit OT entries
+
+### Admin Controllers
+
+**ProjectController** - Project CRUD, dashboard, calendar
+**ProjectPhaseController** - Phase CRUD
+**ProjectTaskController** - Task CRUD, Gantt updates, dependencies
+**ProjectTaskCommentController** - Task comments
+**ProjectTaskAttachmentController** - Task attachments
+**UserController** - User management
+**SystemConfigController** - System settings
+**PublicHolidayController** - Holiday management
+**DesknetSyncController** - Desknet sync
+**AuditController** - Audit logs
+**ProjectCodeController** - Project code management
+
+### Other Controllers
+
+**AllRecordController** - Historical records viewing
+**TrainingAttendanceController** - Training session management
+**PendingTrackerController** - Pending items tracker
+**HistoryController** - User history
+**ProfileController** - User profile management
+**DashboardController** - Dashboard data
+
+---
+
+## Services
+
+### PdfParsingService
+
+**Location**: `app/Services/PdfParsingService.php`
+
+**Purpose**: Parse Infotech attendance PDF files
+
+**Key Logic**:
+- Extracts clock in/out times
+- Identifies reason codes (ABS, PH, CAL, RES, ML, EL, AL)
+- Calculates available hours based on day type
+- Returns structured attendance data
+
+### ExcelParsingService
+
+**Location**: `app/Services/ExcelParsingService.php`
+
+**Purpose**: Parse Infotech attendance Excel files
+
+**Key Logic**:
+- Similar to PDF parsing but for Excel format
+- Extracts reason codes from row text
+- Applies same day type logic as PDF parser
+
+### TimesheetCalculationService
+
+**Location**: `app/Services/TimesheetCalculationService.php`
+
+**Purpose**: Calculate timesheet totals and summaries
+
+### OtAutoFillService
+
+**Location**: `app/Services/OtAutoFillService.php`
+
+**Purpose**: Auto-fill OT actual times from attendance data
+
+### ProjectProgressCalculator
+
+**Location**: `app/Services/ProjectProgressCalculator.php`
+
+**Purpose**: Calculate project and phase progress
+
+**Key Logic**:
+- Task plan progress = elapsed plan days / total plan days
+- Phase actual progress = weighted average of task actual progress
+- Project actual progress = weighted average of all task actual progress
+- Recalculates on task CRUD operations
+
+### TaskDependencyResolver
+
+**Location**: `app/Services/TaskDependencyResolver.php`
+
+**Purpose**: Resolve task dependencies and calculate effective dates
+
+**Key Logic**:
+- Walks dependency graph recursively
+- Detects cycles
+- Shifts successor dates based on predecessor completion
+- Respects `is_actual_start_manual` flag
+
+### DesknetSyncService
+
+**Location**: `app/Services/DesknetSyncService.php`
+
+**Purpose**: Sync staff and project data from Desknet
+
+**Key Logic**:
+- Fetches data from Desknet API
+- Creates/updates local records
+- Preserves local fields (user roles, project description)
+- Logs sync operations
+
+### TelegramNotificationService
+
+**Location**: `app/Services/TelegramNotificationService.php`
+
+**Purpose**: Send Telegram notifications
+
+**Key Logic**:
+- Sends messages via Telegram Bot API
+- Formats messages using templates
+- Handles errors and retries
+
+### TelegramMessageTemplates
+
+**Location**: `app/Services/TelegramMessageTemplates.php`
+
+**Purpose**: Format Telegram notification messages
+
+### Excel Export Services
+
+**TimesheetExcelExport** - Export timesheets to Excel
+**OtFormExcelExport** - Export OT forms to Excel
+**TimesheetSummaryExcelExport** - Export timesheet summary
+**OtSummaryExcelExport** - Export OT summary
+**GanttExcelExport** - Export Gantt chart to Excel
+
+### Email Notification Services
+
+**TimesheetEmailNotificationService** - Timesheet email notifications
+**OtEmailNotificationService** - OT form email notifications
+
+### GanttChangeLogger
+
+**Location**: `app/Services/GanttChangeLogger.php`
+
+**Purpose**: Log Gantt chart changes for audit trail
+
+---
+
+## Models
+
+### User
+
+**Location**: `app/Models/User.php`
+
+**Key Relationships**:
+- `timesheets()` - User's timesheets
+- `otForms()` - User's OT forms
+- `createdProjects()` - Projects created by user
+- `assignedTasks()` - Tasks assigned to user
+
+**Key Methods**:
+- Role checks (isAdmin, isHR, etc.)
+- Approval permission checks
+- Telegram chat ID management
+
+### Timesheet
+
+**Location**: `app/Models/Timesheet.php`
+
+**Key Relationships**:
+- `user()` - Belongs to user
+- `adminHours()` - Admin hours records
+- `projectRows()` - Project rows
+- `dayMetadata()` - Day metadata
+- `approvalLogs()` - Approval history
+
+**Key Methods**:
+- `status_label` - Human-readable status
+- `canEdit()` - Edit permission check
+- `canSubmit()` - Submit permission check
+
+### OtForm
+
+**Location**: `app/Models/OtForm.php`
+
+**Key Relationships**:
+- `user()` - Belongs to user
+- `entries()` - OT entries
+- `approvalLogs()` - Approval history
+
+**Key Methods**:
+- `status_label` - Human-readable status
+- `calculateTotalOtHours()` - Calculate total OT hours
+
+### Project
+
+**Location**: `app/Models/Project.php`
+
+**Key Relationships**:
+- `phases()` - Project phases
+- `tasks()` - Project tasks
+- `progressLogs()` - Progress change logs
+
+**Key Methods**:
+- `calculateProgress()` - Calculate project progress
+- `scheduleVariance()` - Calculate schedule variance
+
+### ProjectTask
+
+**Location**: `app/Models/ProjectTask.php`
+
+**Key Relationships**:
+- `project()` - Belongs to project
+- `phase()` - Belongs to phase
+- `predecessorTask()` - Predecessor task
+- `successorTasks()` - Successor tasks
+- `assignedTo()` - Assigned user
+- `comments()` - Task comments
+- `attachments()` - Task attachments
+
+**Key Methods**:
+- `calculateProgress()` - Calculate task progress
+- `effectiveStartDate()` - Calculate effective start date
+- `effectiveEndDate()` - Calculate effective end date
+
+### Other Models
+
+**TimesheetAdminHour** - Admin hours per day
+**TimesheetProjectRow** - Project row records
+**TimesheetProjectHour** - Project hours per day
+**TimesheetDayMetadata** - Day metadata
+**OtFormEntry** - OT form entries
+**ProjectPhase** - Project phases
+**ProjectProgressLog** - Progress change logs
+**TrainingSession** - Training sessions
+**TrainingAttendance** - Training attendance
+**AuditLog** - Audit logs
+**DesknetSyncLog** - Sync logs
+**PublicHoliday** - Public holidays
+**SystemConfig** - System configuration
+
+---
+
+## Routes
+
+### Web Routes
+
+**Location**: `routes/web.php`
+
+**Main Route Groups**:
+
+1. **Auth Routes** - Login, registration, password reset
+2. **Profile Routes** - Profile management, Telegram test
+3. **Timesheet Routes** - Timesheet CRUD, upload, export
+4. **Timesheet Approval Routes** - Submit, approve, reject
+5. **OT Form Routes** - OT form CRUD, submit, export
+6. **OT Approval Routes** - Approve, reject, HR actions
+7. **Project Management Routes** - Project, phase, task CRUD
+8. **Admin Routes** - User management, settings, holidays, sync
+9. **Training Attendance Routes** - Training session management
+10. **All Records Routes** - Historical record viewing
+11. **Pending Tracker Routes** - Pending items tracker
+
+### Key Route Patterns
+
 ```php
-// Endpoint: /admin/desknet-sync/staff
-// Fetches staff data from Desknet
-// Updates/creates users in local database
+// Timesheets
+Route::get('/timesheets', [TimesheetController::class, 'index']);
+Route::post('/timesheets', [TimesheetController::class, 'store']);
+Route::get('/timesheets/{timesheet}/edit', [TimesheetController::class, 'edit']);
+Route::put('/timesheets/{timesheet}', [TimesheetController::class, 'save']);
+
+// OT Forms
+Route::get('/ot-forms', [OtFormController::class, 'index']);
+Route::post('/ot-forms', [OtFormController::class, 'store']);
+Route::get('/ot-forms/{otForm}/edit', [OtFormController::class, 'edit']);
+Route::put('/ot-forms/{otForm}', [OtFormController::class, 'save']);
+
+// Project Management
+Route::prefix('project')->group(function () {
+    Route::get('/', [ProjectController::class, 'dashboard']);
+    Route::prefix('projects')->group(function () {
+        Route::get('/', [ProjectController::class, 'index']);
+        Route::prefix('{project}/phases')->group(/* ... */);
+        Route::prefix('{project}/tasks')->group(/* ... */);
+    });
+});
+
+// Admin
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/users', [UserController::class, 'index']);
+    Route::get('/settings', [SystemConfigController::class, 'index']);
+    // ...
+});
 ```
 
-**Project Codes Sync**
+---
+
+## Email Notifications
+
+### Mailable Classes
+
+**Location**: `app/Mail/`
+
+**Timesheet Emails**:
+- `TimesheetSubmittedMail.php` - Timesheet submitted notification
+- `TimesheetApprovedMail.php` - Timesheet approved notification
+- `TimesheetRejectedMail.php` - Timesheet rejected notification
+- `TimesheetReminderMail.php` - Timesheet submission reminder
+
+**OT Form Emails**:
+- `OtSubmittedMail.php` - OT form submitted notification
+- `OtApprovedMail.php` - OT form approved notification
+- `OtRejectedMail.php` - OT form rejected notification
+- `OtHrReturnedMail.php` - OT form returned by HR
+
+**Project Task Emails**:
+- `SubtaskStartReminder.php` - Task start reminder
+- `SubtaskDueWarning.php` - Task due warning
+- `SubtaskDeadlineAlert.php` - Task deadline alert
+
+### Email Templates
+
+**Location**: `resources/views/emails/`
+
+**Subject Line Format**:
+All email subjects should start with "TSSB Portal - " for consistency.
+
+Example:
 ```php
-// Endpoint: /admin/desknet-sync/projects
-// Fetches project codes from Desknet
-// Updates/creates project codes in local database
+return $this->subject("TSSB Portal - Timesheet Approved - {$this->monthYear}")
 ```
 
-### Sync Logs
+---
 
-All sync operations are logged in `desknet_sync_logs` table:
-- `status` (success/failure)
-- `type` (staff/projects)
-- `records_processed`
-- `error_message`
-- `completed_at`
+## Telegram Notifications
 
-### Troubleshooting Desknet Sync
+### TelegramNotificationService
 
-**HTTP 403 Error:**
-- **Cause:** Invalid API key or Desknet External Connection disabled
-- **Solution:**
-  1. Verify API key in System Settings (`desknet_api_key`)
-  2. Check Desknet External Connection Settings in Desknet admin panel:
-     - Go to System Admin → AppSuite → External Connection Settings
-     - Ensure External Connection API is enabled
-     - Whitelist your server IP if IP restrictions are enabled
-  3. Test connection using the "Test Connection" button in admin panel
+**Location**: `app/Services/TelegramNotificationService.php`
 
-**Connection Timeout:**
-- **Cause:** Network connectivity issues or incorrect API URL
-- **Solution:**
-  1. Check network connectivity to Desknet server
-  2. Verify `desknet_api_url` is correct in System Settings
-  3. Check firewall settings
-  4. Ensure Desknet server is accessible from your application server
+**Configuration**:
+- `TELEGRAM_BOT_TOKEN` in `.env`
+- `TELEGRAM_CHAT_ID` in `.env` or per-user in `users.telegram_chat_id`
 
-**Sync Partial Failure:**
-- **Cause:** Missing records in Desknet or incorrect app IDs
-- **Solution:**
-  1. Check sync logs for specific error messages
-  2. Verify app IDs are correct:
-     - Project Codes App ID (default: 308)
-     - Staff List App ID (default: 29)
-  3. Check Desknet database for missing records
-  4. Verify Desknet API credentials have proper permissions
+**Usage**:
+```php
+$telegram = new TelegramNotificationService();
+$telegram->sendMessage($chatId, $message);
+```
 
-**API Error Messages:**
-- The system provides detailed error messages in sync logs
-- Check `desknet_sync_logs` table for `error_message` column
-- Review Laravel logs at `storage/logs/laravel.log` for additional details
+### TelegramMessageTemplates
+
+**Location**: `app/Services/TelegramMessageTemplates.php`
+
+**Purpose**: Format messages for different notification types
+
+**Message Types**:
+- Timesheet approval
+- OT form approval
+- Task reminders
+- System notifications
+
+---
+
+## Console Commands
+
+### Artisan Commands
+
+**Location**: `app/Console/Commands/`
+
+**Sync Commands**:
+- `SyncDesknet.php` - Manual Desknet sync
+- `DesknetDiagnoseApp.php` - Diagnose Desknet connection
+
+**Reminder Commands**:
+- `SendTimesheetReminders.php` - Send timesheet submission reminders
+- `SendTaskReminders.php` - Send task deadline reminders
+
+**Recalculation Commands**:
+- `RecalculateProjectProgress.php` - Recalculate all project progress
+- `RecalculateOtFormTotalHours.php` - Recalculate OT form totals
+- `RecalculateAttendanceOt.php` - Recalculate attendance OT hours
+
+**Utility Commands**:
+- `InspectTaskWeights.php` - Inspect task weight configuration
+- `TestTaskReminderEmail.php` - Test task reminder email
+
+### Scheduled Commands
+
+**Location**: `routes/console.php`
+
+```php
+// Daily Desknet sync at 1:00 AM
+Schedule::command('desknet:sync --type=all')
+    ->dailyAt('01:00')
+    ->withoutOverlapping();
+
+// Daily timesheet reminders at 9:00 AM
+Schedule::command('timesheet:send-reminders')
+    ->dailyAt('09:00')
+    ->withoutOverlapping();
+
+// Daily task reminders at 8:00 AM
+Schedule::command('tasks:send-reminders')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();
+```
+
+---
+
+## Frontend Components
+
+### React Components
+
+**Location**: `resources/js/components/`
+
+**Key Components**:
+- `ProjectDetailsForm.jsx` - Project details form with AJAX submission
+- `Sidebar.jsx` - Navigation sidebar
+- Gantt chart components (gantt-task-react)
+
+### Blade Components
+
+**Location**: `resources/views/components/`
+
+- Layout components
+- Form components
+- Table components
+- Modal components
+
+### JavaScript Libraries
+
+- **Alpine.js** - Interactive components
+- **Chart.js** - Dashboard charts
+- **gantt-task-react** - Gantt chart
+- **Tailwind CSS** - Styling
 
 ---
 
@@ -685,7 +847,7 @@ All sync operations are logged in `desknet_sync_logs` table:
 # Run all tests
 php artisan test
 
-# Run specific test suite
+# Run specific test
 php artisan test --filter TimesheetTest
 
 # Run with coverage
@@ -710,13 +872,16 @@ tests/
 
 ## Deployment
 
-### Production Deployment Checklist
+### Production Checklist
 
 1. **Environment Configuration**
    - Set `APP_ENV=production`
    - Set `APP_DEBUG=false`
    - Configure production database
-   - Set production URLs
+   - Set production `APP_URL`
+   - Configure Desknet variables
+   - Configure mail settings
+   - Configure Telegram settings
 
 2. **Database**
    - Run migrations: `php artisan migrate --force`
@@ -727,13 +892,19 @@ tests/
    php artisan config:cache
    php artisan route:cache
    php artisan view:cache
+   npm run build
    ```
 
 4. **Permissions**
-   - Storage directory must be writable
-   - Bootstrap cache directory must be writable
+   - `storage/` and `bootstrap/cache/` must be writable
+   - Upload directory must be accessible
 
-5. **Queue Workers** (if using queues)
+5. **Scheduled Tasks**
+   ```bash
+   * * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
+   ```
+
+6. **Queue Workers** (if using queues)
    ```bash
    php artisan queue:work
    ```
@@ -752,28 +923,28 @@ tests/
 
 ### Common Issues
 
-**Issue: Sidebar appears white instead of navy blue**
-- Solution: Clear browser cache and hard refresh (Ctrl+Shift+R)
-- The sidebar uses inline styles to force navy blue color
+**Sidebar appears white instead of navy blue**
+- Clear browser cache and hard refresh (Ctrl+Shift+R)
+- Check inline styles in sidebar template
 
-**Issue: Help button appears white**
-- Solution: The help button uses inline style `background-color: #1e3a8a`
-- If still white, check browser console for CSS conflicts
-
-**Issue: Attendance PDF not parsing**
-- Solution: Ensure PDF is in the correct format from Infotech
+**Attendance PDF not parsing**
+- Ensure PDF is in correct Infotech format
 - Check file permissions in storage directory
 - Verify PDF parsing library is installed
 
-**Issue: Desknet sync failing**
-- Solution: Verify API credentials in `.env`
+**Desknet sync failing**
+- Verify API credentials in `.env`
 - Check API endpoint is accessible
-- Review sync logs in database for error messages
+- Review sync logs in database
 
-**Issue: Signature auto-complete not working**
-- Solution: Ensure user's name format is correct (contains BIN/BINTI/B/BT)
+**Signature auto-complete not working**
+- Ensure user's name format is correct (contains BIN/BINTI/B/BT)
 - Check JavaScript console for errors
-- Verify Auth::user()->name is returning correct value
+
+**Project edit form shows "Failed to save"**
+- Check if controller returns JSON for AJAX requests
+- Verify `$request->wantsJson()` check is in place
+- Check browser console for actual response
 
 ### Debug Mode
 
@@ -786,6 +957,63 @@ Check Laravel logs:
 ```bash
 tail -f storage/logs/laravel.log
 ```
+
+---
+
+## Redundant/Legacy Code
+
+### Deprecated Files
+
+**project_codes table** - Merged into `pm_projects` table
+- Migration: `2026_07_22_000001_phase1_merge_project_codes_into_pm_projects.php`
+- Migration: `2026_07_22_000003_phase3_drop_project_codes_table.php`
+- All references should use `pm_projects` table
+
+**Old approval flow** - Simplified OT form approval
+- Migration: `2026_04_14_000001_simplify_ot_form_approval_flow.php`
+- Old status codes replaced with simplified flow
+
+**Legacy email subjects** - Some old email templates may still use "Timesheet & OT Form" prefix
+- Should be updated to "TSSB Portal - " prefix
+- Check all Mailable classes in `app/Mail/`
+
+### Unused Controllers
+
+**AttendanceUploadController** - May have overlapping functionality with ExcelUploadController
+- Consider consolidating attendance upload logic
+
+**ExcelUploadController** - Handles Excel uploads for timesheets
+- Verify if this is still used or if PdfParsingService handles both
+
+### Unused Models
+
+**MorningAssemblyLog** - Model exists but may not be actively used
+- Verify if morning assembly feature is still required
+
+**Notification** - Model exists but may not be actively used
+- Verify if in-app notifications are still required or if Telegram/Email are sufficient
+
+### Legacy Migration Files
+
+Many migration files are one-time data fixes that are no longer needed:
+- `2026_07_14_101900_fix_ot_entry_split_values.php`
+- `2026_07_14_105400_fix_june_public_holiday_routing.php`
+- `2026_07_14_113100_fix_executive_rest_day_split.php`
+- `2026_06_30_000002_regenerate_hr_remarks_for_ot_forms.php`
+
+These can be considered for cleanup in future maintenance.
+
+### Duplicate Route Patterns
+
+Some routes may have duplicate functionality:
+- Project routes exist under both `/project/*` and `/admin/project/*`
+- Verify if both are needed or if one can be removed
+
+### Unused Service Methods
+
+Some services may have unused methods:
+- Check `TimesheetCalculationService` for unused calculation methods
+- Check `OtAutoFillService` for redundant logic with attendance parsing
 
 ---
 
@@ -806,6 +1034,11 @@ tail -f storage/logs/laravel.log
 - Avoid custom CSS when possible
 - Use inline styles only when forcing colors
 
+### JavaScript
+- Use React for complex components
+- Use Alpine.js for simple interactions
+- Follow ESLint rules
+
 ---
 
 ## Security Considerations
@@ -814,9 +1047,10 @@ tail -f storage/logs/laravel.log
 2. **XSS** - Blade automatically escapes output
 3. **CSRF** - Laravel CSRF protection enabled on all forms
 4. **Authentication** - Use Laravel's built-in auth system
-5. **Authorization** - Use policies for permission checks
+5. **Authorization** - Use role checks and permission helpers
 6. **File Uploads** - Validate file types and sizes
 7. **API Keys** - Store in environment variables, never commit to git
+8. **Sensitive Data** - Never log passwords, API keys, or personal data
 
 ---
 
@@ -826,8 +1060,12 @@ tail -f storage/logs/laravel.log
 - **v1.1** - Added Desknet integration
 - **v1.2** - Added multi-level approval system
 - **v1.3** - Added Excel export functionality
-- **v1.4** - UI redesign with navy blue theme and Malay language support
-- **v1.5** - Updated to Laravel 12.x and PHP 8.2+, added attendance parsing logic, audit logging system, and comprehensive troubleshooting guide
+- **v1.4** - UI redesign with navy blue theme
+- **v1.5** - Added attendance parsing logic, audit logging
+- **v1.6** - Merged project_codes into pm_projects, added project management module
+- **v1.7** - Added Telegram notifications, training attendance
+- **v2.0** - Fixed project edit form JSON response, updated documentation
+- **v2.1** - Phase plan dates automatically follow subtask dates, Gantt shadow follows today's date
 
 ---
 
