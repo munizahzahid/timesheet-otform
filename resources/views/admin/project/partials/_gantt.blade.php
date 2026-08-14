@@ -458,9 +458,69 @@
                                     $phasePlanStartOffset = $phase->start_date_plan ? $timelineStart->diffInDays($phase->start_date_plan) : null;
                                     $phasePlanDuration = $phase->start_date_plan && $phase->end_date_plan ? $phase->start_date_plan->diffInDays($phase->end_date_plan) + 1 : null;
 
+                                    // Calculate phase progress percentage for display
+                                    $phasePlanProgress = 0;
+                                    if ($phase->start_date_plan && $phase->end_date_plan) {
+                                        $today = \Carbon\Carbon::today();
+                                        if ($today->lte($phase->start_date_plan)) {
+                                            $phasePlanProgress = 0;
+                                        } elseif ($today->gte($phase->end_date_plan)) {
+                                            $phasePlanProgress = 100;
+                                        } else {
+                                            $total = $phase->start_date_plan->diffInDays($phase->end_date_plan);
+                                            $elapsed = $phase->start_date_plan->diffInDays($today);
+                                            $phasePlanProgress = min(100, max(0, round(($elapsed / max(1, $total)) * 100)));
+                                        }
+                                    }
+
+                                    // Calculate today's position for phase plan shadow fill
+                                    $phaseTodayPosition = 0;
+                                    if ($phase->start_date_plan && $phase->end_date_plan) {
+                                        $today = \Carbon\Carbon::today();
+                                        if ($today->lt($phase->start_date_plan)) {
+                                            $phaseTodayPosition = 0;
+                                        } elseif ($today->gt($phase->end_date_plan)) {
+                                            $phaseTodayPosition = 100;
+                                        } else {
+                                            $totalDays = $phase->start_date_plan->diffInDays($phase->end_date_plan) + 1;
+                                            $daysElapsed = $phase->start_date_plan->diffInDays($today) + 1;
+                                            $phaseTodayPosition = min(100, max(0, round(($daysElapsed / max(1, $totalDays)) * 100)));
+                                        }
+                                    }
+
                                     // Revise bar
                                     $phaseReviseStartOffset = $phase->start_date_revise ? $timelineStart->diffInDays($phase->start_date_revise) : null;
                                     $phaseReviseDuration = $phase->start_date_revise && $phase->end_date_revise ? $phase->start_date_revise->diffInDays($phase->end_date_revise) + 1 : null;
+
+                                    // Calculate phase revise progress percentage for display
+                                    $phaseReviseProgress = null;
+                                    if ($phase->start_date_revise && $phase->end_date_revise) {
+                                        $today = \Carbon\Carbon::today();
+                                        if ($today->lte($phase->start_date_revise)) {
+                                            $phaseReviseProgress = 0;
+                                        } elseif ($today->gte($phase->end_date_revise)) {
+                                            $phaseReviseProgress = 100;
+                                        } else {
+                                            $total = $phase->start_date_revise->diffInDays($phase->end_date_revise);
+                                            $elapsed = $phase->start_date_revise->diffInDays($today);
+                                            $phaseReviseProgress = min(100, max(0, round(($elapsed / max(1, $total)) * 100)));
+                                        }
+                                    }
+
+                                    // Calculate today's position for phase revise shadow fill
+                                    $phaseReviseTodayPosition = null;
+                                    if ($phase->start_date_revise && $phase->end_date_revise) {
+                                        $today = \Carbon\Carbon::today();
+                                        if ($today->lt($phase->start_date_revise)) {
+                                            $phaseReviseTodayPosition = 0;
+                                        } elseif ($today->gt($phase->end_date_revise)) {
+                                            $phaseReviseTodayPosition = 100;
+                                        } else {
+                                            $totalDays = $phase->start_date_revise->diffInDays($phase->end_date_revise) + 1;
+                                            $daysElapsed = $phase->start_date_revise->diffInDays($today) + 1;
+                                            $phaseReviseTodayPosition = min(100, max(0, round(($daysElapsed / max(1, $totalDays)) * 100)));
+                                        }
+                                    }
 
                                     // Actual bar
                                     $phaseActualStart = $phase->start_date_actual;
@@ -485,32 +545,19 @@
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phasePlanStartOffset }}" data-duration="{{ $phasePlanDuration }}" data-bar-type="plan"
                                              style="left: {{ $phasePlanStartOffset * $dayWidth }}px; top: 8px; width: {{ max($phasePlanDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(168, 85, 247, 0.3); border: 1px solid #9333ea; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Plan: {{ $phase->start_date_plan->format('d M Y') }} — {{ $phase->end_date_plan->format('d M Y') }}">
-                                            {{-- Progress fill --}}
-                                            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $phase->progress_plan }}%; background-color: #a855f7; transition: width 0.3s ease;"></div>
-                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phase->progress_plan }}%</span>
+                                            {{-- Progress fill based on today's date position --}}
+                                            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $phaseTodayPosition }}%; background-color: #a855f7; transition: width 0.3s ease;"></div>
+                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phasePlanProgress }}%</span>
                                         </div>
                                     @endif
                                     {{-- Revise bar --}}
                                     @if($phaseReviseStartOffset !== null && $phaseReviseDuration !== null)
-                                        @php
-                                            $today = \Carbon\Carbon::today();
-                                            $reviseStart = $phase->start_date_revise->copy()->startOfDay();
-                                            $reviseEnd = $phase->end_date_revise->copy()->startOfDay();
-                                            if ($today->lte($reviseStart)) {
-                                                $reviseProgress = 0;
-                                            } elseif ($today->gte($reviseEnd)) {
-                                                $reviseProgress = 100;
-                                            } else {
-                                                $totalDays = $reviseStart->diffInDays($reviseEnd);
-                                                $reviseProgress = $totalDays > 0 ? (int) round(($reviseStart->diffInDays($today) / $totalDays) * 100) : 100;
-                                            }
-                                        @endphp
                                         <div class="gantt-bar absolute" data-start-offset="{{ $phaseReviseStartOffset }}" data-duration="{{ $phaseReviseDuration }}" data-bar-type="revise"
                                              style="left: {{ $phaseReviseStartOffset * $dayWidth }}px; top: 28px; width: {{ max($phaseReviseDuration * $dayWidth, 4) }}px; height: 16px; background-color: rgba(251, 146, 60, 0.3); border: 1px solid #f97316; border-radius: 4px; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.1);"
                                              title="Revise: {{ $phase->start_date_revise->format('d M Y') }} — {{ $phase->end_date_revise->format('d M Y') }}">
-                                            {{-- Progress fill --}}
-                                            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $reviseProgress }}%; background-color: #fb923c; transition: width 0.3s ease;"></div>
-                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
+                                            {{-- Progress fill based on today's date position --}}
+                                            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $phaseReviseTodayPosition }}%; background-color: #fb923c; transition: width 0.3s ease;"></div>
+                                            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $phaseReviseProgress }}%</span>
                                         </div>
                                     @endif
                                     {{-- Actual bar --}}
