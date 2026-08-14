@@ -159,7 +159,12 @@ export default function ProjectDetailsForm({ project, staffList, statusOptions, 
                 body: JSON.stringify({ ...form, action }),
             });
             if (res.ok) {
-                window.location.href = redirectUrl;
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = redirectUrl;
+                } else {
+                    setGeneralError(data.message || 'Failed to save');
+                }
             } else {
                 const data = await res.json().catch(() => ({}));
                 if (data.errors) setErrors(data.errors);

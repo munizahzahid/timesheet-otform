@@ -45,8 +45,8 @@ class ProjectTaskAttachmentController extends Controller
         ]);
 
         $url = request()->getQueryString()
-            ? route('admin.project.projects.tasks.index', $project) . '?' . request()->getQueryString()
-            : route('admin.project.projects.tasks.index', $project);
+            ? route('project.projects.tasks.index', $project) . '?' . request()->getQueryString()
+            : route('project.projects.tasks.index', $project);
 
         return redirect($url)->with('success', 'Attachment uploaded.');
     }
@@ -61,8 +61,8 @@ class ProjectTaskAttachmentController extends Controller
         $attachment->delete();
 
         $url = request()->getQueryString()
-            ? route('admin.project.projects.tasks.index', $project) . '?' . request()->getQueryString()
-            : route('admin.project.projects.tasks.index', $project);
+            ? route('project.projects.tasks.index', $project) . '?' . request()->getQueryString()
+            : route('project.projects.tasks.index', $project);
 
         return redirect($url)->with('success', 'Attachment deleted.');
     }

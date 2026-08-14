@@ -93,7 +93,7 @@ class ProjectPhaseController extends Controller
             return redirect($redirect)->with('success', 'Task created successfully.');
         }
 
-        return redirect()->route('admin.project.projects.phases.index', $project)
+        return redirect()->route('project.projects.phases.index', $project)
             ->with('success', 'Task created successfully.');
     }
 
@@ -197,7 +197,7 @@ class ProjectPhaseController extends Controller
             return redirect($redirect)->with('success', 'Task updated successfully.');
         }
 
-        return redirect()->route('admin.project.projects.phases.index', $project)
+        return redirect()->route('project.projects.phases.index', $project)
             ->with('success', 'Task updated successfully.');
     }
 
@@ -232,7 +232,7 @@ class ProjectPhaseController extends Controller
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
         }
-        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
+        return redirect()->to(route('project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Task deleted successfully.');
     }
 }

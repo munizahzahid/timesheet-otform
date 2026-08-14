@@ -23,8 +23,8 @@ class ProjectTaskCommentController extends Controller
         ]);
 
         $url = request()->getQueryString()
-            ? route('admin.project.projects.tasks.index', $project) . '?' . request()->getQueryString()
-            : route('admin.project.projects.tasks.index', $project);
+            ? route('project.projects.tasks.index', $project) . '?' . request()->getQueryString()
+            : route('project.projects.tasks.index', $project);
 
         return redirect($url)->with('success', 'Comment added.');
     }
@@ -38,8 +38,8 @@ class ProjectTaskCommentController extends Controller
         $comment->delete();
 
         $url = request()->getQueryString()
-            ? route('admin.project.projects.tasks.index', $project) . '?' . request()->getQueryString()
-            : route('admin.project.projects.tasks.index', $project);
+            ? route('project.projects.tasks.index', $project) . '?' . request()->getQueryString()
+            : route('project.projects.tasks.index', $project);
 
         return redirect($url)->with('success', 'Comment deleted.');
     }

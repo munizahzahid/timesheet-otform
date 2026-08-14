@@ -23,7 +23,7 @@ class ProjectTaskController extends Controller
      */
     public function index(Project $project)
     {
-        return redirect()->to(route('admin.project.projects.show', $project) . '?tab=tasks');
+        return redirect()->to(route('project.projects.show', $project) . '?tab=tasks');
     }
 
     /**
@@ -54,7 +54,7 @@ class ProjectTaskController extends Controller
                 'phase_id' => $task->phase_id,
                 'phase_name' => $task->phase?->phase_name,
                 'assigned_to_name' => $task->assignedTo?->name,
-                'assigned_to_url' => $task->assignedTo ? route('admin.project.assigned-tasks', $task->assignedTo) : null,
+                'assigned_to_url' => $task->assignedTo ? route('project.assigned-tasks', $task->assignedTo) : null,
                 'comments_count' => $task->comments_count,
                 'attachments_count' => $task->attachments_count,
                 'plan_delay_days' => $effective['plan_delay_days'] ?? 0,
@@ -66,7 +66,7 @@ class ProjectTaskController extends Controller
                         'comment' => $comment->comment,
                         'created_at' => $comment->created_at->diffForHumans(),
                         'is_owner' => $comment->user_id === auth()->id(),
-                        'delete_url' => route('admin.project.projects.tasks.comments.destroy', [$project, $task, $comment]),
+                        'delete_url' => route('project.projects.tasks.comments.destroy', [$project, $task, $comment]),
                     ];
                 })->values()->toArray(),
                 'attachments' => $task->attachments->map(function ($attachment) use ($project, $task) {
@@ -74,15 +74,15 @@ class ProjectTaskController extends Controller
                         'id' => $attachment->id,
                         'user_id' => $attachment->user_id,
                         'file_name' => $attachment->file_name,
-                        'show_url' => route('admin.project.projects.tasks.attachments.show', [$project, $task, $attachment]),
+                        'show_url' => route('project.projects.tasks.attachments.show', [$project, $task, $attachment]),
                         'is_owner' => $attachment->user_id === auth()->id(),
-                        'delete_url' => route('admin.project.projects.tasks.attachments.destroy', [$project, $task, $attachment]),
+                        'delete_url' => route('project.projects.tasks.attachments.destroy', [$project, $task, $attachment]),
                     ];
                 })->values()->toArray(),
-                'update_url' => route('admin.project.projects.tasks.inline-update', [$project, $task]),
-                'show_url' => route('admin.project.projects.tasks.show', [$project, $task]),
-                'edit_url' => route('admin.project.projects.tasks.edit', [$project, $task]),
-                'delete_url' => route('admin.project.projects.tasks.destroy', [$project, $task]),
+                'update_url' => route('project.projects.tasks.inline-update', [$project, $task]),
+                'show_url' => route('project.projects.tasks.show', [$project, $task]),
+                'edit_url' => route('project.projects.tasks.edit', [$project, $task]),
+                'delete_url' => route('project.projects.tasks.destroy', [$project, $task]),
                 'task_order' => $task->task_order,
                 'assigned_to' => $task->assigned_to,
                 'predecessor_task_id' => $task->predecessor_task_id,
@@ -93,8 +93,8 @@ class ProjectTaskController extends Controller
                 'end_date_actual' => $task->end_date_actual?->format('Y-m-d'),
                 'start_date_revise' => $task->start_date_revise?->format('Y-m-d'),
                 'end_date_revise' => $task->end_date_revise?->format('Y-m-d'),
-                'comment_store_url' => route('admin.project.projects.tasks.comments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
-                'attachment_store_url' => route('admin.project.projects.tasks.attachments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
+                'comment_store_url' => route('project.projects.tasks.comments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
+                'attachment_store_url' => route('project.projects.tasks.attachments.store', [$project, $task]) . '?' . (request()->getQueryString() ?: 'tab=tasks'),
             ];
         })->values()->toArray();
 
@@ -234,7 +234,7 @@ class ProjectTaskController extends Controller
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
         }
-        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
+        return redirect()->to(route('project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Subtask created successfully.');
     }
 
@@ -629,7 +629,7 @@ class ProjectTaskController extends Controller
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
         }
-        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
+        return redirect()->to(route('project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Subtask updated successfully.');
     }
 
@@ -1333,7 +1333,7 @@ class ProjectTaskController extends Controller
         if ($request->input('view')) {
             $query['view'] = $request->input('view');
         }
-        return redirect()->to(route('admin.project.projects.show', $project) . '?' . http_build_query($query))
+        return redirect()->to(route('project.projects.show', $project) . '?' . http_build_query($query))
             ->with('success', 'Subtask deleted successfully.');
     }
 

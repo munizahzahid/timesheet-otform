@@ -13,6 +13,7 @@ use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class ProjectController extends Controller
 {
@@ -592,12 +593,12 @@ class ProjectController extends Controller
                     'project_id' => $project->id,
                     'error' => $e->getMessage(),
                 ]);
-                return redirect()->route('admin.project.projects.show', $project)
+                return redirect()->route('project.projects.show', $project)
                     ->with('error', 'Project created locally, but Desknet push failed: ' . $e->getMessage());
             }
         }
 
-        return redirect()->route('admin.project.projects.show', $project)
+        return redirect()->route('project.projects.show', $project)
             ->with('success', 'Project created successfully' . $pushMessage . '.');
     }
 
@@ -700,7 +701,7 @@ class ProjectController extends Controller
         if ($redirect) {
             $params['redirect'] = $redirect;
         }
-        return redirect()->route('admin.project.projects.show', $params);
+        return redirect()->route('project.projects.show', $params);
     }
 
     /**
@@ -771,20 +772,37 @@ class ProjectController extends Controller
                     'project_id' => $project->id,
                     'error' => $e->getMessage(),
                 ]);
+                
+                // Return JSON for AJAX requests
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Project saved locally, but Desknet push failed: ' . $e->getMessage(),
+                    ], 422);
+                }
+                
                 $redirect = $request->input('redirect');
                 if ($redirect) {
                     return redirect($redirect)->with('error', 'Project saved locally, but Desknet push failed: ' . $e->getMessage());
                 }
-                return redirect()->route('admin.project.projects.show', ['project' => $project, 'tab' => 'details'])
+                return redirect()->route('project.projects.show', ['project' => $project, 'tab' => 'details'])
                     ->with('error', 'Project saved locally, but Desknet push failed: ' . $e->getMessage());
             }
+        }
+
+        // Return JSON for AJAX requests (React form)
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Project updated successfully' . $pushMessage . '.',
+            ]);
         }
 
         $redirect = $request->input('redirect');
         if ($redirect) {
             return redirect($redirect)->with('success', 'Project updated successfully' . $pushMessage . '.');
         }
-        return redirect()->route('admin.project.projects.show', ['project' => $project, 'tab' => 'details'])
+        return redirect()->route('project.projects.show', ['project' => $project, 'tab' => 'details'])
             ->with('success', 'Project updated successfully' . $pushMessage . '.');
     }
 
