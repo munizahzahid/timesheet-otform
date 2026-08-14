@@ -224,6 +224,12 @@ class ProjectTaskController extends Controller
         );
 
         $resolver->cascadeActualStartDates($project, $task);
+
+        // Update phase plan dates when task is created with plan dates
+        if ($task->phase_id && ($task->start_date_plan || $task->end_date_plan)) {
+            $this->updatePhasePlanDates($task->phase_id);
+        }
+
         (new ProjectProgressCalculator())->recalculateFromTask($task);
 
         if ($request->wantsJson()) {
@@ -563,6 +569,17 @@ class ProjectTaskController extends Controller
 
         // Propagate plan date changes to successor tasks, then recalculate actual starts
         $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
+
+        // Update phase plan dates when task plan dates change
+        $newPhaseId = $validated['phase_id'] ?? $task->phase_id;
+        if ($newPhaseId && (array_key_exists('start_date_plan', $validated) || array_key_exists('end_date_plan', $validated))) {
+            $this->updatePhasePlanDates($newPhaseId);
+        }
+
+        // Also update old phase if task was moved to a different phase
+        if ($oldPhaseId && $oldPhaseId != $newPhaseId) {
+            $this->updatePhasePlanDates($oldPhaseId);
+        }
 
         $task->refresh();
 
@@ -1026,6 +1043,11 @@ class ProjectTaskController extends Controller
             $resolver->cascadePlanDates($project, $task, $oldPlanStart, $oldPlanEnd);
         }
 
+        // Update phase plan dates when task plan dates change
+        if ($task->phase_id && (array_key_exists('start_date_plan', $updateData) || array_key_exists('end_date_plan', $updateData))) {
+            $this->updatePhasePlanDates($task->phase_id);
+        }
+
         if (array_key_exists('start_date_actual', $updateData) || $shouldCascadeActual) {
             $resolver->cascadeActualStartDates($project, $task);
         }
@@ -1326,6 +1348,8 @@ class ProjectTaskController extends Controller
         $calculator = new ProjectProgressCalculator();
         if ($phase) {
             $calculator->recalculatePhaseProgress($phase);
+            // Update phase plan dates after task deletion
+            $this->updatePhasePlanDates($phase->id);
         }
         $calculator->recalculateProjectProgress($project);
 
@@ -1405,6 +1429,46 @@ class ProjectTaskController extends Controller
             ->increment('task_order', 1);
 
         return $newOrder;
+    }
+
+    /**
+     * Update phase plan dates based on the plan dates of its tasks.
+     * Phase start_date_plan = earliest task start_date_plan
+     * Phase end_date_plan = latest task end_date_plan
+     */
+    private function updatePhasePlanDates(int $phaseId): void
+    {
+        $phase = ProjectPhase::find($phaseId);
+        if (!$phase) {
+            return;
+        }
+
+        $tasks = $phase->tasks;
+
+        // Get the earliest start_date_plan among all tasks
+        $earliestStart = null;
+        foreach ($tasks as $task) {
+            if ($task->start_date_plan) {
+                if (!$earliestStart || $task->start_date_plan->lt($earliestStart)) {
+                    $earliestStart = $task->start_date_plan;
+                }
+            }
+        }
+
+        // Get the latest end_date_plan among all tasks
+        $latestEnd = null;
+        foreach ($tasks as $task) {
+            if ($task->end_date_plan) {
+                if (!$latestEnd || $task->end_date_plan->gt($latestEnd)) {
+                    $latestEnd = $task->end_date_plan;
+                }
+            }
+        }
+
+        // Update phase plan dates
+        $phase->start_date_plan = $earliestStart;
+        $phase->end_date_plan = $latestEnd;
+        $phase->save();
     }
 
     /**

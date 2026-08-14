@@ -887,6 +887,9 @@ class TaskDependencyResolver
      * Plan dates must be within the parent phase's plan dates (if has parent)
      * or within the project's plan dates (if no parent).
      *
+     * Note: For subtasks (tasks with phase_id), end_date_plan validation is skipped
+     * since the phase will automatically follow the latest subtask end date.
+     *
      * @param ProjectTask|ProjectPhase $entity The task or phase being validated
      * @param array<string, string|null> $dates Array of field => value
      * @param Project $project The project
@@ -906,8 +909,10 @@ class TaskDependencyResolver
 
         // Determine the parent (phase) or project constraints
         $parentPhase = null;
+        $isSubtask = false;
         if ($entity instanceof ProjectTask && $entity->phase_id) {
             $parentPhase = $project->phases()->where('id', $entity->phase_id)->first();
+            $isSubtask = true;
         }
 
         if ($parentPhase) {
@@ -934,8 +939,8 @@ class TaskDependencyResolver
             }
         }
 
-        // Validate end_date_plan
-        if (isset($proposedPlanDates['end_date_plan']) && $maxEnd) {
+        // Validate end_date_plan (skip for subtasks since phase will follow subtask)
+        if (isset($proposedPlanDates['end_date_plan']) && $maxEnd && !$isSubtask) {
             try {
                 $newEnd = Carbon::parse($proposedPlanDates['end_date_plan'])->startOfDay();
                 if ($newEnd->gt($maxEnd->startOfDay())) {

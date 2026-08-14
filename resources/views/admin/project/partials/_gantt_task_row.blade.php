@@ -44,6 +44,20 @@
             $planProgress = min(100, max(0, round(($elapsed / max(1, $total)) * 100)));
         }
     }
+
+    // Calculate today's position for shadow fill (includes both start and end days)
+    $todayPosition = 0;
+    if ($task->start_date_plan && $task->end_date_plan) {
+        if ($today->lt($task->start_date_plan)) {
+            $todayPosition = 0;
+        } elseif ($today->gt($task->end_date_plan)) {
+            $todayPosition = 100;
+        } else {
+            $totalDays = $task->start_date_plan->diffInDays($task->end_date_plan) + 1; // include both start and end
+            $daysElapsed = $task->start_date_plan->diffInDays($today) + 1; // include start day
+            $todayPosition = min(100, max(0, round(($daysElapsed / max(1, $totalDays)) * 100)));
+        }
+    }
     $reviseProgress = null;
     if ($task->start_date_revise && $task->end_date_revise) {
         if ($today->lte($task->start_date_revise)) {
@@ -54,6 +68,20 @@
             $total = $task->start_date_revise->diffInDays($task->end_date_revise);
             $elapsed = $task->start_date_revise->diffInDays($today);
             $reviseProgress = min(100, max(0, round(($elapsed / max(1, $total)) * 100)));
+        }
+    }
+
+    // Calculate today's position for revise shadow fill (includes both start and end days)
+    $reviseTodayPosition = null;
+    if ($task->start_date_revise && $task->end_date_revise) {
+        if ($today->lt($task->start_date_revise)) {
+            $reviseTodayPosition = 0;
+        } elseif ($today->gt($task->end_date_revise)) {
+            $reviseTodayPosition = 100;
+        } else {
+            $totalDays = $task->start_date_revise->diffInDays($task->end_date_revise) + 1; // include both start and end
+            $daysElapsed = $task->start_date_revise->diffInDays($today) + 1; // include start day
+            $reviseTodayPosition = min(100, max(0, round(($daysElapsed / max(1, $totalDays)) * 100)));
         }
     }
     $actualProgress = $task->progress_actual ?? 0;
@@ -228,8 +256,8 @@
                 <div class="gantt-bar absolute gantt-resizable" data-task-id="{{ $task->id }}" data-start-offset="{{ $planStartOffset }}" data-duration="{{ $planDuration }}" data-bar-type="plan"
                      style="left: {{ $planStartOffset * $dayWidth }}px; top: 4px; width: {{ max($planDuration * $dayWidth, 4) }}px; height: 18px; background-color: rgba(59, 130, 246, 0.3); border: 1px solid #2563eb; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(37,99,235,0.25);"
                      title="Plan: {{ $task->start_date_plan->format('d M Y') }} — {{ $task->end_date_plan->format('d M Y') }} ({{ $planProgress }}%)">
-                    {{-- Progress fill --}}
-                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $planProgress }}%; background-color: #3b82f6; transition: width 0.3s ease;"></div>
+                    {{-- Progress fill based on today's date position --}}
+                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $todayPosition }}%; background-color: #3b82f6; transition: width 0.3s ease;"></div>
                     <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $planProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
                     <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="plan" title="Drag to create dependency"></div>
@@ -244,8 +272,8 @@
                 <div class="gantt-bar absolute gantt-resizable" data-task-id="{{ $task->id }}" data-start-offset="{{ $reviseStartOffset }}" data-duration="{{ $reviseDuration }}" data-bar-type="revise"
                      style="left: {{ $reviseStartOffset * $dayWidth }}px; top: 26px; width: {{ max($reviseDuration * $dayWidth, 4) }}px; height: 18px; background-color: rgba(249, 115, 22, 0.3); border: 1px solid #ea580c; border-radius: 6px; z-index: 10; box-shadow: 0 2px 5px rgba(234,88,12,0.25);"
                      title="Revise: {{ $task->start_date_revise->format('d M Y') }} — {{ $task->end_date_revise->format('d M Y') }} ({{ $reviseProgress }}%)">
-                    {{-- Progress fill --}}
-                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $reviseProgress }}%; background-color: #f97316; transition: width 0.3s ease;"></div>
+                    {{-- Progress fill based on today's date position --}}
+                    <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ $reviseTodayPosition }}%; background-color: #f97316; transition: width 0.3s ease;"></div>
                     <span class="absolute inset-0 flex items-center justify-center text-[9px] font-medium text-white pointer-events-none" style="z-index: 5; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">{{ $reviseProgress }}%</span>
                     <div class="gantt-dot gantt-dot-left" data-dot-side="left" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
                     <div class="gantt-dot gantt-dot-right" data-dot-side="right" data-task-id="{{ $task->id }}" data-bar-type="revise" title="Drag to create dependency"></div>
