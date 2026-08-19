@@ -15,10 +15,10 @@ Schedule::command('desknet:sync --type=all')
     ->appendOutputTo(storage_path('logs/desknet-sync.log'));
 
 // Daily timesheet reminder at 9:00 AM
-Schedule::command('timesheet:send-reminders')
-    ->dailyAt('09:00')
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/timesheet-reminders.log'));
+//Schedule::command('timesheet:send-reminders')
+//    ->dailyAt('09:00')
+//    ->withoutOverlapping()
+//   ->appendOutputTo(storage_path('logs/timesheet-reminders.log'));
 
 // Daily project plan progress recalculation at midnight
 Schedule::command('project:recalculate-progress')
@@ -27,7 +27,7 @@ Schedule::command('project:recalculate-progress')
     ->appendOutputTo(storage_path('logs/project-progress.log'));
 
 // Daily project task reminders at 10:00 AM
-Schedule::command('project:send-task-reminders')
-    ->dailyAt('08:30')
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/task-reminders.log'));
+//Schedule::command('project:send-task-reminders')
+//    ->dailyAt('10:05')
+//    ->withoutOverlapping()
+//    ->appendOutputTo(storage_path('logs/task-reminders.log'));
